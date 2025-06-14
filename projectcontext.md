@@ -99,6 +99,8 @@ The following features have been fully discussed and their high-level design has
 ## 5. Proposed File Mapping
 
 This structure outlines where different pieces of logic and code will live.
+
+```
 /continuum-writer-context/
 ├── .env.example                # Template for environment variables (Supabase URL, API keys)
 ├── .gitignore
@@ -145,3 +147,4 @@ This structure outlines where different pieces of logic and code will live.
 │   └── apiClient.ts
 └── state/              # Global state management (e.g., Zustand, Redux)
 └── projectStore.ts   # Store for the currently selected project
+```
