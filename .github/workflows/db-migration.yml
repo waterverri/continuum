@@ -17,8 +17,8 @@ jobs:
         with:
           version: latest
 
-+      - name: Prefer IPv4 for network connections
-+        run: echo "precedence ::ffff:0:0/96  100" | sudo tee -a /etc/gai.conf
+      - name: Prefer IPv4 for network connections
+        run: echo "precedence ::ffff:0:0/96  100" | sudo tee -a /etc/gai.conf
 
       - name: Push Database Migrations
         env:
