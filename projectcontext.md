@@ -1,5 +1,5 @@
 # Project Context: Continuum (The Writer's Context Engine)
-**Last Updated:** June 14, 2025 at 2:09 PM WIB
+**Last Updated:** June 14, 2025 at 3:02 PM WIB
 
 ---
 ### **About This Document (`projectcontext.md`)**
@@ -59,16 +59,17 @@ The following features have been fully discussed and their high-level design has
 
 ### 4.2. Currently In Progress
 
-* **Project Scaffolding:** We are in the initial setup phase.
-    * **Task:** Defining project structure and core documentation.
-    * **Completed:** `README.md`, `projectcontext.md` (this file).
+* **Infrastructure Setup:** We are setting up the core project infrastructure.
+    * **Task:** Implementing CI/CD pipeline for database migrations.
+    * **Completed:** Initial `README.md` and `projectcontext.md` have been created.
 
 ### 4.3. Future Roadmap
 
-1.  **Phase 1: Backend Foundation & Database Schema**
-    * Implement the final Supabase schema.
-    * Set up the Node.js API project.
-    * Create project-scoped CRUD endpoints for `projects`, `documents`, and `tags`.
+1.  **Phase 1: Infrastructure & Backend Foundation**
+    * **Setup Database CI/CD:** Implement the GitHub Actions workflow to automatically apply Supabase migrations on push to `main`.
+    * **Finalize & Migrate Schema:** Solidify the database schema and create the initial migration files.
+    * **Set up API Project:** Scaffold the Node.js/TypeScript/Express backend application.
+    * **Initial Endpoints:** Create project-scoped CRUD endpoints for `projects`, `documents`, and `tags`.
 2.  **Phase 2: Core Dashboard UI**
     * Build the project selection/management screen.
     * Implement the UI for creating/editing documents and their tags within a selected project.
