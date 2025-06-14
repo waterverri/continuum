@@ -1,5 +1,5 @@
 # Project Context: Continuum (The Writer's Context Engine)
-**Last Updated:** June 14, 2025 at 3:02 PM WIB
+**Last Updated:** June 14, 2025 at 6:05 PM WIB
 
 ---
 ### **About This Document (`projectcontext.md`)**
@@ -31,15 +31,29 @@ The application consists of three primary components:
 * **Backend:** A serverless API built with **Node.js, Express, and TypeScript**, deployed on **Google Cloud Run**. It handles all data logic and serves the context presets.
 * **Database:** A **Supabase (PostgreSQL)** instance for data persistence.
 
-## 3. Data Model
+## 3. Data Model & Authentication
 
-The database schema is designed to be flexible and relational, organized around a top-level `projects` entity.
+### 3.1. Authentication and Access Control
 
-* `projects`: The container for a single story/title. (`id`, `user_id`, `name`)
-* `documents`: Stores discrete text units like scenes, bios, or lore. Linked to one `project`. (`id`, `project_id`, `group_id`, `document_type`, `content`)
-* `events`: Stores time-based occurrences with a user-defined numerical timeline. Linked to one `project`. (`id`, `project_id`, `name`, `time_start`, `time_end`)
-* `tags`: A flexible, user-defined key-value store to link metadata to documents and events. (`id`, `document_id`/`event_id`, `key`, `value`)
-* `presets`: Stores the complex filtering rules for each generated URL. Linked to one `project`. (`id`, `project_id`, `name`, `rules` (JSON))
+User identity is managed by **Supabase's built-in Authentication service**. When a user signs up, an entry is created in the protected `auth.users` table. This provides a secure, managed identity foundation.
+
+Our application's database schema builds on top of this foundation with two key tables:
+* **`profiles`**: A table in the `public` schema that stores application-specific user data (like display name) and is linked one-to-one with a user from `auth.users`.
+* **`project_members`**: A junction table that implements **Role-Based Access Control (RBAC)**. It links users to projects and assigns them a role (e.g., `owner`, `editor`, `viewer`), granting them specific permissions within that project only.
+
+### 3.2. Core Data Schema
+
+All data is transactionally tied to a `project`. Access to any of the resources below is determined by the requesting user's role in the associated project's `project_members` table.
+
+| Table | Purpose | Key Fields | Relationships |
+| :--- | :--- | :--- | :--- |
+| **`profiles`** | Stores public user data. | `user_id`, `display_name`, `avatar_url` | Linked 1-to-1 with Supabase's `auth.users` table. |
+| **`project_members`**| Assigns users to projects with specific roles. | `project_id`, `user_id`, `role` | `project_id` → `projects(id)` <br> `user_id` → `auth.users(id)` |
+| **`projects`** | The container for a single story/title. | `id`, `name` | |
+| **`documents`** | Stores discrete text units like scenes, bios, or lore. | `id`, `project_id`, `group_id`, `document_type`, `content` | `project_id` → `projects(id)` |
+| **`events`** | Stores time-based occurrences with a user-defined numerical timeline. | `id`, `project_id`, `name`, `time_start`, `time_end` | `project_id` → `projects(id)` |
+| **`tags`** | A flexible, user-defined key-value store to link metadata. | `id`, `document_id`/`event_id`, `key`, `value` | `document_id` → `documents(id)` <br> `event_id` → `events(id)` |
+| **`presets`** | Stores the complex filtering rules for each generated URL. | `id`, `project_id`, `name`, `rules` (JSON) | `project_id` → `projects(id)` |
 
 ## 4. Feature State
 
@@ -56,20 +70,22 @@ The following features have been fully discussed and their high-level design has
 * **Visual Preset Builder:** A UI tool for creating "context packages."
 * **Simple URL Endpoints:** The output of the Preset Builder is a simple, stable URL (`/context/:presetId`).
 * **Dynamic Biography Generation:** A special preset type that can assemble a character's history on the fly.
+* **Authentication and Access Control:** A role-based access system for projects has been designed.
 
 ### 4.2. Currently In Progress
 
 * **Infrastructure Setup:** We are setting up the core project infrastructure.
     * **Task:** Implementing CI/CD pipeline for database migrations.
     * **Completed:** Initial `README.md` and `projectcontext.md` have been created.
+    * **Completed:** The v1 database schema has been designed and is ready for implementation.
 
 ### 4.3. Future Roadmap
 
 1.  **Phase 1: Infrastructure & Backend Foundation**
     * **Setup Database CI/CD:** Implement the GitHub Actions workflow to automatically apply Supabase migrations on push to `main`.
-    * **Finalize & Migrate Schema:** Solidify the database schema and create the initial migration files.
+    * **Finalize & Migrate Schema:** Create the initial migration files for the v1 schema.
     * **Set up API Project:** Scaffold the Node.js/TypeScript/Express backend application.
-    * **Initial Endpoints:** Create project-scoped CRUD endpoints for `projects`, `documents`, and `tags`.
+    * **Initial Endpoints:** Create project-scoped CRUD endpoints for `projects`, `documents`, and `tags`, ensuring they respect the `project_members` roles.
 2.  **Phase 2: Core Dashboard UI**
     * Build the project selection/management screen.
     * Implement the UI for creating/editing documents and their tags within a selected project.
@@ -83,8 +99,6 @@ The following features have been fully discussed and their high-level design has
 ## 5. Proposed File Mapping
 
 This structure outlines where different pieces of logic and code will live.
-
-```
 /continuum-writer-context/
 ├── .env.example                # Template for environment variables (Supabase URL, API keys)
 ├── .gitignore
@@ -114,20 +128,20 @@ This structure outlines where different pieces of logic and code will live.
 │       └── utils/              # Shared utility functions
 │
 └── dashboard/                  # Frontend Web Application (e.g., React/Vite)
-    ├── package.json
-    ├── tsconfig.json
-    ├── index.html
-    └── src/
-        ├── main.tsx            # Main application entry point
-        ├── App.tsx             # Root component with routing
-        ├── pages/              # Top-level page components
-        │   ├── ProjectSelectPage.tsx
-        │   ├── DocumentEditorPage.tsx
-        │   └── PresetBuilderPage.tsx
-        ├── components/         # Reusable UI components (buttons, forms, layout)
-        │   ├── layout/
-        │   └── ui/
-        ├── services/           # Functions for making API calls to the backend
-        │   └── apiClient.ts
-        └── state/              # Global state management (e.g., Zustand, Redux)
-            └── projectStore.ts   # Store for the currently selected project
+├── package.json
+├── tsconfig.json
+├── index.html
+└── src/
+├── main.tsx            # Main application entry point
+├── App.tsx             # Root component with routing
+├── pages/              # Top-level page components
+│   ├── ProjectSelectPage.tsx
+│   ├── DocumentEditorPage.tsx
+│   └── PresetBuilderPage.tsx
+├── components/         # Reusable UI components (buttons, forms, layout)
+│   ├── layout/
+│   └── ui/
+├── services/           # Functions for making API calls to the backend
+│   └── apiClient.ts
+└── state/              # Global state management (e.g., Zustand, Redux)
+└── projectStore.ts   # Store for the currently selected project
