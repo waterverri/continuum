@@ -2,7 +2,7 @@
 **Last Updated:** June 14, 2025 at 2:09 PM WIB
 
 ---
-### **About This Document (`projectcontext.llm`)**
+### **About This Document (`projectcontext.md`)**
 
 **Purpose:** This document is the primary, centralized context file for any AI or LLM assistant collaborating on this project. Its goal is to provide a complete, up-to-date understanding of the project's vision, architecture, feature status, and file structure at all times.
 
@@ -61,7 +61,7 @@ The following features have been fully discussed and their high-level design has
 
 * **Project Scaffolding:** We are in the initial setup phase.
     * **Task:** Defining project structure and core documentation.
-    * **Completed:** `README.md`, `projectcontext.llm` (this file).
+    * **Completed:** `README.md`, `projectcontext.md` (this file).
 
 ### 4.3. Future Roadmap
 
@@ -88,7 +88,7 @@ This structure outlines where different pieces of logic and code will live.
 ├── .env.example                # Template for environment variables (Supabase URL, API keys)
 ├── .gitignore
 ├── README.md                   # High-level project overview
-├── projectcontext.llm          # Detailed context for LLM collaboration (this file)
+├── projectcontext.md          # Detailed context for LLM collaboration (this file)
 ├── package.json                # Project dependencies and scripts (for both api/dashboard)
 │
 ├── api/                        # Backend Node.js/Express API
