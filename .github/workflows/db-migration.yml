@@ -1,0 +1,24 @@
+name: Supabase DB Migration
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  migrate-db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Push Database Migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "Pushing migrations to production..."
+          supabase db push --db-url "$SUPABASE_DB_URL"
