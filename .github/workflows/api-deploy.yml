@@ -1,0 +1,41 @@
+name: Deploy Continuum API to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_ID }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WIF_POOL_ID }}/providers/${{ secrets.GCP_WIF_PROVIDER_ID }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Build and Push Docker Image
+        run: |-
+          gcloud builds submit ./api \
+            --tag "gcr.io/${{ secrets.GCP_PROJECT_ID }}/continuum-api:latest"
+
+      - name: Deploy to Cloud Run
+        run: |-
+          gcloud run deploy continuum-api \
+            --image "gcr.io/${{ secrets.GCP_PROJECT_ID }}/continuum-api:latest" \
+            --region "us-central1"  # <-- Change to your preferred region
+            --platform "managed" \
+            --allow-unauthenticated
