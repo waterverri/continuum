@@ -5,7 +5,6 @@
   "main": "build/index.js",
   "scripts": {
     "start": "functions-framework --target=continuumApi --source=build/index.js",
-    "prestart": "npm run compile",
     "dev": "npx @google-cloud/functions-framework --target=continuumApi --watch",
     "clean": "gts clean",
     "compile": "tsc",
