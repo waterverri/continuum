@@ -4,7 +4,7 @@
   "description": "Cloud Function API for the Continuum project.",
   "main": "build/index.js",
   "scripts": {
-    "start": "functions-framework --target=continuumApi --port 8080",
+    "start": "functions-framework --target=continuumApi",
     "prestart": "npm run compile",
     "dev": "npx @google-cloud/functions-framework --target=continuumApi --watch",
     "clean": "gts clean",
