@@ -2,47 +2,50 @@
 
 A private, multi-project application designed to serve as an intelligent "story bible," providing precise, dynamic, and contextually-aware information to assist writers in their long-form storytelling process with Large Language Models (LLMs).
 
-## About The Project
+## The Scene, and the Frustration
 
-For authors writing epic stories with deep lore, hundreds of chapters, and complex character arcs, maintaining continuity when using an LLM is a major challenge. Standard context windows are too small, and providing raw text is inefficient and noisy.
+The cursor blinks. It’s 2 AM, and you’re deep into chapter seventy-three of your epic fantasy series. Your protagonist, Elara, a cynical war orphan turned formidable spy, is about to have a clandestine meeting with a mentor she hasn’t seen in a decade. The emotional weight of this scene rests on a mountain of history.
 
-Continuum solves this problem. It allows a writer to manage all of their different titles from a single dashboard. For each project, it functions as a powerful engine where the writer can deconstruct their world into a structured, queryable knowledge base. Through a user-friendly interface, the writer can create and manage presets that retrieve the exact context needed for any given scene—be it a character's history, a summary of past events, or the rules of a magic system.
+You turn to your AI writing partner, ready to draft the dialogue. But first, the ritual of context-building begins. You need the AI to remember:
 
-The result is a simple, unique URL for each preset that can be fed directly to an LLM, providing it with a perfectly curated, concise, and relevant package of information for the correct story.
+* Elara’s core personality: her distrust of authority, stemming from the betrayal that led to her parents' death.
+* The significance of the silver locket she always wears, a memento from her mother.
+* The mentor’s complex history: he was once her father's best friend, but went into hiding after the betrayal, leaving many to think him a coward.
+* The specific events of their last encounter ten years ago, a brief, cryptic warning given in a crowded market.
 
-## Core Features
+You open a sprawling, 200-page document of notes, a chaotic mix of timelines, character sketches, and discarded scenes. You begin the frantic copy-paste dance, desperately trying to assemble a coherent context block. The result is a jumbled mess of text. You feed it to the LLM, cross your fingers, and hit 'generate'.
 
-* **Multi-Project Organization:** Manage all your different stories and titles in one place. All documents, events, tags, and presets are scoped to a specific project.
-* **Flexible Data Model:** Store documents, character bios, lore, location profiles, and more within each project.
-* **User-Defined Tagging:** Create your own custom key-value tags for any document or event (e.g., `Bestiary: Dragon`, `Plotline: Crimson Amulet`).
-* **Event & Timeline Management:** Track events with a generalized, numerical dating system that supports any custom calendar.
-* **Document Versioning:** Link different versions of a document together (e.g., a `raw` scene and its `summary`) and retrieve the specific version you need.
-* **Web Dashboard:** An intuitive user interface to manage your entire story bible, with a clear separation between projects.
-* **Visual Preset Builder:** Create complex context "packages" by visually filtering and selecting information *from the currently active project*.
-* **Simple, Shareable Endpoints:** The dashboard generates a single, simple URL for each preset.
-* **Dynamic Biography Generation:** A special preset type that can automatically assemble a character's biography based on their chronological life events within a specific project.
+The output is… fine. Technically correct, but hollow. The dialogue is generic. The AI misses the subtle undercurrent of resentment and longing in Elara's voice because it doesn’t truly *understand* the subtext. It has a collection of facts, not a tapestry of experience. Even worse, it has her mention an event from a different character's backstory, a continuity error that sends a chill down your spine. The flow is broken. The magic is gone.
+
+What if your story bible wasn’t a dead archive? What if it were a living, intelligent partner in your storytelling?
+
+## A New Continuum
+
+**Continuum** was born from that frustration. It’s a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
+
+Within each project, you stop thinking in terms of scattered notes. Instead, you create living **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. These aren't just text files; they are structured pieces of your world. You then give them life with a powerful, flexible **tagging** system that you define. Elara’s document is tagged with `character: protagonist`, `family: house_valerius`, `trait: cynical`. The locket is tagged `item: heirloom`, `plot: crimson_amulet`.
+
+You can map out your entire history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at time `1052`, or "Elara receives the locket" at time `1058`. Each event can be linked to the documents that describe it, weaving your narrative into a cohesive whole.
+
+Now, let's revisit that 2 AM writing session.
+
+Instead of the chaotic copy-paste, you open Continuum's visual **Preset Builder**. You create a new context package called 'Elara Meets Mentor'. You tell it, with a few clicks: "Give me Elara's core character document. Then, find all events tagged `character: elara` up until the current time of `1075` and pull their summaries. Finally, add the mentor's profile." You save the preset.
+
+Continuum generates a single, simple, and stable URL for you.
+
+You turn back to your AI prompt. You delete the wall of jumbled text and paste in just that one line. The API at that URL delivers a perfectly curated package of information: Elara's relevant history, her personality traits, the mentor's background, all concise and in chronological order. The LLM now has the *exact* context it needs.
+
+You hit 'generate' again. This time, the magic is there. The dialogue crackles with the unspoken history between the characters. Elara’s cynicism is sharp, but undercut with a flicker of the hope she’d long buried. It's perfect.
+
+This is Continuum. It's not just a place to store your notes. It's an engine that turns your story bible from a static reference into the dynamic, living context your creative process deserves.
 
 ## Architectural Overview
 
 Continuum is a full-stack application composed of three main parts:
 
-* **Frontend:** A web-based dashboard (likely built with a modern framework like React, Vue, or Svelte). The user selects a project upon login, and the entire session is scoped to that project.
-* **Backend:** A serverless API using **Node.js, TypeScript, and the Google Cloud Functions Framework**, deployed as a container to **Google Cloud Run**. The API logic will enforce project-based data separation.
-* **Database & Auth:** A **Supabase (PostgreSQL)** instance serves as the persistent data store. User authentication is handled by Supabase's built-in Auth service, which manages user identities. Our application extends this with a role-based access system on a per-project basis.
-
-## Proposed Data Model
-
-The database is structured around user identity and projects. All core data (`documents`, `events`, etc.) is isolated within a specific `project`. Access is controlled by a user's role within each project.
-
-| Table             | Purpose                                                                                   | Key Fields                                                          | Relationships                                               |
-| :---------------- | :---------------------------------------------------------------------------------------- | :------------------------------------------------------------------ | :---------------------------------------------------------- |
-| **`profiles`** | Stores public user data.                                                                  | `user_id`, `display_name`, `avatar_url`                             | Linked 1-to-1 with Supabase's `auth.users` table.           |
-| **`project_members`** | Assigns users to projects with specific roles.                                            | `project_id`, `user_id`, `role`                                     | `project_id` → `projects(id)` <br> `user_id` → `auth.users(id)` |
-| `projects`        | The top-level container for a single story or title.                                      | `id`, `name`, `created_at`                                          |                                                             |
-| `documents`       | Stores text content (a scene, a bio, a note).                                             | `id`, **`project_id`**, `group_id`, `document_type`, `content`      | `project_id` → `projects(id)`                               |
-| `events`          | Stores timed events with a start and end date.                                            | `id`, **`project_id`**, `name`, `time_start`, `time_end`              | `project_id` → `projects(id)`                               |
-| `tags`            | Stores flexible, user-defined key-value metadata.                                         | `document_id` or `event_id`, `key`, `value`                           | `document_id` → `documents(id)` <br> `event_id` → `events(id)` |
-| `presets`         | Stores filtering rules for each generated URL.                                            | `id` (for URL), **`project_id`**, `name`, `rules` (JSON object)       | `project_id` → `projects(id)`                               |
+* **Frontend:** A web-based dashboard built with a modern JavaScript framework.
+* **Backend:** A serverless API using Node.js and TypeScript, deployed as a container to Google Cloud Run.
+* **Database & Auth:** A Supabase (PostgreSQL) instance for the database and user authentication.
 
 ## Getting Started
 
@@ -54,36 +57,13 @@ Prerequisites for development:
 * A Supabase account
 
 ### API Development
+
 To run the backend function locally:
-1. Navigate to the `/api` directory.
-2. Run `npm install` to install dependencies.
-3. Run `npm run dev` to start the local development server.
 
+1.  Navigate to the `/api` directory.
+2.  Run `npm install` to install dependencies.
+3.  Run `npm run dev` to start the local development server.
 
-## API Usage
+## Contributing
 
-The final product used by the writer is a simple URL generated by the dashboard. This URL is inherently linked to a project and will only ever return data from that project's context.
-
-**Example Usage:**
-
-* **Static Preset URL:** `https://continuum.your-domain.app/context/aK2jNfP8x`
-    * Returns a pre-defined bundle of context from its parent project, concatenated into plain text.
-* **Dynamic Biography URL:** `https://continuum.your-domain.app/context/bY8zQjA1x?as_of_time=10525`
-    * Returns a plain text biography for a specific character, assembled on the fly from events and documents within that character's project, up to time `10525`.
-
-## Project Roadmap
-
-1.  **Phase 1: Backend Foundation & Database Schema**
-    * **(Done)** Finalize and implement the Supabase database schema, including the `projects` table and all foreign key relationships.
-    * **(Done)** Set up the initial Node.js/TypeScript serverless function project.
-    * Create basic, project-scoped CRUD endpoints for documents and tags.
-2.  **Phase 2: Core Dashboard UI**
-    * Build the project selection/management screen.
-    * Build the frontend for creating, viewing, and editing documents within the selected project.
-    * Implement the dynamic tagging interface.
-3.  **Phase 3: Preset Engine**
-    * Develop the "Preset Builder" UI.
-    * Implement the backend logic for saving and executing project-scoped presets.
-4.  **Phase 4: Advanced Features**
-    * Implement the "Dynamic Biography" preset type.
-    * Refine the UI/UX and add support for custom calendar definitions per project.
+We welcome contributions! If you're interested in helping with development, please start by reading the `projectcontext.md` file at the root of the repository. It contains the detailed technical specifications, architecture, and roadmap required for development.
