@@ -11,8 +11,8 @@ RUN npm install
 # Copy the rest of the source code
 COPY . .
 
-# Compile TypeScript to JavaScript
-RUN npm run compile
+# Compile TypeScript to JavaScript using an explicit path and project flag
+RUN node_modules/.bin/tsc -p tsconfig.json
 
 
 # ---- Stage 2: Production ----
