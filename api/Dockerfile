@@ -1,24 +1,35 @@
-# 1. Use a lean Node.js runtime as a parent image
-FROM node:20-slim
-
-# 2. Set the working directory in the container
+# ---- Stage 1: Build ----
+# This stage installs all dependencies, including dev dependencies,
+# and builds the TypeScript code into JavaScript.
+FROM node:20 as builder
 WORKDIR /usr/src/app
 
-# 3. Copy package.json and package-lock.json
+# Copy package files and install all dependencies
 COPY package*.json ./
+RUN npm install
 
-# 4. Install production dependencies
-# Using `npm ci` is often better for CI environments
-RUN npm ci --only=production
-
-# 5. Copy the rest of the application code
+# Copy the rest of the source code
 COPY . .
 
-# 6. Compile TypeScript to JavaScript
+# Compile TypeScript to JavaScript
 RUN npm run compile
 
-# 7. Expose the port the app runs on (optional but good practice)
+
+# ---- Stage 2: Production ----
+# This stage starts fresh with a lean image and copies only
+# the necessary production files from the 'builder' stage.
+FROM node:20-slim
+WORKDIR /usr/src/app
+
+# Copy package files and install only production dependencies
+COPY package*.json ./
+RUN npm install --only=production
+
+# Copy the compiled JavaScript code from the 'builder' stage
+COPY --from=builder /usr/src/app/build ./build
+
+# Expose the port the app runs on
 EXPOSE 8080
 
-# 8. Define the command to run the function
+# Define the command to run the app
 CMD [ "npm", "start" ]
