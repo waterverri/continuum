@@ -33,9 +33,10 @@ jobs:
             --tag "gcr.io/${{ secrets.GCP_PROJECT_ID }}/continuum-api:latest"
 
       - name: Deploy to Cloud Run
-        run: |-
-          gcloud run deploy continuum-api \
-            --image "gcr.io/${{ secrets.GCP_PROJECT_ID }}/continuum-api:latest" \
-            --region "us-central1"  # <-- Change to your preferred region
-            --platform "managed" \
-            --allow-unauthenticated
+        run: >
+          gcloud run deploy continuum-api
+          --image "gcr.io/${{ secrets.GCP_PROJECT_ID }}/continuum-api:latest"
+          --region "asia-southeast2"
+          --platform "managed"
+          --allow-unauthenticated
+          --labels="goog-managed-by=cloudfunctions"
