@@ -1,5 +1,5 @@
 # Project Context: Continuum (The Writer's Context Engine)
-**Last Updated:** June 14, 2025 at 6:05 PM WIB
+**Last Updated:** June 15, 2025 at 5:23 AM WIB
 
 ---
 ### **About This Document (`projectcontext.md`)**
@@ -28,7 +28,7 @@ Continuum is a full-stack web application designed to solve a critical problem f
 The application consists of three primary components:
 
 * **Frontend:** A web-based dashboard where the writer manages their projects. The entire UI is project-scoped.
-* **Backend:** A serverless API built with **Node.js, Express, and TypeScript**, deployed on **Google Cloud Run**. It handles all data logic and serves the context presets.
+* **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. It is containerized and deployed on **Google Cloud Run**. It handles all data logic and serves the context presets.
 * **Database:** A **Supabase (PostgreSQL)** instance for data persistence.
 
 ## 3. Data Model & Authentication
@@ -76,15 +76,19 @@ The following features have been fully discussed and their high-level design has
 
 * **Infrastructure Setup:** We are setting up the core project infrastructure.
     * **Task:** Implementing CI/CD pipeline for database migrations.
+    * **Task:** Scaffolding the serverless API backend.
     * **Completed:** Initial `README.md` and `projectcontext.md` have been created.
     * **Completed:** The v1 database schema has been designed and is ready for implementation.
+    * **Completed:** Initial API structure with a "Hello World" function is complete.
+    * **Completed:** Dockerfile for containerization is created.
+    * **Completed:** A CI/CD workflow for deploying the API to Google Cloud Run is in place.
 
 ### 4.3. Future Roadmap
 
 1.  **Phase 1: Infrastructure & Backend Foundation**
-    * **Setup Database CI/CD:** Implement the GitHub Actions workflow to automatically apply Supabase migrations on push to `main`.
+    * **(Done)** **Setup Database CI/CD:** Implement the GitHub Actions workflow to automatically apply Supabase migrations on push to `main`.
+    * **(Done)** **Set up API Project:** Scaffold the serverless backend application.
     * **Finalize & Migrate Schema:** Create the initial migration files for the v1 schema.
-    * **Set up API Project:** Scaffold the Node.js/TypeScript/Express backend application.
     * **Initial Endpoints:** Create project-scoped CRUD endpoints for `projects`, `documents`, and `tags`, ensuring they respect the `project_members` roles.
 2.  **Phase 2: Core Dashboard UI**
     * Build the project selection/management screen.
@@ -108,11 +112,11 @@ This structure outlines where different pieces of logic and code will live.
 ├── projectcontext.md          # Detailed context for LLM collaboration (this file)
 ├── package.json                # Project dependencies and scripts (for both api/dashboard)
 │
-├── api/                        # Backend Node.js/Express API
+├── api/                        # Backend Node.js Cloud Function
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
-│       ├── index.ts            # Main server entry point (Express app setup)
+│       ├── index.ts            # Main function entry point
 │       ├── routes/             # API route definitions
 │       │   ├── presets.ts      # Routes for /context/:id and managing presets
 │       │   ├── documents.ts    # CRUD routes for documents
