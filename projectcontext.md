@@ -1,154 +1,95 @@
-# Project Context: Continuum (The Writer's Context Engine)
-**Last Updated:** June 15, 2025 at 5:23 AM WIB
+# Project Context: Continuum (For Developer & LLM Use)
+**Last Updated:** June 15, 2025
 
 ---
-### **About This Document (`projectcontext.md`)**
+### **About This Document**
 
-**Purpose:** This document is the primary, centralized context file for any AI or LLM assistant collaborating on this project. Its goal is to provide a complete, up-to-date understanding of the project's vision, architecture, feature status, and file structure at all times.
+**Purpose:** This document is the primary, centralized technical context file for any developer or LLM assistant collaborating on this project. Its goal is to provide a complete, up-to-date understanding of the project's vision, architecture, feature status, and file structure at all times.
 
-**How to Use:** Before performing any task (writing code, suggesting features, creating documentation), the AI assistant must first refer to this document to ensure its understanding is current.
+**How to Use:** Before performing any task (writing code, suggesting features, creating documentation), you must first refer to this document to ensure your understanding is current.
 
-**Maintenance and Updates:**
-* This document must be updated whenever a new decision is made, a feature is added or changed, or the project's roadmap is modified.
-* The AI assistant is responsible for proactively suggesting updates to this file as part of its responses after a significant change has been discussed. This ensures its own "memory" of the project remains accurate for future collaboration.
+**Maintenance and Updates:** This document must be updated whenever a technical decision is made, a feature's implementation changes, or the roadmap is modified. Proactively suggesting updates to this file is a key responsibility.
 ---
 
-## 1. Project Background & Core Purpose
+## 1. Core Technical Problem
 
-Continuum is a full-stack web application designed to solve a critical problem for writers who use Large Language Models (LLMs) for long-form, creative storytelling.
-
-**The User Persona:** An author working on one or more large-scale projects (e.g., novels, series) with deep lore, complex character histories, and intricate plotlines.
-
-**The Problem:** Standard LLM context windows are too small to hold the entire history of a long story. Providing large amounts of raw text is inefficient, costly, and introduces "noise" that degrades the quality of the LLM's output. The writer needs a way to provide surgically precise, relevant, and properly detailed context for any given scene or chapter they are working on.
-
-**The Solution:** Continuum acts as a **personal, queryable story bible**. It allows the writer to manage all their projects from a single dashboard. For each project, they deconstruct their world into structured documents and events. They then use a visual "Preset Builder" to create complex "context packages." The system generates a simple, unique URL for each preset, which the writer can paste into their LLM prompt. The API at that URL then delivers a clean, concatenated plain-text response containing the exact context required.
+The primary technical challenge is to design a system that can accept a unique identifier (for a "preset"), retrieve a complex set of related data from a PostgreSQL database based on predefined rules, concatenate it into a clean plain-text string, and serve it via a low-latency API endpoint. The system must be multi-tenant at a project level, ensuring strict data isolation between different writing projects, governed by a Role-Based Access Control (RBAC) system tied to user authentication.
 
 ## 2. System Architecture
 
 The application consists of three primary components:
 
-* **Frontend:** A web-based dashboard where the writer manages their projects. The entire UI is project-scoped.
-* **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. It is containerized and deployed on **Google Cloud Run**. It handles all data logic and serves the context presets.
+* **Frontend:** A web-based dashboard. The entire UI is project-scoped after user login and project selection.
+* **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. It is containerized with a Dockerfile and deployed on **Google Cloud Run**.
 * **Database:** A **Supabase (PostgreSQL)** instance for data persistence.
 
 ## 3. Data Model & Authentication
 
 ### 3.1. Authentication and Access Control
 
-User identity is managed by **Supabase's built-in Authentication service**. When a user signs up, an entry is created in the protected `auth.users` table. This provides a secure, managed identity foundation.
-
-Our application's database schema builds on top of this foundation with two key tables:
-* **`profiles`**: A table in the `public` schema that stores application-specific user data (like display name) and is linked one-to-one with a user from `auth.users`.
-* **`project_members`**: A junction table that implements **Role-Based Access Control (RBAC)**. It links users to projects and assigns them a role (e.g., `owner`, `editor`, `viewer`), granting them specific permissions within that project only.
+* **Identity Provider:** User identity is managed by **Supabase's built-in Auth service** (`auth.users` table).
+* **Authorization Model:** A **Role-Based Access Control (RBAC)** system is implemented via the `project_members` table. This table links a `user_id` to a `project_id` with a specific `project_role` (`owner`, `editor`, `viewer`).
 
 ### 3.2. Core Data Schema
 
-All data is transactionally tied to a `project`. Access to any of the resources below is determined by the requesting user's role in the associated project's `project_members` table.
+All data is transactionally tied to a `project`. The `project_id` foreign key is the primary mechanism for data isolation.
 
-| Table | Purpose | Key Fields | Relationships |
-| :--- | :--- | :--- | :--- |
-| **`profiles`** | Stores public user data. | `user_id`, `display_name`, `avatar_url` | Linked 1-to-1 with Supabase's `auth.users` table. |
-| **`project_members`**| Assigns users to projects with specific roles. | `project_id`, `user_id`, `role` | `project_id` → `projects(id)` <br> `user_id` → `auth.users(id)` |
-| **`projects`** | The container for a single story/title. | `id`, `name` | |
-| **`documents`** | Stores discrete text units like scenes, bios, or lore. | `id`, `project_id`, `group_id`, `document_type`, `content` | `project_id` → `projects(id)` |
-| **`events`** | Stores time-based occurrences with a user-defined numerical timeline. | `id`, `project_id`, `name`, `time_start`, `time_end` | `project_id` → `projects(id)` |
-| **`tags`** | A flexible, user-defined key-value store to link metadata. | `id`, `document_id`/`event_id`, `key`, `value` | `document_id` → `documents(id)` <br> `event_id` → `events(id)` |
-| **`presets`** | Stores the complex filtering rules for each generated URL. | `id`, `project_id`, `name`, `rules` (JSON) | `project_id` → `projects(id)` |
+| Table             | Purpose                                     | Key Fields                                      | Relationships                                               |
+| :---------------- | :------------------------------------------ | :---------------------------------------------- | :---------------------------------------------------------- |
+| **`profiles`** | Stores public user data.                    | `user_id`, `display_name`                       | Linked 1-to-1 with `auth.users(id)`.                        |
+| **`project_members`**| Assigns users to projects with roles.       | `project_id`, `user_id`, `role`                 | `project_id` → `projects(id)` <br> `user_id` → `auth.users(id)` |
+| **`projects`** | The container for a single story/title.     | `id`, `name`                                    |                                                             |
+| **`documents`** | Stores discrete text units (scenes, bios).  | `id`, `project_id`, `group_id`, `document_type`, `content` | `project_id` → `projects(id)`                               |
+| **`events`** | Stores time-based occurrences.              | `id`, `project_id`, `name`, `time_start`, `time_end` | `project_id` → `projects(id)`                               |
+| **`tags`** | A key-value store for metadata.             | `id`, `document_id`/`event_id`, `key`, `value`  | `document_id` → `documents(id)` <br> `event_id` → `events(id)` |
+| **`presets`** | Stores filtering rules for context URLs.    | `id`, `project_id`, `name`, `rules` (JSONB)     | `project_id` → `projects(id)`                               |
 
-## 4. Feature State
+## 4. Feature State & Roadmap
 
-### 4.1. Completed (Conceptual Design Phase)
+### 4.1. Completed
 
-The following features have been fully discussed and their high-level design has been agreed upon:
+* **Conceptual Design:** All features listed in the README have been conceptually designed.
+* **v1 DB Schema:** The initial schema is defined in `supabase/migrations/0001_initial_schema.sql`.
+* **CI/CD for DB:** GitHub Actions workflow (`db-migration.yml`) is set up to push Supabase migrations.
+* **CI/CD for API:** GitHub Actions workflow (`api-deploy.yml`) is set up to deploy the API container to Google Cloud Run.
+* **API Scaffolding:** A basic Node.js/TypeScript Cloud Function has been created.
 
-* **Multi-Project Architecture:** The system is built to support multiple writing projects under a single user account.
-* **User-Defined Tagging:** A flexible key-value system for metadata.
-* **Event & Timeline Management:** A system for creating discrete, timed events using a generalized numbering system.
-* **Document-Event Linking:** Documents can be linked to events to provide narrative descriptions.
-* **Document Versioning:** Documents can be linked via a `group_id` to represent different versions of the same core idea.
-* **Dashboard-driven Workflow:** The primary user interaction is through a web dashboard.
-* **Visual Preset Builder:** A UI tool for creating "context packages."
-* **Simple URL Endpoints:** The output of the Preset Builder is a simple, stable URL (`/context/:presetId`).
-* **Dynamic Biography Generation:** A special preset type that can assemble a character's history on the fly.
-* **Authentication and Access Control:** A role-based access system for projects has been designed.
+### 4.2. Next Up: Phase 1 - Foundation (Active)
 
-### 4.2. Currently In Progress
+1.  **Frontend Scaffolding:** Create the initial directory and file structure for the `dashboard/` application (e.g., using Vite + React).
+2.  **Frontend CI/CD:** Create a new GitHub Actions workflow to build and deploy the static frontend application (e.g., to Firebase Hosting or Google Cloud Storage).
+3.  **Authentication Setup:**
+    * **Backend:** Implement Supabase Auth helpers to secure API endpoints. Create routes for user sign-up, login, and session management.
+    * **Frontend:** Build the authentication UI (login/signup pages) and the client-side logic to handle JWTs.
+4.  **Basic API Implementation:**
+    * Create the foundational, project-scoped CRUD endpoints for `projects` and `documents`, ensuring they respect RBAC.
+5.  **Basic Frontend Functionality:**
+    * Implement the project selection page that appears after a user logs in.
+    * Create a basic view to list documents from the selected project by calling the API endpoints.
 
-* **Infrastructure Setup:** We are setting up the core project infrastructure.
-    * **Task:** Implementing CI/CD pipeline for database migrations.
-    * **Task:** Scaffolding the serverless API backend.
-    * **Completed:** Initial `README.md` and `projectcontext.md` have been created.
-    * **Completed:** The v1 database schema has been designed and is ready for implementation.
-    * **Completed:** Initial API structure with a "Hello World" function is complete.
-    * **Completed:** Dockerfile for containerization is created.
-    * **Completed:** A CI/CD workflow for deploying the API to Google Cloud Run is in place.
-
-### 4.3. Future Roadmap
-
-1.  **Phase 1: Infrastructure & Backend Foundation**
-    * **(Done)** **Setup Database CI/CD:** Implement the GitHub Actions workflow to automatically apply Supabase migrations on push to `main`.
-    * **(Done)** **Set up API Project:** Scaffold the serverless backend application.
-    * **Finalize & Migrate Schema:** Create the initial migration files for the v1 schema.
-    * **Initial Endpoints:** Create project-scoped CRUD endpoints for `projects`, `documents`, and `tags`, ensuring they respect the `project_members` roles.
-2.  **Phase 2: Core Dashboard UI**
-    * Build the project selection/management screen.
-    * Implement the UI for creating/editing documents and their tags within a selected project.
-3.  **Phase 3: Preset Engine**
-    * Develop the "Preset Builder" UI.
-    * Implement backend logic for saving and executing presets.
-4.  **Phase 4: Advanced Features**
-    * Implement the "Dynamic Biography" preset logic.
-    * Implement the event management UI and timeline features.
-
-## 5. Proposed File Mapping
+## 5. Proposed File Structure
 
 This structure outlines where different pieces of logic and code will live.
-
 ```
-/continuum-writer-context/
-├── .env.example                # Template for environment variables (Supabase URL, API keys)
-├── .gitignore
-├── README.md                   # High-level project overview
-├── projectcontext.md          # Detailed context for LLM collaboration (this file)
-├── package.json                # Project dependencies and scripts (for both api/dashboard)
-│
+/continuum/
 ├── api/                        # Backend Node.js Cloud Function
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
 │       ├── index.ts            # Main function entry point
 │       ├── routes/             # API route definitions
-│       │   ├── presets.ts      # Routes for /context/:id and managing presets
-│       │   ├── documents.ts    # CRUD routes for documents
-│       │   └── ...
-│       ├── controllers/        # Logic to handle requests and send responses
-│       │   ├── presetController.ts
-│       │   └── documentController.ts
+│       ├── controllers/        # Logic to handle requests
 │       ├── services/           # Core business logic
-│       │   ├── presetService.ts    # Logic for building and executing preset queries
-│       │   ├── dynamicBioService.ts # Logic for the dynamic biography generation
-│       │   └── ...
 │       ├── db/                 # Database interaction layer
-│       │   ├── supabaseClient.ts # Initializes and exports the Supabase client
-│       │   └── queries.ts      # Complex SQL queries or query builder functions
-│       └── utils/              # Shared utility functions
+│       │   ├── supabaseClient.ts # Initializes Supabase client
+│       │   └── queries.ts      # Complex SQL queries
+│       └── utils/
 │
-└── dashboard/                  # Frontend Web Application (e.g., React/Vite)
-├── package.json
-├── tsconfig.json
-├── index.html
-└── src/
-├── main.tsx            # Main application entry point
-├── App.tsx             # Root component with routing
-├── pages/              # Top-level page components
-│   ├── ProjectSelectPage.tsx
-│   ├── DocumentEditorPage.tsx
-│   └── PresetBuilderPage.tsx
-├── components/         # Reusable UI components (buttons, forms, layout)
-│   ├── layout/
-│   └── ui/
-├── services/           # Functions for making API calls to the backend
-│   └── apiClient.ts
-└── state/              # Global state management (e.g., Zustand, Redux)
-└── projectStore.ts   # Store for the currently selected project
+└── dashboard/                  # Frontend Web Application
+│   └── ...
+│
+└── supabase/
+├── migrations/
+│   └── 0001_initial_schema.sql
+└── config.toml
 ```
