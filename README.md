@@ -64,6 +64,14 @@ To run the backend function locally:
 2.  Run `npm install` to install dependencies.
 3.  Run `npm run dev` to start the local development server.
 
+### Dashboard Development
+
+To run the frontend dashboard locally:
+
+1.  Navigate to the `/dashboard` directory.
+2.  Run `npm install` to install dependencies.
+3.  Run `npm run dev` to start the local development server, typically available at `http://localhost:5173`.
+
 ## Contributing
 
 We welcome contributions! If you're interested in helping with development, please start by reading the `projectcontext.md` file at the root of the repository. It contains the detailed technical specifications, architecture, and roadmap required for development.

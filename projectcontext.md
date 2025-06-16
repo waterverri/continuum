@@ -1,5 +1,5 @@
 # Project Context: Continuum (For Developer & LLM Use)
-**Last Updated:** June 15, 2025
+**Last Updated:** June 16, 2025
 
 ---
 ### **About This Document**
@@ -19,7 +19,7 @@ The primary technical challenge is to design a system that can accept a unique i
 
 The application consists of three primary components:
 
-* **Frontend:** A web-based dashboard. The entire UI is project-scoped after user login and project selection.
+* **Frontend:** A web-based dashboard built with **Vite + React**. The entire UI is project-scoped after user login and project selection, and it is deployed to **Firebase Hosting**.
 * **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. It is containerized with a Dockerfile and deployed on **Google Cloud Run**.
 * **Database:** A **Supabase (PostgreSQL)** instance for data persistence.
 
@@ -53,17 +53,17 @@ All data is transactionally tied to a `project`. The `project_id` foreign key is
 * **CI/CD for DB:** GitHub Actions workflow (`db-migration.yml`) is set up to push Supabase migrations.
 * **CI/CD for API:** GitHub Actions workflow (`api-deploy.yml`) is set up to deploy the API container to Google Cloud Run.
 * **API Scaffolding:** A basic Node.js/TypeScript Cloud Function has been created.
+* **Frontend Scaffolding:** Initial project structure for the `dashboard/` has been created using Vite and React.
+* **CI/CD for Frontend:** GitHub Actions workflow (`frontend-deploy.yml`) is set up to build and deploy the static frontend application to Firebase Hosting.
 
-### 4.2. Next Up: Phase 1 - Foundation (Active)
+### 4.2. Next Up: Phase 2 - Authentication & API Core (Active)
 
-1.  **Frontend Scaffolding:** Create the initial directory and file structure for the `dashboard/` application (e.g., using Vite + React).
-2.  **Frontend CI/CD:** Create a new GitHub Actions workflow to build and deploy the static frontend application (e.g., to Firebase Hosting or Google Cloud Storage).
-3.  **Authentication Setup:**
+1.  **Authentication Setup:**
     * **Backend:** Implement Supabase Auth helpers to secure API endpoints. Create routes for user sign-up, login, and session management.
     * **Frontend:** Build the authentication UI (login/signup pages) and the client-side logic to handle JWTs.
-4.  **Basic API Implementation:**
+2.  **Basic API Implementation:**
     * Create the foundational, project-scoped CRUD endpoints for `projects` and `documents`, ensuring they respect RBAC.
-5.  **Basic Frontend Functionality:**
+3.  **Basic Frontend Functionality:**
     * Implement the project selection page that appears after a user logs in.
     * Create a basic view to list documents from the selected project by calling the API endpoints.
 
