@@ -10,14 +10,24 @@ on:
 jobs:
   deploy-dashboard:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write' # Required for Workload Identity Federation
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18 # Or your preferred LTS version
+          node-version: 18
 
       - name: Install and Build Dashboard
         run: |
@@ -29,7 +39,5 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CONTINUUM }}'
-          channelId: live
-          projectId: continuum # Replace with your Firebase Project ID
+          projectId: ${{GCP_PROJECT_ID}} # Replace with your Firebase Project ID
           entryPoint: ./dashboard
