@@ -39,5 +39,5 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          projectId: ${{GCP_PROJECT_ID}} # Replace with your Firebase Project ID
+          projectId: ${{secrets.GCP_PROJECT_ID}} # Replace with your Firebase Project ID
           entryPoint: ./dashboard
