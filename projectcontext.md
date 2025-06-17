@@ -1,5 +1,5 @@
 # Project Context: Continuum (For Developer & LLM Use)
-**Last Updated:** June 16, 2025
+**Last Updated:** June 17, 2025
 
 ---
 ### **About This Document**
@@ -52,41 +52,48 @@ All data is transactionally tied to a `project`. The `project_id` foreign key is
 * **v1 DB Schema:** The initial schema is defined in `supabase/migrations/0001_initial_schema.sql`.
 * **CI/CD for DB:** GitHub Actions workflow (`db-migration.yml`) is set up to push Supabase migrations.
 * **CI/CD for API:** GitHub Actions workflow (`api-deploy.yml`) is set up to deploy the API container to Google Cloud Run.
-* **API Scaffolding:** A basic Node.js/TypeScript Cloud Function has been created.
-* **Frontend Scaffolding:** Initial project structure for the `dashboard/` has been created using Vite and React.
 * **CI/CD for Frontend:** GitHub Actions workflow (`frontend-deploy.yml`) is set up to build and deploy the static frontend application to Firebase Hosting.
+* **User Authentication:** A full authentication flow has been implemented.
+    * **Backend:** API includes endpoints for email/password signup, login, and Google OAuth. A JWT-based middleware protects routes.
+    * **Frontend:** UI for login/signup/Google login is complete. Client-side logic handles the Supabase session and provides an authenticated API utility.
 
-### 4.2. Next Up: Phase 2 - Authentication & API Core (Active)
+### 4.2. Next Up: Phase 3 - Core Application CRUD
 
-1.  **Authentication Setup:**
-    * **Backend:** Implement Supabase Auth helpers to secure API endpoints. Create routes for user sign-up, login, and session management.
-    * **Frontend:** Build the authentication UI (login/signup pages) and the client-side logic to handle JWTs.
-2.  **Basic API Implementation:**
-    * Create the foundational, project-scoped CRUD endpoints for `projects` and `documents`, ensuring they respect RBAC.
-3.  **Basic Frontend Functionality:**
-    * Implement the project selection page that appears after a user logs in.
-    * Create a basic view to list documents from the selected project by calling the API endpoints.
+1.  **Implement Row Level Security (RLS):**
+    * Activate and configure RLS policies on all data tables in Supabase (`projects`, `documents`, `events`, etc.).
+    * Policies should ensure that users can only read/write data for projects where they are listed as a member in `project_members`.
+    * The `role` in `project_members` should be used to define permissions (e.g., only `owner` or `editor` can write).
+2.  **API CRUD Endpoints:**
+    * Build out the full, project-scoped CRUD (Create, Read, Update, Delete) endpoints for `projects` and `documents`.
+    * Ensure all data access in these endpoints respects the authenticated user's ID and their project roles.
+3.  **Frontend CRUD Functionality:**
+    * Implement the UI for a user to create a new project.
+    * Implement a project selection page/component for users with multiple projects.
+    * Build the main dashboard view for listing, creating, and editing `documents` within the currently selected project.
 
-## 5. Proposed File Structure
+## 5. Current File Structure
 
-This structure outlines where different pieces of logic and code will live.
+This structure outlines where the application's logic and code currently live.
+
 ```
 /continuum/
 ├── api/                        # Backend Node.js Cloud Function
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
-│       ├── index.ts            # Main function entry point
-│       ├── routes/             # API route definitions
-│       ├── controllers/        # Logic to handle requests
-│       ├── services/           # Core business logic
-│       ├── db/                 # Database interaction layer
-│       │   ├── supabaseClient.ts # Initializes Supabase client
-│       │   └── queries.ts      # Complex SQL queries
-│       └── utils/
+│       ├── index.ts            # Main function entry point with Express routes
+│       └── db/                 # Database interaction layer
+│           └── supabaseClient.ts # Initializes Supabase client
 │
 └── dashboard/                  # Frontend Web Application
-│   └── ...
+│   ├── package.json
+│   ├── firebase.json
+│   └── src/
+│       ├── App.tsx             # Main component, handles session state
+│       ├── Auth.tsx            # Login/Signup UI component
+│       ├── main.tsx            # Application entry point
+│       ├── supabaseClient.ts   # Initializes Supabase client for frontend
+│       └── api.ts              # Utility for making authenticated API calls
 │
 └── supabase/
 ├── migrations/

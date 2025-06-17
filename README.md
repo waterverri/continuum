@@ -39,6 +39,13 @@ You hit 'generate' again. This time, the magic is there. The dialogue crackles w
 
 This is Continuum. It's not just a place to store your notes. It's an engine that turns your story bible from a static reference into the dynamic, living context your creative process deserves.
 
+## Features
+
+* **User Authentication:** Full user sign-up and login with email/password and Google.
+* **Secure API:** Backend API protected with JWT authentication.
+* **Automated Deployments:** Full CI/CD pipelines for the frontend, backend, and database migrations.
+* **Project-Based Scaffolding:** A basic dashboard view for authenticated users.
+
 ## Architectural Overview
 
 Continuum is a full-stack application composed of three main parts:
@@ -58,19 +65,17 @@ Prerequisites for development:
 
 ### API Development
 
-To run the backend function locally:
-
 1.  Navigate to the `/api` directory.
 2.  Run `npm install` to install dependencies.
-3.  Run `npm run dev` to start the local development server.
+3.  You will need a `.env` file with `SUPABASE_URL` and `SUPABASE_ANON_KEY` to run locally with the Functions Framework.
+4.  Run `npm run dev` to start the local development server.
 
 ### Dashboard Development
 
-To run the frontend dashboard locally:
-
 1.  Navigate to the `/dashboard` directory.
 2.  Run `npm install` to install dependencies.
-3.  Run `npm run dev` to start the local development server, typically available at `http://localhost:5173`.
+3.  Create a `.env.local` file and add your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. For local development, also add `VITE_API_URL=http://localhost:8080`.
+4.  Run `npm run dev` to start the local development server, typically available at `http://localhost:5173`.
 
 ## Contributing
 
