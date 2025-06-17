@@ -59,16 +59,16 @@ All data is transactionally tied to a `project`. The `project_id` foreign key is
 
 ### 4.2. Next Up: Phase 3 - Core Application CRUD
 
-1.  **Implement Row Level Security (RLS):**
+1.  **Implement Row Level Security (RLS) and Project Management:**
     * Activate and configure RLS policies on all data tables in Supabase (`projects`, `documents`, `events`, etc.).
     * Policies should ensure that users can only read/write data for projects where they are listed as a member in `project_members`.
     * The `role` in `project_members` should be used to define permissions (e.g., only `owner` or `editor` can write).
-2.  **API CRUD Endpoints:**
-    * Build out the full, project-scoped CRUD (Create, Read, Update, Delete) endpoints for `projects` and `documents`.
-    * Ensure all data access in these endpoints respects the authenticated user's ID and their project roles.
-3.  **Frontend CRUD Functionality:**
+    * CRUD Endpoints for Project Creation, Deletion, and Access Sharing (Perhaps change ownership?)
     * Implement the UI for a user to create a new project.
     * Implement a project selection page/component for users with multiple projects.
+2.  **API CRUD Endpoints:**
+    * Build out the full, project-scoped CRUD (Create, Read, Update, Delete) endpoints for `documents`.
+    * Ensure all data access in these endpoints respects the authenticated user's ID and their project roles.
     * Build the main dashboard view for listing, creating, and editing `documents` within the currently selected project.
 
 ## 5. Current File Structure
