@@ -1,35 +1,50 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react'
+import { Session } from '@supabase/supabase-js'
+import { supabase } from './supabaseClient'
+import Auth from './Auth'
+import { getProjects } from './api'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [session, setSession] = useState<Session | null>(null)
+  const [projectsMessage, setProjectsMessage] = useState<string>('')
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleGetProjects = async () => {
+    try {
+      const data = await getProjects();
+      setProjectsMessage(data.message);
+    } catch (error) {
+      setProjectsMessage((error as Error).message);
+    }
+  };
+
+  if (!session) {
+    return <Auth />
+  } else {
+    return (
+      <div style={{maxWidth: '400px', margin: 'auto'}}>
+        <h1>Continuum Dashboard</h1>
+        <p>Welcome, {session.user.email}</p>
+        <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
+        <hr />
+        <button onClick={handleGetProjects}>Fetch Protected Projects</button>
+        {projectsMessage && <p>API Response: {projectsMessage}</p>}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    )
+  }
 }
 
 export default App
