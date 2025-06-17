@@ -12,18 +12,20 @@ export default function Auth() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      alert(error.message); // FIX: Changed from error.error_description
+      alert(error.message);
     }
-    // The onAuthStateChange listener in App.tsx will handle the redirect
     setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: window.location.origin, // <-- This is the fix
+      },
     });
      if (error) {
-      alert(error.message); // FIX: Changed from error.error_description
+      alert(error.message);
     }
   };
 
