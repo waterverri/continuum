@@ -34,29 +34,35 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
 app.post('/signup', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).send('Email and password are required.');
+    res.status(400).send('Email and password are required.');
+    return;
   }
 
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
-    return res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message });
+    return;
   }
-  return res.status(201).json(data);
+  res.status(201).json(data);
+  return;
 });
 
 app.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).send('Email and password are required.');
+    res.status(400).send('Email and password are required.');
+    return;
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return res.status(401).json({ error: error.message });
+    res.status(401).json({ error: error.message });
+    return;
   }
-  return res.status(200).json(data);
+  res.status(200).json(data);
+  return;
 });
 
 app.post('/login-with-google', async (req: Request, res: Response) => {
@@ -65,9 +71,11 @@ app.post('/login-with-google', async (req: Request, res: Response) => {
     });
 
     if (error) {
-        return res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message });
+        return;
     }
-    return res.status(200).json(data);
+    res.status(200).json(data);
+    return;
 });
 
 
@@ -77,11 +85,13 @@ app.get('/projects', requireAuth, async (req: Request, res: Response) => {
   res.json({
     message: `This is a protected route for user ${user.email}.`,
   });
+  return;
 });
 
 // Public root route
 app.get('/', (req: Request, res: Response) => {
   res.send('Continuum API is running with Express!');
+  return;
 });
 
 // Export the Express app as a Google Cloud Function
