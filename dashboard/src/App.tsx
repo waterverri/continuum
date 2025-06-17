@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { getProjects } from './api'
+import './App.css'; // <-- ADD THIS LINE
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)

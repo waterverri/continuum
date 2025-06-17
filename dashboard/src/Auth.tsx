@@ -1,64 +1,56 @@
-import { useState } from 'react';
-import { supabase } from './supabaseClient';
+import { useState, useEffect } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { supabase } from './supabaseClient'
+import Auth from './Auth'
+import { getProjects } from './api'
+import './App.css';
 
-export default function Auth() {
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [projectsMessage, setProjectsMessage] = useState<string>('')
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
 
-    if (error) {
-      alert(error.message);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleGetProjects = async () => {
+    setLoading(true)
+    try {
+      const data = await getProjects();
+      setProjectsMessage(data.message);
+    } catch (error) {
+      setProjectsMessage((error as Error).message);
     }
-    setLoading(false);
+    setLoading(false)
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-     if (error) {
-      alert(error.message);
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="container">
-      <h1 className="header">Continuum</h1>
-      <p className="description">Sign in to your account</p>
-      <form className="form-widget" onSubmit={handleLogin}>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-           <label htmlFor="password">Password</label>
-           <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password"
-          />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
+  if (!session) {
+    return <Auth />
+  } else {
+    return (
+      <div className="container">
+        <h1 className="header">Dashboard</h1>
+        <p className="description">Welcome, {session.user.email}</p>
+        <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
+        <hr />
+        <button onClick={handleGetProjects} disabled={loading}>
+          {loading ? 'Fetching...' : 'Fetch Protected Projects'}
         </button>
-      </form>
-       <button onClick={handleGoogleLogin} className="google-btn" disabled={loading}>
-        Login with Google
-      </button>
-    </div>
-  );
+        {projectsMessage && <p>API Response: {projectsMessage}</p>}
+      </div>
+    )
+  }
 }
+
+export default App
