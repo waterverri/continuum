@@ -25,14 +25,13 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
     return;
   }
 
-  // Add user to the request object for use in other routes
   (req as any).user = user;
   next();
 };
 
 // --- Authentication Routes ---
 
-app.post('/signup', async (req, res) => {
+app.post('/signup', async (req: Request, res: Response) => { // FIX: Added types
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required.');
@@ -46,7 +45,7 @@ app.post('/signup', async (req, res) => {
   return res.status(201).json(data);
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', async (req: Request, res: Response) => { // FIX: Added types
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required.');
@@ -57,11 +56,10 @@ app.post('/login', async (req, res) => {
   if (error) {
     return res.status(401).json({ error: error.message });
   }
-  // The JWT is in data.session.access_token
   return res.status(200).json(data);
 });
 
-app.post('/login-with-google', async (req, res) => {
+app.post('/login-with-google', async (req: Request, res: Response) => { // FIX: Added types
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google'
     });
@@ -69,13 +67,12 @@ app.post('/login-with-google', async (req, res) => {
     if (error) {
         return res.status(500).json({ error: error.message });
     }
-    // Return the provider's sign-in URL to the frontend
     return res.status(200).json(data);
 });
 
 
 // --- Protected API Routes ---
-app.get('/projects', requireAuth, async (req, res) => {
+app.get('/projects', requireAuth, async (req: Request, res: Response) => { // FIX: Added types
   const user = (req as any).user;
   res.json({
     message: `This is a protected route for user ${user.email}.`,
@@ -83,7 +80,7 @@ app.get('/projects', requireAuth, async (req, res) => {
 });
 
 // Public root route
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => { // FIX: Added types
   res.send('Continuum API is running with Express!');
 });
 
