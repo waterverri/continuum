@@ -1,9 +1,5 @@
 import * as functions from '@google-cloud/functions-framework';
-import express, { 
-  Request as ExpressRequest, 
-  Response as ExpressResponse, 
-  NextFunction as ExpressNextFunction 
-} from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { supabase } from './db/supabaseClient';
 
@@ -14,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- Authentication Middleware ---
-const requireAuth = async (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
+const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).send('Unauthorized: No token provided');
@@ -35,7 +31,7 @@ const requireAuth = async (req: ExpressRequest, res: ExpressResponse, next: Expr
 
 // --- Authentication Routes ---
 
-app.post('/signup', async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/signup', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required.');
@@ -49,7 +45,7 @@ app.post('/signup', async (req: ExpressRequest, res: ExpressResponse) => {
   return res.status(201).json(data);
 });
 
-app.post('/login', async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required.');
@@ -63,7 +59,7 @@ app.post('/login', async (req: ExpressRequest, res: ExpressResponse) => {
   return res.status(200).json(data);
 });
 
-app.post('/login-with-google', async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/login-with-google', async (req: Request, res: Response) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google'
     });
@@ -76,7 +72,7 @@ app.post('/login-with-google', async (req: ExpressRequest, res: ExpressResponse)
 
 
 // --- Protected API Routes ---
-app.get('/projects', requireAuth, async (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/projects', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
   res.json({
     message: `This is a protected route for user ${user.email}.`,
@@ -84,7 +80,7 @@ app.get('/projects', requireAuth, async (req: ExpressRequest, res: ExpressRespon
 });
 
 // Public root route
-app.get('/', (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('Continuum API is running with Express!');
 });
 
