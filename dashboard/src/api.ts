@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 
-const API_URL = 'http://localhost:8080'; // Your local API endpoint, change for production
+// Use the environment variable for the API URL, but fall back to localhost for development
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const getProjects = async () => {
   const { data: { session } } = await supabase.auth.getSession();
