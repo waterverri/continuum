@@ -1,127 +1,82 @@
-# Project Context: Continuum (For Developer & LLM Use)
+# Continuum: The Writer's Context Engine
 
-**Last Updated:** June 17, 2025
+A private, multi-project application designed to serve as an intelligent "story bible," providing precise, dynamic, and contextually-aware information to assist writers in their long-form storytelling process with Large Language Models (LLMs).
 
------
+## The Scene, and the Frustration
 
-### **About This Document**
+The cursor blinks. It’s 2 AM, and you’re deep into chapter seventy-three of your epic fantasy series. Your protagonist, Elara, a cynical war orphan turned formidable spy, is about to have a clandestine meeting with a mentor she hasn’t seen in a decade. The emotional weight of this scene rests on a mountain of history.
 
-**Purpose:** This document is the primary, centralized technical context file for any developer or LLM assistant collaborating on this project. Its goal is to provide a complete, up-to-date understanding of the project's vision, architecture, feature status, and file structure at all times.
+You turn to your AI writing partner, ready to draft the dialogue. But first, the ritual of context-building begins. You need the AI to remember:
 
-**How to Use:** Before performing any task (writing code, suggesting features, creating documentation), you must first refer to this document to ensure your understanding is current.
+* Elara’s core personality: her distrust of authority, stemming from the betrayal that led to her parents' death.
+* The significance of the silver locket she always wears, a memento from her mother.
+* The mentor’s complex history: he was once her father's best friend, but went into hiding after the betrayal, leaving many to think him a coward.
+* The specific events of their last encounter ten years ago, a brief, cryptic warning given in a crowded market.
 
-## **Maintenance and Updates:** This document must be updated whenever a technical decision is made, a feature's implementation changes, or the roadmap is modified. Proactively suggesting updates to this file is a key responsibility.
+You open a sprawling, 200-page document of notes, a chaotic mix of timelines, character sketches, and discarded scenes. You begin the frantic copy-paste dance, desperately trying to assemble a coherent context block. The result is a jumbled mess of text. You feed it to the LLM, cross your fingers, and hit 'generate'.
 
-## 1\. Core Technical Problem
+The output is… fine. Technically correct, but hollow. The dialogue is generic. The AI misses the subtle undercurrent of resentment and longing in Elara's voice because it doesn’t truly *understand* the subtext. It has a collection of facts, not a tapestry of experience. Even worse, it has her mention an event from a different character's backstory, a continuity error that sends a chill down your spine. The flow is broken. The magic is gone.
 
-The primary technical challenge is to design a system that can accept a unique identifier (for a "preset"), retrieve a complex set of related data from a PostgreSQL database based on predefined rules, concatenate it into a clean plain-text string, and serve it via a low-latency API endpoint. The system must be multi-tenant at a project level, ensuring strict data isolation between different writing projects, governed by a Role-Based Access Control (RBAC) system tied to user authentication.
+What if your story bible wasn’t a dead archive? What if it were a living, intelligent partner in your storytelling?
 
-## 2\. System Architecture
+## A New Continuum
 
-The application consists of three primary components:
+**Continuum** was born from that frustration. It’s a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
 
-  * **Frontend:** A web-based dashboard built with **Vite + React**. The entire UI is project-scoped after user login and project selection, and it is deployed to **Firebase Hosting**.
-  * **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. It is containerized with a Dockerfile and deployed on **Google Cloud Run**.
-  * **Database:** A **Supabase (PostgreSQL)** instance for data persistence.
+Within each project, you stop thinking in terms of scattered notes. Instead, you create living **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. These aren't just text files; they are structured pieces of your world. You then give them life with a powerful, flexible **tagging** system that you define. Elara’s document is tagged with `character: protagonist`, `family: house_valerius`, `trait: cynical`. The locket is tagged `item: heirloom`, `plot: crimson_amulet`.
 
-### 2.1. Architectural Rationale & Decisions
+You can map out your entire history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at time `1052`, or "Elara receives the locket" at time `1058`. Each event can be linked to the documents that describe it, weaving your narrative into a cohesive whole.
 
-The current project structure, with separate `package.json` and `.gitignore` files for the `api` and `dashboard` directories, is a deliberate choice to support the following principles:
+Now, let's revisit that 2 AM writing session.
 
-  * **Component Decoupling:** The API and Frontend are treated as strictly independent applications. This separation, enforced by distinct dependency lists and ignore rules, prevents changes in one component from inadvertently affecting the other. It supports independent development, testing, and deployment cycles, which is crucial for stability.
-  * **Documentation Centralization:** This `projectcontext.md` file is maintained as the single, authoritative source of truth for all architectural and roadmap information. This strategy minimizes documentation overhead and prevents "documentation drift," where multiple README files could become inconsistent. Component-level READMEs are intentionally kept minimal to direct all contributors to this centralized document.
+Instead of the chaotic copy-paste, you open Continuum's visual **Preset Builder**. You create a new context package called 'Elara Meets Mentor'. You tell it, with a few clicks: "Give me Elara's core character document. Then, find all events tagged `character: elara` up until the current time of `1075` and pull their summaries. Finally, add the mentor's profile." You save the preset.
 
-## 3\. Data Model & Authentication
+Continuum generates a single, simple, and stable URL for you.
 
-### 3.1. Authentication and Access Control
+You turn back to your AI prompt. You delete the wall of jumbled text and paste in just that one line. The API at that URL delivers a perfectly curated package of information: Elara's relevant history, her personality traits, the mentor's background, all concise and in chronological order. The LLM now has the *exact* context it needs.
 
-  * **Identity Provider:** User identity is managed by **Supabase's built-in Auth service** (`auth.users` table).
-  * **Authorization Model:** A **Role-Based Access Control (RBAC)** system is implemented via the `project_members` table. This table links a `user_id` to a `project_id` with a specific `project_role` (`owner`, `editor`, `viewer`).
+You hit 'generate' again. This time, the magic is there. The dialogue crackles with the unspoken history between the characters. Elara’s cynicism is sharp, but undercut with a flicker of the hope she’d long buried. It's perfect.
 
-### 3.2. Core Data Schema
+This is Continuum. It's not just a place to store your notes. It's an engine that turns your story bible from a static reference into the dynamic, living context your creative process deserves.
 
-All data is transactionally tied to a `project`. The `project_id` foreign key is the primary mechanism for data isolation.
+## Features
 
-| Table | Purpose | Key Fields | Relationships |
-| :--- | :--- | :--- | :--- |
-| **`profiles`** | Stores public user data. | `user_id`, `display_name` | Linked 1-to-1 with `auth.users(id)`. |
-| **`project_members`**| Assigns users to projects with roles. | `project_id`, `user_id`, `role` | `project_id` → `projects(id)` \<br\> `user_id` → `auth.users(id)` |
-| **`projects`** | The container for a single story/title. | `id`, `name` | |
-| **`documents`** | Stores discrete text units (scenes, bios). | `id`, `project_id`, `group_id`, `document_type`, `content` | `project_id` → `projects(id)` |
-| **`events`** | Stores time-based occurrences. | `id`, `project_id`, `name`, `time_start`, `time_end` | `project_id` → `projects(id)` |
-| **`tags`** | A key-value store for metadata. | `id`, `document_id`/`event_id`, `key`, `value` | `document_id` → `documents(id)` \<br\> `event_id` → `events(id)` |
-| **`presets`** | Stores filtering rules for context URLs. | `id`, `project_id`, `name`, `rules` (JSONB) | `project_id` → `projects(id)` |
+* **User Authentication:** Full user sign-up and login with email/password and Google.
+* **Secure API:** Backend API protected with JWT authentication.
+* **Automated Deployments:** Full CI/CD pipelines for the frontend, backend, and database migrations.
+* **Project-Based Scaffolding:** A basic dashboard view for authenticated users.
 
-## 4\. Feature State & Roadmap
+## Architectural Overview
 
-### 4.1. Completed
+Continuum is a full-stack application composed of three main parts:
 
-  * **Conceptual Design:** All features listed have been conceptually designed.
-  * **v1 DB Schema:** The initial schema is defined in `supabase/migrations/0001_initial_schema.sql`.
-  * **CI/CD Pipelines:** Workflows for Database, API, and Frontend deployments are complete and operational.
-  * **User Authentication:** A full authentication flow is implemented on both the backend (secure endpoints) and frontend (UI and session management).
+* **Frontend:** A web-based dashboard built with a modern JavaScript framework.
+* **Backend:** A serverless API using Node.js and TypeScript, deployed as a container to Google Cloud Run.
+* **Database & Auth:** A Supabase (PostgreSQL) instance for the database and user authentication.
 
-### 4.2. Next Up: Phase 3 - Core Application CRUD
+## Getting Started
 
-1.  **Implement Row Level Security (RLS) & Project Management:**
-      * **Database:** Activate and write RLS policies for all data tables (`projects`, `documents`, `events`, etc.). Policies must enforce that users can only access data for projects they are a member of, respecting the `role` in `project_members` for write permissions.
-      * **API Endpoints:**
-          * `GET /projects`: List all projects a user is a member of.
-          * `POST /projects`: Create a new project, automatically making the creator the `owner`.
-          * `GET /projects/:id`: Get details for a single project.
-          * `DELETE /projects/:id`: Delete a project (owner role required).
-          * `POST /projects/:id/members`: Add a new member to a project (owner role required).
-      * **Frontend UI:**
-          * Implement a project selection page/component for users with multiple projects.
-          * Implement the UI for a user to create a new project.
-          * Build a project settings page to manage members.
-2.  **API CRUD Endpoints for `documents`:**
-      * **API Endpoints:** Build the full, project-scoped CRUD endpoints (GET list, GET one, POST, PUT, DELETE) for `documents`. Ensure all data access respects RLS.
-      * **Frontend UI:** Build the main dashboard view for listing, creating, and editing `documents` within the currently selected project.
+Prerequisites for development:
 
-### 4.3. Future: Phase 4 - Events & Tagging
+* Node.js
+* TypeScript
+* Google Cloud SDK (`gcloud`)
+* A Supabase account
 
-  * **API:**
-      * Build project-scoped CRUD endpoints for `events`.
-      * Build endpoints for `tags`, allowing them to be attached to and detached from both `documents` and `events`.
-  * **Frontend:**
-      * Implement UI for creating and managing `events`. Consider a timeline view.
-      * Integrate tagging functionality into the `document` and `event` editing views.
+### API Development
 
-### 4.4. Future: Phase 5 - The Core "Preset" Engine
+1.  Navigate to the `/api` directory.
+2.  Run `npm install` to install dependencies.
+3.  You will need a `.env` file with `SUPABASE_URL` and `SUPABASE_ANON_KEY` to run locally with the Functions Framework.
+4.  Run `npm run dev` to start the local development server.
 
-  * **API:**
-      * Build CRUD endpoints for `presets`.
-      * Implement the core logic for the preset engine: create the `GET /presets/:id/context` endpoint. This will read the preset's `rules` (JSONB), dynamically build a complex SQL query to fetch the relevant data, concatenate it into a clean string, and serve it as `text/plain`.
-  * **Frontend:**
-      * Design and build a "Preset Rule Builder" UI. This will allow users to intuitively create filter rules (e.g., "include all documents of type 'character' with tag 'protagonist'") that will be saved into the preset's `rules` field.
+### Dashboard Development
 
-## 5\. Current File Structure
+1.  Navigate to the `/dashboard` directory.
+2.  Run `npm install` to install dependencies.
+3.  Create a `.env.local` file and add your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. For local development, also add `VITE_API_URL=http://localhost:8080`.
+4.  Run `npm run dev` to start the local development server, typically available at `http://localhost:5173`.
 
-This structure outlines where the application's logic and code currently live.
+## Contributing
 
-```
-/continuum/
-├── api/                        # Backend Node.js Cloud Function
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── index.ts            # Main function entry point with Express routes
-│       └── db/                 # Database interaction layer
-│           └── supabaseClient.ts # Initializes Supabase client
-│
-└── dashboard/                  # Frontend Web Application
-│   ├── package.json
-│   ├── firebase.json
-│   └── src/
-│       ├── App.tsx             # Main component, handles session state
-│       ├── Auth.tsx            # Login/Signup UI component
-│       ├── main.tsx            # Application entry point
-│       ├── supabaseClient.ts   # Initializes Supabase client for frontend
-│       └── api.ts              # Utility for making authenticated API calls
-│
-└── supabase/
-├── migrations/
-│   └── 0001_initial_schema.sql
-└── config.toml
-```
+We welcome contributions! If you're interested in helping with development, please start by reading the `projectcontext.md` file at the root of the repository. It contains the detailed technical specifications, architecture, and roadmap required for development.
