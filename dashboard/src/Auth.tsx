@@ -12,8 +12,8 @@ export default function Auth() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      alert(error.error_description || error.message);
-    } 
+      alert(error.message); // FIX: Changed from error.error_description
+    }
     // The onAuthStateChange listener in App.tsx will handle the redirect
     setLoading(false);
   };
@@ -23,7 +23,7 @@ export default function Auth() {
       provider: 'google',
     });
      if (error) {
-      alert(error.error_description || error.message);
+      alert(error.message); // FIX: Changed from error.error_description
     }
   };
 
