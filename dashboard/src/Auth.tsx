@@ -18,29 +18,31 @@ export default function Auth() {
   };
 
   const handleGoogleLogin = async () => {
+    setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin, // <-- This is the fix
+        redirectTo: window.location.origin,
       },
     });
      if (error) {
       alert(error.message);
     }
+    setLoading(false);
   };
 
   return (
-    <div style={{maxWidth: '400px', margin: 'auto'}}>
-      <h1>Continuum</h1>
-      <p>Sign in via magic link or social provider</p>
-      <form onSubmit={handleLogin}>
+    <div className="container">
+      <h1 className="header">Continuum</h1>
+      <p className="description">Sign in to your account</p>
+      <form className="form-widget" onSubmit={handleLogin}>
           <label htmlFor="email">Email</label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Your email"
+            placeholder="you@example.com"
           />
            <label htmlFor="password">Password</label>
            <input
@@ -54,7 +56,7 @@ export default function Auth() {
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
-       <button onClick={handleGoogleLogin} disabled={loading}>
+       <button onClick={handleGoogleLogin} className="google-btn" disabled={loading}>
         Login with Google
       </button>
     </div>
