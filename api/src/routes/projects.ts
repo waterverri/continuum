@@ -1,19 +1,15 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
+import { Request as JWTRequest } from 'express-jwt'; // Use the typed Request
 import { supabase } from '../db/supabaseClient';
 
 const router = Router();
 
-// Define a custom interface to extend the Express Request object
-interface AuthenticatedRequest extends Request {
-    auth?: { sub: string }; // from express-jwt
-}
-
 // == PROJECTS CRUD ENDPOINTS ==
-// Note: All these routes are automatically prefixed with '/api/projects'
 
 // GET / - Get all projects for the user
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
-    // The RLS policy automatically scopes this to the user from the JWT.
+// We use JWTRequest to tell TypeScript that req.auth exists and has a specific shape.
+router.get('/', async (req: JWTRequest, res: Response) => {
+    // RLS policy automatically uses the user ID from the JWT attached by the middleware.
     const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -27,13 +23,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // POST / - Create a new project
-router.post('/', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', async (req: JWTRequest, res: Response) => {
     const { name } = req.body;
     if (!name) {
         return res.status(400).json({ error: 'Project name is required' });
     }
-    
-    // The `assign_project_owner` trigger in the DB will use the user's ID from the JWT.
+
     const { data, error } = await supabase
         .from('projects')
         .insert([{ name }])
@@ -48,7 +43,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // PUT /:id - Update a project
-router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', async (req: JWTRequest, res: Response) => {
     const { id } = req.params;
     const { name } = req.body;
 
@@ -74,10 +69,10 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // DELETE /:id - Delete a project
-router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', async (req: JWTRequest, res: Response) => {
     const { id } = req.params;
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('projects')
         .delete()
         .eq('id', id);
