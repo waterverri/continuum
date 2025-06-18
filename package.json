@@ -1,1 +1,5 @@
-{}
+{
+  "devDependencies": {
+    "@types/express-jwt": "^6.0.4"
+  }
+}

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { expressjwt as jwt, GetVerificationKey } from 'express-jwt';
 import jwksRsa from 'jwks-rsa';
@@ -23,9 +23,16 @@ const requireAuth = jwt({
   algorithms: ['RS256'],
 });
 
-const addUserToRequest = (req, res, next) => {
+// Define a custom interface to extend the Express Request object
+interface AuthenticatedRequest extends Request {
+    auth?: any; // or a more specific type from express-jwt if available
+}
+
+// Correctly typed middleware
+const addUserToRequest = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (req.auth && req.auth.sub) {
-    req.user = { id: req.auth.sub };
+    // This part is conceptually what happens, but `req.user` isn't a default property.
+    // We handle the user via `req.auth.sub` from the JWT directly in endpoints.
   }
   next();
 };
@@ -39,14 +46,16 @@ apiRouter.use(requireAuth, addUserToRequest);
 // Mount the project-specific routes
 apiRouter.use('/projects', projectsRouter);
 
-// You can add more routers here in the future
-// apiRouter.use('/documents', documentsRouter);
-
-
 // Mount the main API router
 app.use('/api', apiRouter);
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`API server listening on port ${port}`);
-});
+// This part is for local development; Google Cloud Functions Framework handles the server in production.
+if (process.env.NODE_ENV !== 'production') {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+      console.log(`API server listening on port ${port}`);
+    });
+}
+
+// Export the Express app for the Google Cloud Functions Framework
+export const continuumApi = app;
