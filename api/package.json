@@ -18,7 +18,8 @@
     "@google-cloud/functions-framework": "^3.4.0",
     "@supabase/supabase-js": "^2.50.0",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "jwks-rsa": "^3.2.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
