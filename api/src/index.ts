@@ -1,98 +1,52 @@
-import * as functions from '@google-cloud/functions-framework';
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
-import { supabase } from './db/supabaseClient';
+import { expressjwt as jwt, GetVerificationKey } from 'express-jwt';
+import jwksRsa from 'jwks-rsa';
+
+// Import routers
+import projectsRouter from './routes/projects';
 
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
 // --- Authentication Middleware ---
-const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).send('Unauthorized: No token provided');
-    return;
+const requireAuth = jwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${process.env.SUPABASE_PROJECT_ID}.supabase.co/auth/v1/jwks`,
+  }) as GetVerificationKey,
+  audience: 'authenticated',
+  issuer: `https://${process.env.SUPABASE_PROJECT_ID}.supabase.co/auth/v1`,
+  algorithms: ['RS256'],
+});
+
+const addUserToRequest = (req, res, next) => {
+  if (req.auth && req.auth.sub) {
+    req.user = { id: req.auth.sub };
   }
-
-  const token = authHeader.split(' ')[1];
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-
-  if (error || !user) {
-    res.status(401).send('Unauthorized: Invalid token');
-    return;
-  }
-
-  (req as any).user = user;
   next();
 };
 
-// --- Authentication Routes ---
+// --- API Routes ---
+const apiRouter = express.Router();
 
-app.post('/signup', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    res.status(400).send('Email and password are required.');
-    return;
-  }
+// All routes under /api will require authentication
+apiRouter.use(requireAuth, addUserToRequest);
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+// Mount the project-specific routes
+apiRouter.use('/projects', projectsRouter);
 
-  if (error) {
-    res.status(400).json({ error: error.message });
-    return;
-  }
-  res.status(201).json(data);
-  return;
+// You can add more routers here in the future
+// apiRouter.use('/documents', documentsRouter);
+
+
+// Mount the main API router
+app.use('/api', apiRouter);
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`API server listening on port ${port}`);
 });
-
-app.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    res.status(400).send('Email and password are required.');
-    return;
-  }
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    res.status(401).json({ error: error.message });
-    return;
-  }
-  res.status(200).json(data);
-  return;
-});
-
-app.post('/login-with-google', async (req: Request, res: Response) => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google'
-    });
-
-    if (error) {
-        res.status(500).json({ error: error.message });
-        return;
-    }
-    res.status(200).json(data);
-    return;
-});
-
-
-// --- Protected API Routes ---
-app.get('/projects', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  res.json({
-    message: `This is a protected route for user ${user.email}.`,
-  });
-  return;
-});
-
-// Public root route
-app.get('/', (req: Request, res: Response) => {
-  res.send('Continuum API is running with Express!');
-  return;
-});
-
-// Export the Express app as a Google Cloud Function
-export const continuumApi = functions.http('continuumApi', app);
