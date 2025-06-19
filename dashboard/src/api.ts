@@ -1,9 +1,8 @@
-import { Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js"; // Corrected type-only import
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const getProjects = async (session: Session) => {
-    // Ensure the path is correct if your base URL doesn't include /api
     const response = await fetch(`${API_URL}/api/projects`, {
         headers: {
             'Authorization': `Bearer ${session.access_token}`,

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Auth from './Auth';
-import { Session } from '@supabase/supabase-js';
-import { getProjects } from './api'; // Import the getProjects function
+import type { Session } from '@supabase/supabase-js'; // Corrected type-only import
+import { getProjects } from './api';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
