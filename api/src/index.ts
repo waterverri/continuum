@@ -5,32 +5,30 @@ import cors from 'cors';
 import projectsRouter from './routes/projects';
 
 // --- Custom Type for Express Request ---
-// This extends the default Request type to include our custom 'user' property.
-interface RequestWithUser extends Request {
+// This extends the default Request type to include our custom properties.
+export interface RequestWithUser extends Request {
   user?: any;
+  token?: string; // Add the token property here
 }
 
 // --- Custom Authentication Middleware ---
-// This middleware replaces the express-jwt and jwks-rsa setup.
 const validateSupabaseJwt = async (req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY; // Using the 'anon' key which acts as the public key for this call.
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error('Supabase URL or Anon Key is not configured on the server.');
       return res.status(500).json({ error: 'Authentication service is not configured.' });
     }
-
-    // 1. Check for the Authorization header
+    
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Missing or invalid Authorization header. A Bearer token is required.' });
     }
 
-    const jwt = authHeader.split(' ')[1]; // Extract the token from "Bearer <token>"
+    const jwt = authHeader.split(' ')[1];
 
-    // 2. Make a request to the Supabase user endpoint to validate the token
     const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         'Authorization': `Bearer ${jwt}`,
@@ -40,15 +38,13 @@ const validateSupabaseJwt = async (req: RequestWithUser, res: Response, next: Ne
 
     const userData = await response.json();
 
-    // 3. Check the response from Supabase
     if (!response.ok) {
-      // If Supabase returns an error, the token is invalid or expired.
-      // Forward the status and message for better client-side error handling.
       return res.status(response.status).json({ message: userData.msg || 'Invalid or expired token.', detail: userData });
     }
-
-    // 4. If the token is valid, attach the user data to the request object and proceed
+    
+    // Attach both the user data AND the original token to the request
     req.user = userData;
+    req.token = jwt; // This is the new, crucial line
     next();
 
   } catch (error) {
@@ -65,17 +61,14 @@ app.use(express.json());
 
 
 // --- API Routes ---
-// All routes under /api will be protected by our custom JWT validation middleware.
 const apiRouter = express.Router();
-apiRouter.use(validateSupabaseJwt); // Apply the auth middleware here
-apiRouter.use('/projects', projectsRouter); // Register the projects router
+apiRouter.use(validateSupabaseJwt);
+apiRouter.use('/projects', projectsRouter);
 
-// Mount the protected API router
 app.use('/api', apiRouter);
 
 
 // --- Local Development Server ---
-// This block will only run when not in a production environment (like Google Cloud Run)
 if (process.env.NODE_ENV !== 'production') {
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
@@ -83,5 +76,4 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
-// Export the app for the Functions Framework
 export const continuumApi = app;

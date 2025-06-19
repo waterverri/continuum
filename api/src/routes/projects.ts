@@ -1,10 +1,35 @@
-import express, { Request, Response } from 'express'; // Import express directly
-import { supabase } from '../db/supabaseClient';
+import express from 'express';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { RequestWithUser } from '../index'; // Import our custom request type
 
-const router = express.Router(); // Create the router from the express object
+const router = express.Router();
+
+// Helper function to create a Supabase client scoped to the user
+const getSupabaseClientForUser = (req: RequestWithUser): SupabaseClient | null => {
+    if (req.token) {
+        return createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_ANON_KEY!,
+            {
+                global: {
+                    headers: {
+                        Authorization: `Bearer ${req.token}`
+                    }
+                }
+            }
+        );
+    }
+    return null;
+};
+
 
 // GET /
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: RequestWithUser, res) => {
+    const supabase = getSupabaseClientForUser(req);
+    if (!supabase) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -18,12 +43,19 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: RequestWithUser, res) => {
+    const supabase = getSupabaseClientForUser(req);
+    if (!supabase) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
     const { name } = req.body;
     if (!name) {
         return res.status(400).json({ error: 'Project name is required' });
     }
 
+    // The 'insert' will now be performed by the authenticated user.
+    // Your 'assign_project_owner' trigger will still work correctly.
     const { data, error } = await supabase
         .from('projects')
         .insert([{ name }])
@@ -38,7 +70,12 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /:id
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req: RequestWithUser, res) => {
+    const supabase = getSupabaseClientForUser(req);
+    if (!supabase) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { id } = req.params;
     const { name } = req.body;
 
@@ -46,6 +83,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Project name is required' });
     }
 
+    // RLS policy will check if the user is an 'owner' before allowing this update.
     const { data, error } = await supabase
         .from('projects')
         .update({ name })
@@ -64,9 +102,15 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /:id
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: RequestWithUser, res) => {
+    const supabase = getSupabaseClientForUser(req);
+    if (!supabase) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { id } = req.params;
 
+    // RLS policy will check if the user is an 'owner' before allowing this deletion.
     const { error } = await supabase
         .from('projects')
         .delete()
@@ -74,6 +118,10 @@ router.delete('/:id', async (req: Request, res: Response) => {
         
     if (error) {
         console.error('Error deleting project:', error);
+        // RLS will prevent deletion and may return a specific error, handle as needed
+        if (error.code === '42501') { // "permission_denied" in postgres
+             return res.status(403).json({ error: 'You do not have permission to delete this project.' });
+        }
         return res.status(500).json({ error: error.message });
     }
 
