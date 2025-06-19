@@ -43,7 +43,7 @@ const requireAuth = expressjwt({
     rateLimit: true,
     jwksRequestsPerMinute: 5,
     jwksUri: `https://${supabaseProjectId}.supabase.co/auth/v1/jwks`,
-    jwksRequestHeaders: {
+    requestHeaders: {
       apikey: process.env.SUPABASE_ANON_KEY, // Or your actual anon key
     },
   }),
