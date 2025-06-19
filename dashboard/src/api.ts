@@ -1,24 +1,18 @@
-import { supabase } from './supabaseClient';
+import { Session } from "@supabase/supabase-js";
 
-// Use the environment variable for the API URL, but fall back to localhost for development
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL;
 
-export const getProjects = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) {
-    throw new Error("User not logged in.");
-  }
+export const getProjects = async (session: Session) => {
+    // Ensure the path is correct if your base URL doesn't include /api
+    const response = await fetch(`${API_URL}/api/projects`, {
+        headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+        },
+    });
 
-  const response = await fetch(`${API_URL}/projects`, {
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-  });
+    if (!response.ok) {
+        throw new Error('Failed to fetch projects');
+    }
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch projects');
-  }
-
-  return response.json();
+    return await response.json();
 };
