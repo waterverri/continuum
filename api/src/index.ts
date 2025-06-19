@@ -44,7 +44,7 @@ const requireAuth = expressjwt({
     jwksRequestsPerMinute: 5,
     jwksUri: `https://${supabaseProjectId}.supabase.co/auth/v1/jwks`,
     requestHeaders: {
-      apikey: process.env.SUPABASE_ANON_KEY, // Or your actual anon key
+      apikey: process.env.SUPABASE_ANON_KEY!, // Or your actual anon key
     },
   }),
   audience: 'authenticated',
