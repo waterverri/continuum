@@ -49,6 +49,9 @@ const requireAuth = expressjwt({
   algorithms: ['RS256'],
 });
 
+console.log("jwksUri",`https://${supabaseProjectId}.supabase.co/auth/v1/jwks`);
+console.log("issuer",`https://${supabaseProjectId}.supabase.co/auth/v1`)
+
 // --- API Routes ---
 const apiRouter = express.Router();
 apiRouter.use(requireAuth);
