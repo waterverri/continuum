@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Auth from './Auth';
-import type { Session } from '@supabase/supabase-js'; // Corrected type-only import
+import type { Session } from '@supabase/supabase-js';
 import { getProjects } from './api';
+import './App.css'; 
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [projects, setProjects] = useState<any[]>([]); // State to hold projects
-  const [error, setError] = useState<string | null>(null); // State for errors
+  const [projects, setProjects] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -23,7 +24,6 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // useEffect to fetch projects when the session is available
   useEffect(() => {
     if (session) {
       handleGetProjects();
@@ -36,7 +36,7 @@ function App() {
       return;
     }
     try {
-      setError(null); // Clear previous errors
+      setError(null);
       const data = await getProjects(session);
       setProjects(data);
     } catch (error) {
@@ -47,8 +47,8 @@ function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    setProjects([]); // Clear projects on sign out
-    setError(null); // Clear errors
+    setProjects([]);
+    setError(null);
   }
 
   if (!session) {
