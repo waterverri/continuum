@@ -6,30 +6,54 @@ import jwksRsa from 'jwks-rsa';
 // Import routers
 import projectsRouter from './routes/projects';
 
+// --- Helper function to parse the Project ID from the URL ---
+function getSupabaseProjectId(url: string): string | null {
+  try {
+    const urlObject = new URL(url);
+    const hostnameParts = urlObject.hostname.split('.');
+    if (hostnameParts.length >= 3) {
+      return hostnameParts[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('Invalid Supabase URL:', error);
+    return null;
+  }
+}
+
+// --- App Setup ---
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Authentication Middleware ---
+// --- Auth Middleware Setup ---
+const supabaseUrl = process.env.SUPABASE_URL;
+if (!supabaseUrl) {
+  throw new Error('SUPABASE_URL environment variable is not set.');
+}
+
+const supabaseProjectId = getSupabaseProjectId(supabaseUrl);
+if (!supabaseProjectId) {
+  throw new Error('Could not parse Project ID from SUPABASE_URL.');
+}
+
 const requireAuth = expressjwt({
   secret: jwksRsa.expressJwtSecret({
     cache: true,
     rateLimit: true,
     jwksRequestsPerMinute: 5,
-    jwksUri: `https://${process.env.SUPABASE_PROJECT_ID}.supabase.co/auth/v1/jwks`,
+    jwksUri: `https://${supabaseProjectId}.supabase.co/auth/v1/jwks`,
   }),
   audience: 'authenticated',
-  issuer: `https://${process.env.SUPABASE_PROJECT_ID}.supabase.co/auth/v1`,
+  issuer: `https://${supabaseProjectId}.supabase.co/auth/v1`,
   algorithms: ['RS256'],
 });
-
 
 // --- API Routes ---
 const apiRouter = express.Router();
 apiRouter.use(requireAuth);
 apiRouter.use('/projects', projectsRouter);
 app.use('/api', apiRouter);
-
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
