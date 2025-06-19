@@ -1,6 +1,6 @@
 # Project Context: Continuum (For Developer & LLM Use)
 
-**Last Updated:** June 17, 2025
+**Last Updated:** June 19, 2025
 
 -----
 
@@ -38,18 +38,26 @@ The current project structure, with separate `package.json` and `.gitignore` fil
   * **Identity Provider:** User identity is managed by **Supabase's built-in Auth service** (`auth.users` table).
   * **Authorization Model:** A **Role-Based Access Control (RBAC)** system is implemented via the `project_members` table. This table links a `user_id` to a `project_id` with a specific `project_role` (`owner`, `editor`, `viewer`).
 
-### 3.2. Core Data Schema
+### 3.2. Backend JWT Validation
+
+JWTs sent from the frontend client are validated on all protected API endpoints by a custom Express middleware located in `api/src/index.ts`.
+
+* **Mechanism:** Instead of verifying the JWT signature locally, the middleware performs a server-to-server API call to the Supabase `/auth/v1/user` endpoint. It passes the client's JWT and the project's `ANON_KEY`. If Supabase returns a user object, the token is considered valid. If it returns an error (e.g., 401), the token is invalid, and access is denied.
+* **Rationale:** This approach was chosen to simplify the backend architecture and reduce dependencies. It removes the need for the `express-jwt` and `jwks-rsa` libraries.
+* **Trade-off:** The primary trade-off is performance. This method introduces network latency for every authenticated API request, as it requires a round-trip call to Supabase for validation. The previous JWKS-based approach was faster for subsequent requests after the initial key fetch.
+
+### 3.3. Core Data Schema
 
 All data is transactionally tied to a `project`. The `project_id` foreign key is the primary mechanism for data isolation.
 
 | Table | Purpose | Key Fields | Relationships |
 | :--- | :--- | :--- | :--- |
 | **`profiles`** | Stores public user data. | `user_id`, `display_name` | Linked 1-to-1 with `auth.users(id)`. |
-| **`project_members`**| Assigns users to projects with roles. | `project_id`, `user_id`, `role` | `project_id` → `projects(id)` \<br\> `user_id` → `auth.users(id)` |
+| **`project_members`**| Assigns users to projects with roles. | `project_id`, `user_id`, `role` | `project_id` → `projects(id)` <br> `user_id` → `auth.users(id)` |
 | **`projects`** | The container for a single story/title. | `id`, `name` | |
 | **`documents`** | Stores discrete text units (scenes, bios). | `id`, `project_id`, `group_id`, `document_type`, `content` | `project_id` → `projects(id)` |
 | **`events`** | Stores time-based occurrences. | `id`, `project_id`, `name`, `time_start`, `time_end` | `project_id` → `projects(id)` |
-| **`tags`** | A key-value store for metadata. | `id`, `document_id`/`event_id`, `key`, `value` | `document_id` → `documents(id)` \<br\> `event_id` → `events(id)` |
+| **`tags`** | A key-value store for metadata. | `id`, `document_id`/`event_id`, `key`, `value` | `document_id` → `documents(id)` <br> `event_id` → `events(id)` |
 | **`presets`** | Stores filtering rules for context URLs. | `id`, `project_id`, `name`, `rules` (JSONB) | `project_id` → `projects(id)` |
 
 ## 4\. Feature State & Roadmap
@@ -59,7 +67,7 @@ All data is transactionally tied to a `project`. The `project_id` foreign key is
   * **Conceptual Design:** All features listed have been conceptually designed.
   * **v1 DB Schema:** The initial schema is defined in `supabase/migrations/0001_initial_schema.sql`.
   * **CI/CD Pipelines:** Workflows for Database, API, and Frontend deployments are complete and operational.
-  * **User Authentication:** A full authentication flow is implemented on both the backend (secure endpoints) and frontend (UI and session management).
+  * **User Authentication:** A full authentication flow is implemented. Backend JWT validation is handled by a custom middleware making direct calls to the Supabase API.
 
 ### 4.2. Next Up: Phase 3 - Core Application CRUD
 
