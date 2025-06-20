@@ -140,6 +140,6 @@ This structure outlines where the application's logic and code currently live.
 └── supabase/
 ├── migrations/
 │   └── 0001_initial_schema.sql
-│   └── 0002_implement_rls_policies.sql
+│   └── ... (other migrations)
 └── config.toml
 ```
