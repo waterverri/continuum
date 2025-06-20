@@ -60,6 +60,17 @@ export default function ProjectNavigationPage() {
     }
   }
 
+  const handleDebugAuth = async () => {
+    console.log("Requesting auth context from database...");
+    const { data, error } = await supabase.rpc('debug_auth_context');
+    if (error) {
+        console.error('Error debugging auth context:', error);
+    } else {
+        console.log('Database returned auth context:', data);
+        alert('Check the browser console (F12) for the auth context from the database.');
+    }
+};
+
   return (
     <div className="project-nav-container">
       <h3>Create a New Project</h3>
@@ -95,6 +106,9 @@ export default function ProjectNavigationPage() {
       ) : (
         !loading && <p>You don't have any projects yet. Create one to get started!</p>
       )}
+      <div style={{ margin: '1rem 0' }}>
+        <button onClick={handleDebugAuth}>Check DB Auth Context</button>
+      </div>
     </div>
   );
 }
