@@ -23,17 +23,33 @@ What if your story bible wasn’t a dead archive? What if it were a living, inte
 
 **Continuum** was born from that frustration. It’s a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
 
-Within each project, you stop thinking in terms of scattered notes. Instead, you create living **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. These aren't just text files; they are structured pieces of your world. You then give them life with a powerful, flexible **tagging** system that you define. Elara’s document is tagged with `character: protagonist`, `family: house_valerius`, `trait: cynical`. The locket is tagged `item: heirloom`, `plot: crimson_amulet`.
+Within each project, you create living **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. You map out your entire history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at time `1052`.
 
-You can map out your entire history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at time `1052`, or "Elara receives the locket" at time `1058`. Each event can be linked to the documents that describe it, weaving your narrative into a cohesive whole.
+But what about the scene itself? The context for "Elara Meets Mentor" isn't just one document; it's a mosaic of many.
 
-Now, let's revisit that 2 AM writing session.
+With Continuum, you create a new kind of document—a **Blueprint**. You title it "Elara Meets Mentor - Scene Context". Its content isn't a wall of text you have to maintain. Instead, it’s a simple, elegant template that you compose:
 
-Instead of the chaotic copy-paste, you open Continuum's visual **Preset Builder**. You create a new context package called 'Elara Meets Mentor'. You tell it, with a few clicks: "Give me Elara's core character document. Then, find all events tagged `character: elara` up until the current time of `1075` and pull their summaries. Finally, add the mentor's profile." You save the preset.
+> #### Scene Context: A clandestine meeting in the port city of Kai's Landing.
+>
+> **Protagonist Mindset: Elara**
+> A cynical but resourceful spy, shaped by the loss of her parents. She trusts actions, not words, and harbors a deep-seated resentment for the mentor she believes abandoned her.
+> *Full Profile: {{elara_character_profile}}*
+>
+> **Relevant History:**
+> A summary of the last time they met, ten years prior during the Festival of Silver Sails.
+> *Full Event Details: {{event_last_mentor_meeting}}*
+>
+> **Key Items:**
+> Elara clutches the silver locket her mother gave her, a constant, physical reminder of her loss.
+> *Description: {{item_silver_locket}}*
 
-Continuum generates a single, simple, and stable URL for you.
+Each `{{...}}` is a living link to another document in your world. There is no copy-pasting. You are not duplicating information; you are **weaving it together**. If you update Elara's main profile, this blueprint is automatically updated the moment you next need it.
 
-You turn back to your AI prompt. You delete the wall of jumbled text and paste in just that one line. The API at that URL delivers a perfectly curated package of information: Elara's relevant history, her personality traits, the mentor's background, all concise and in chronological order. The LLM now has the *exact* context it needs.
+This blueprint document is what you save as a **Preset**.
+
+Now, let's revisit that 2 AM writing session. Instead of the chaotic copy-paste, you open Continuum and simply retrieve the stable URL for your "Elara Meets Mentor" preset.
+
+You turn back to your AI prompt. You delete the wall of jumbled text and paste in just that one line. The API at that URL delivers the perfectly assembled package. Continuum has followed your blueprint, resolving every link in an instant to create the exact context the LLM needs.
 
 You hit 'generate' again. This time, the magic is there. The dialogue crackles with the unspoken history between the characters. Elara’s cynicism is sharp, but undercut with a flicker of the hope she’d long buried. It's perfect.
 
