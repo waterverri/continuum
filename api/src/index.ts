@@ -1,9 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 
-// Import routers
-import projectsRouter from './routes/projects';
-
 // --- Custom Type for Express Request ---
 // This extends the default Request type to include our custom properties.
 export interface RequestWithUser extends Request {
@@ -44,7 +41,7 @@ const validateSupabaseJwt = async (req: RequestWithUser, res: Response, next: Ne
     
     // Attach both the user data AND the original token to the request
     req.user = userData;
-    req.token = jwt; // This is the new, crucial line
+    req.token = jwt;
     next();
 
   } catch (error) {
@@ -61,9 +58,13 @@ app.use(express.json());
 
 
 // --- API Routes ---
+// This router is protected by JWT validation and ready for future platformized features.
 const apiRouter = express.Router();
 apiRouter.use(validateSupabaseJwt);
-apiRouter.use('/projects', projectsRouter);
+
+// Example for a future route:
+// import presetRouter from './routes/presets';
+// apiRouter.use('/presets', presetRouter);
 
 app.use('/api', apiRouter);
 

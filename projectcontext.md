@@ -1,6 +1,6 @@
 # Project Context: Continuum (For Developer & LLM Use)
 
-**Last Updated:** June 19, 2025
+**Last Updated:** June 20, 2025
 
 -----
 
@@ -20,9 +20,9 @@ The primary technical challenge is to design a system that can accept a unique i
 
 The application consists of three primary components:
 
-  * **Frontend:** A web-based dashboard built with **Vite + React**. The entire UI is project-scoped after user login and project selection, and it is deployed to **Firebase Hosting**.
-  * **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. It is containerized with a Dockerfile and deployed on **Google Cloud Run**.
-  * **Database:** A **Supabase (PostgreSQL)** instance for data persistence.
+  * **Frontend:** A web-based dashboard built with **Vite + React**. It handles all direct user authentication and simple CRUD operations against the database. It is deployed to **Firebase Hosting**.
+  * **Backend:** A serverless API built with **Node.js and TypeScript, using the Google Cloud Functions Framework**. Its role is limited to handling complex, "platformized" features that require secure, server-side logic (e.g., the Preset Engine). It is deployed on **Google Cloud Run**.
+  * **Database:** A **Supabase (PostgreSQL)** instance for data persistence, authentication, and authorization (Row Level Security).
 
 ### 2.1. Architectural Rationale & Decisions
 
@@ -35,16 +35,28 @@ The current project structure, with separate `package.json` and `.gitignore` fil
 
 ### 3.1. Authentication and Access Control
 
-  * **Identity Provider:** User identity is managed by **Supabase's built-in Auth service** (`auth.users` table).
-  * **Authorization Model:** A **Role-Based Access Control (RBAC)** system is implemented via the `project_members` table. This table links a `user_id` to a `project_id` with a specific `project_role` (`owner`, `editor`, `viewer`).
+  * **Identity Provider:** User identity is managed by **Supabase's built-in Auth service** (`auth.users` table). The frontend dashboard handles all user sign-up and login flows directly using the `supabase-js` client library.
+  * **Authorization Model:** A **Role-Based Access Control (RBAC)** system is implemented via the `project_members` table and enforced by PostgreSQL's **Row Level Security (RLS)** policies.
 
-### 3.2. Backend JWT Validation
+### 3.2. Data Access Patterns
 
-JWTs sent from the frontend client are validated on all protected API endpoints by a custom Express middleware located in `api/src/index.ts`.
+A hybrid approach is used for data access to optimize for performance and security.
 
-* **Mechanism:** Instead of verifying the JWT signature locally, the middleware performs a server-to-server API call to the Supabase `/auth/v1/user` endpoint. It passes the client's JWT and the project's `ANON_KEY`. If Supabase returns a user object, the token is considered valid. If it returns an error (e.g., 401), the token is invalid, and access is denied.
-* **Rationale:** This approach was chosen to simplify the backend architecture and reduce dependencies. It removes the need for the `express-jwt` and `jwks-rsa` libraries.
-* **Trade-off:** The primary trade-off is performance. This method introduces network latency for every authenticated API request, as it requires a round-trip call to Supabase for validation. The previous JWKS-based approach was faster for subsequent requests after the initial key fetch.
+#### 3.2.1. Frontend to Supabase (Primary CRUD)
+
+For all standard Create, Read, Update, and Delete (CRUD) operations, the frontend communicates **directly** with the Supabase API.
+
+* **Mechanism:** The React application uses the `supabase-js` client library. This client automatically attaches the logged-in user's JWT to every request.
+* **Security:** Supabase validates the JWT and uses the Row Level Security policies defined in `supabase/migrations/0002_implement_rls_policies.sql` to ensure users can only access data they are authorized to see.
+* **Rationale:** This is the most performant and straightforward approach for simple data operations, fully leveraging Supabase's capabilities as a Backend-as-a-Service (BaaS).
+
+#### 3.2.2. Backend API (Complex "Platformized" Logic)
+
+The backend API is reserved for special cases that require complex, secure, or computationally intensive server-side logic.
+
+* **Mechanism:** The frontend will make standard `fetch` calls to specific endpoints on the backend API (e.g., `GET /api/presets/:id/context`).
+* **Authentication:** The backend API protects its endpoints using a custom middleware (`api/src/index.ts`) that validates the user's JWT by making a server-to-server call to the Supabase `/auth/v1/user` endpoint. This ensures that only authenticated users can access these special features.
+* **Rationale:** This pattern is used for features like the "Preset Engine," where building a complex query or concatenating large amounts of data on the client would be insecure and inefficient.
 
 ### 3.3. Core Data Schema
 
@@ -67,34 +79,26 @@ All data is transactionally tied to a `project`. The `project_id` foreign key is
   * **Conceptual Design:** All features listed have been conceptually designed.
   * **v1 DB Schema:** The initial schema is defined in `supabase/migrations/0001_initial_schema.sql`.
   * **CI/CD Pipelines:** Workflows for Database, API, and Frontend deployments are complete and operational.
-  * **User Authentication:** A full authentication flow is implemented. Backend JWT validation is handled by a custom middleware making direct calls to the Supabase API.
+  * **User Authentication:** A full authentication flow is implemented on the frontend.
 
 ### 4.2. Next Up: Phase 3 - Core Application CRUD
 
 1.  **Implement Row Level Security (RLS) & Project Management:**
-      * **Database:** Activate and write RLS policies for all data tables (`projects`, `documents`, `events`, etc.). Policies must enforce that users can only access data for projects they are a member of, respecting the `role` in `project_members` for write permissions.
-      * **API Endpoints:**
-          * `GET /projects`: List all projects a user is a member of.
-          * `POST /projects`: Create a new project, automatically making the creator the `owner`.
-          * `GET /projects/:id`: Get details for a single project.
-          * `DELETE /projects/:id`: Delete a project (owner role required).
-          * `POST /projects/:id/members`: Add a new member to a project (owner role required).
-      * **Frontend UI:**
-          * Implement a project selection page/component for users with multiple projects.
-          * Implement the UI for a user to create a new project.
-          * Build a project settings page to manage members.
-2.  **API CRUD Endpoints for `documents`:**
-      * **API Endpoints:** Build the full, project-scoped CRUD endpoints (GET list, GET one, POST, PUT, DELETE) for `documents`. Ensure all data access respects RLS.
-      * **Frontend UI:** Build the main dashboard view for listing, creating, and editing `documents` within the currently selected project.
+      * **Database:** Activate and write RLS policies for all data tables (`projects`, `documents`, `events`, etc.). Policies must enforce that users can only access data for projects they are a member of, respecting the `role` in `project_members` for write permissions. *(This is complete)*
+      * **Frontend UI & Logic:**
+          * Implement logic to list all projects a user is a member of by calling Supabase directly.
+          * Implement the UI for a user to create a new project, inserting directly into the `projects` table. The `assign_project_owner` trigger will handle making the creator the `owner`.
+          * Build UI to get details for a single project.
+          * Implement UI to delete a project (RLS will enforce owner role).
+          * Build a project settings page to manage members by inserting/deleting from the `project_members` table.
+2.  **Frontend CRUD for `documents`:**
+      * **Frontend UI & Logic:** Build the full, project-scoped CRUD UI (list, get one, create, edit, delete) for `documents`. Ensure all data access calls the Supabase API directly and respects RLS.
 
 ### 4.3. Future: Phase 4 - Events & Tagging
 
-  * **API:**
-      * Build project-scoped CRUD endpoints for `events`.
-      * Build endpoints for `tags`, allowing them to be attached to and detached from both `documents` and `events`.
-  * **Frontend:**
-      * Implement UI for creating and managing `events`. Consider a timeline view.
-      * Integrate tagging functionality into the `document` and `event` editing views.
+  * **Frontend UI & Logic:**
+      * Build project-scoped CRUD UI for `events`.
+      * Implement UI for `tags`, allowing them to be attached to and detached from both `documents` and `events`.
 
 ### 4.4. Future: Phase 5 - The Core "Preset" Engine
 
@@ -122,14 +126,20 @@ This structure outlines where the application's logic and code currently live.
 │   ├── package.json
 │   ├── firebase.json
 │   └── src/
-│       ├── App.tsx             # Main component, handles session state
+│       ├── accessors/          # Modules for direct Supabase data access
+│       │   └── projectAccessor.ts
+│       ├── pages/              # Page-level components
+│       │   ├── ProjectNavigationPage.tsx
+│       │   └── ProjectDetailPage.tsx
+│       ├── App.tsx             # Main component, handles routing & auth state
 │       ├── Auth.tsx            # Login/Signup UI component
 │       ├── main.tsx            # Application entry point
 │       ├── supabaseClient.ts   # Initializes Supabase client for frontend
-│       └── api.ts              # Utility for making authenticated API calls
+│       └── api.ts              # Utility for making calls to our backend API
 │
 └── supabase/
 ├── migrations/
 │   └── 0001_initial_schema.sql
+│   └── 0002_implement_rls_policies.sql
 └── config.toml
 ```
