@@ -13,6 +13,7 @@ WITH CHECK (user_id = auth.uid());
 
 -- While we are here, let's add other sensible policies for project_members.
 -- A user should be able to see their own membership record.
+
 CREATE POLICY "Allow users to see their own membership"
 ON public.project_members
 FOR SELECT

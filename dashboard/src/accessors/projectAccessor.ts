@@ -23,18 +23,27 @@ export const createProject = async (name: string) => {
   
   // RLS policies on the 'projects' table will allow this insert.
   // The 'assign_project_owner' trigger will then run on the database.
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('projects')
     .insert([{ name }])
-    .select()
-    .single(); // Use .single() to get the created object back
 
   if (error) {
     console.error("Error creating project:", error);
     throw error;
   }
 
-  return data;
+  let selected = await supabase
+    .from('projects')
+    .select()
+    .filter("name","eq",name)
+    .single()
+
+  if (selected.error) {
+    console.error("Error creating project:", error);
+    throw error;
+  }
+
+  return selected.data;
 };
 
 export const deleteProject = async (projectId: string) => {
