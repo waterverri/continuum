@@ -18,7 +18,6 @@ ON public.project_members
 FOR SELECT
 USING (user_id = auth.uid());
 
--- A project owner should be able to see all members of their project.
 CREATE POLICY "Allow project owners to see all members"
 ON public.project_members
 FOR SELECT
