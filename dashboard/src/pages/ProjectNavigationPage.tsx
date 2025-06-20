@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getProjects, createProject, deleteProject } from '../accessors/projectAccessor';
 import './ProjectNavigationPage.css';
+import { supabase } from '../supabaseClient'; 
 
 // Define a type for our project for better type safety
 interface Project {
