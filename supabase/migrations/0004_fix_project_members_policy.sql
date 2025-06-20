@@ -24,7 +24,6 @@ ON public.project_members
 FOR SELECT
 USING (get_project_role(project_id, auth.uid()) = 'owner');
 
--- A user should be able to leave a project (unless they are the owner).
 CREATE POLICY "Allow members to leave a project"
 ON public.project_members
 FOR DELETE
