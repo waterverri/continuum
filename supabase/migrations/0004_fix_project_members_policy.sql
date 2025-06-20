@@ -30,7 +30,6 @@ ON public.project_members
 FOR DELETE
 USING (get_project_role(project_id, auth.uid()) IN ('editor', 'viewer'));
 
--- An owner should be able to remove other members.
 CREATE POLICY "Allow owners to remove members"
 ON public.project_members
 FOR DELETE

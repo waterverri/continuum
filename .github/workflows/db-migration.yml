@@ -28,4 +28,4 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           echo "Pushing migrations to production..."
-          supabase db push --db-url "$SUPABASE_DB_URL"
+          supabase db reset --db-url "$SUPABASE_DB_URL"
