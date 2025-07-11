@@ -1,9 +1,3 @@
-Excellent point. Consolidating the descriptions of these complex relationships into a dedicated section will greatly improve the clarity of the technical documentation.
-
-Here is the updated `projectcontext.md` with the new, dedicated section explaining the document relationship paradigm.
-
------
-
 # **Project Context: Continuum (For Developer & LLM Use)**
 
 **Last Updated:** June 20, 2025
