@@ -6,9 +6,9 @@ import {
   createDocument, 
   updateDocument, 
   deleteDocument, 
-  getDocument,
-  Document 
+  getDocument
 } from '../api';
+import type { Document } from '../api';
 
 interface DocumentFormData {
   title: string;
@@ -225,7 +225,6 @@ export default function ProjectDetailPage() {
               setIsEditing(false);
               resetForm();
             }}
-            availableDocuments={documents.filter(d => d.id !== selectedDocument?.id)}
             addComponent={addComponent}
             removeComponent={removeComponent}
             isCreating={isCreating}
@@ -256,7 +255,6 @@ interface DocumentFormProps {
   setFormData: (data: DocumentFormData) => void;
   onSave: () => void;
   onCancel: () => void;
-  availableDocuments: Document[];
   addComponent: () => void;
   removeComponent: (key: string) => void;
   isCreating: boolean;
@@ -267,7 +265,6 @@ function DocumentForm({
   setFormData, 
   onSave, 
   onCancel, 
-  availableDocuments, 
   addComponent, 
   removeComponent,
   isCreating 
