@@ -19,7 +19,7 @@ router.get('/:projectId', async (req: RequestWithUser, res: Response) => {
     const userToken = req.token!;
     
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     // Verify user has access to this project via RLS
     const { data: documents, error } = await userSupabase
@@ -51,7 +51,7 @@ router.get('/:projectId/:documentId', async (req: RequestWithUser, res: Response
     const userToken = req.token!;
     
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     const { data: document, error } = await userSupabase
       .from('documents')
@@ -136,7 +136,7 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
     }
     
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     // Create the document
     const { data: document, error } = await userSupabase
@@ -197,7 +197,7 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
     }
     
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     // Update the document
     const { data: document, error } = await userSupabase
@@ -241,7 +241,7 @@ router.delete('/:projectId/:documentId', async (req: RequestWithUser, res: Respo
     const userToken = req.token!;
     
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     const { error } = await userSupabase
       .from('documents')

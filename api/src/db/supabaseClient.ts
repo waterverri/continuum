@@ -12,13 +12,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Create a user-authenticated client that respects RLS policies
-export const createUserSupabaseClient = async (userToken: string) => {
-  const client = createClient(supabaseUrl, supabaseAnonKey);
-  
-  // Set the access token for this client instance
-  await client.auth.setSession({
-    access_token: userToken,
-    refresh_token: '', // Not needed for server-side calls
+export const createUserSupabaseClient = (userToken: string) => {
+  // For server-side RLS to work, we need to create a client that will 
+  // pass the user's JWT token with each request so auth.uid() works
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+      },
+    },
   });
   
   return client;

@@ -78,7 +78,7 @@ async function hasCycle(
   
   try {
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     // Get the document and check its components
     const { data: doc, error } = await userSupabase
@@ -140,7 +140,7 @@ export async function resolveCompositeDocument(
     let resolvedContent = document.content || '';
     
     // Create user-authenticated client for RLS
-    const userSupabase = await createUserSupabaseClient(userToken);
+    const userSupabase = createUserSupabaseClient(userToken);
     
     // Replace each placeholder with resolved content
     for (const [placeholder, componentId] of Object.entries(document.components)) {
