@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient';
+import { createUserSupabaseClient } from '../db/supabaseClient';
 
 export interface Document {
   id: string;
@@ -77,8 +77,11 @@ async function hasCycle(
   recursionStack.add(currentDocId);
   
   try {
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
     // Get the document and check its components
-    const { data: doc, error } = await supabase
+    const { data: doc, error } = await userSupabase
       .from('documents')
       .select('id, is_composite, components')
       .eq('id', currentDocId)
@@ -136,10 +139,13 @@ export async function resolveCompositeDocument(
     resolvedDocs.add(document.id);
     let resolvedContent = document.content || '';
     
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
     // Replace each placeholder with resolved content
     for (const [placeholder, componentId] of Object.entries(document.components)) {
       // Fetch the component document
-      const { data: componentDoc, error } = await supabase
+      const { data: componentDoc, error } = await userSupabase
         .from('documents')
         .select('*')
         .eq('id', componentId)

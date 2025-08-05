@@ -1,6 +1,6 @@
 import express, { Response } from 'express';
 import { RequestWithUser } from '../index';
-import { supabase } from '../db/supabaseClient';
+import { createUserSupabaseClient } from '../db/supabaseClient';
 import { 
   validateNoCyclicDependencies, 
   resolveCompositeDocument, 
@@ -18,8 +18,11 @@ router.get('/:projectId', async (req: RequestWithUser, res: Response) => {
     const { projectId } = req.params;
     const userToken = req.token!;
     
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
     // Verify user has access to this project via RLS
-    const { data: documents, error } = await supabase
+    const { data: documents, error } = await userSupabase
       .from('documents')
       .select('*')
       .eq('project_id', projectId)
@@ -47,7 +50,10 @@ router.get('/:projectId/:documentId', async (req: RequestWithUser, res: Response
     const { resolve } = req.query; // ?resolve=true to get resolved content
     const userToken = req.token!;
     
-    const { data: document, error } = await supabase
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    const { data: document, error } = await userSupabase
       .from('documents')
       .select('*')
       .eq('id', documentId)
@@ -129,8 +135,11 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
       }
     }
     
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
     // Create the document
-    const { data: document, error } = await supabase
+    const { data: document, error } = await userSupabase
       .from('documents')
       .insert({
         project_id: projectId,
@@ -187,8 +196,11 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
       }
     }
     
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
     // Update the document
-    const { data: document, error } = await supabase
+    const { data: document, error } = await userSupabase
       .from('documents')
       .update({
         title,
@@ -226,8 +238,12 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
 router.delete('/:projectId/:documentId', async (req: RequestWithUser, res: Response) => {
   try {
     const { projectId, documentId } = req.params;
+    const userToken = req.token!;
     
-    const { error } = await supabase
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    const { error } = await userSupabase
       .from('documents')
       .delete()
       .eq('id', documentId)
