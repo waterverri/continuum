@@ -62,9 +62,11 @@ app.use(express.json());
 const apiRouter = express.Router();
 apiRouter.use(validateSupabaseJwt);
 
-// Example for a future route:
-// import presetRouter from './routes/presets';
-// apiRouter.use('/presets', presetRouter);
+// Import route handlers
+import documentRouter from './routes/documents';
+
+// Mount route handlers
+apiRouter.use('/documents', documentRouter);
 
 app.use('/api', apiRouter);
 
