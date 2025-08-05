@@ -109,32 +109,28 @@ The `documents` table is the most complex entity. Relationships between document
   * **Row Level Security (RLS) & Project Management:**
       * **Database:** RLS policies are active for projects, `project_members`, and documents, ensuring users can only access data for projects they are a member of. This is defined in `0002_implement_rls_policies.sql` and `0003_fix_project_members_policy.sql`.
       * **Frontend UI & Logic:** The UI and logic for listing, creating, and deleting projects is complete. These actions call the Supabase API directly and rely on RLS for security.
+  * **Phase 3: Complete Document Management System:**
+      * **Database Schema:** Migration `0004_add_document_management_columns.sql` added `title`, `is_composite`, and `components` columns to the documents table.
+      * **Backend API:** Full REST API implemented in `api/src/routes/documents.ts` with:
+          * Document CRUD operations (GET, POST, PUT, DELETE) for individual projects
+          * Cyclic dependency validation using DFS algorithm in `api/src/services/documentService.ts`
+          * Document resolution engine for composite documents with recursive {{placeholder}} resolution
+          * User-authenticated Supabase clients ensuring RLS compliance
+      * **Frontend UI:** Complete document management interface in `ProjectDetailPage.tsx` with:
+          * Sidebar document list with visual indicators for static vs composite documents
+          * Specialized form editor supporting both document types
+          * Component editor for managing {{placeholder}} mappings in composite documents
+          * Document viewer with raw content display and real-time template resolution
+          * Error handling and loading states throughout
 
-### **4.2. Next Up: Phase 3 Cont. - Core Application Logic & Document Management**
+### **4.2. Next Up: Phase 4 - Events & Tagging**
 
-**Note:** The implementation of document management has evolved beyond simple CRUD and requires significant application-level logic.
+**Note:** With core document management complete, the next phase focuses on temporal organization and metadata management.
 
-1.  **Document Management:**
-
-      * **Database Schema:** A new migration must be created to add the following columns to the `documents` table:
-          * `title TEXT NOT NULL`
-          * `is_composite BOOLEAN NOT NULL DEFAULT FALSE`
-          * `components JSONB NULL`
-      * **Backend Logic (New Requirement):** The creation and updating of composite documents are **not** simple CRUD operations. They require server-side logic, likely in a new Cloud Function, to ensure data integrity. This function must:
-          * **Perform Cyclic Dependency Validation:** On every write operation for a composite document, the function must traverse the dependency graph defined in the `components` field to ensure the change does not create an infinite loop (e.g., Document A cannot contain Document B if B already contains A). This is a mandatory data integrity step.
-      * **Application Logic (Reading):** A resolution engine must be built. When a document with `is_composite = true` is requested, this engine must:
-        1.  Take the document's `content` as a master template.
-        2.  Parse the `components` JSONB map (`{"key": "document_id", ...}`).
-        3.  For each key, **recursively resolve the content** of the associated document ID.
-        4.  Inject the resolved content into the template, replacing placeholders like `{{key}}`.
-        5.  Return the final assembled string.
-      * **Frontend UI & Logic:** Build the UI to manage both static and composite documents within `ProjectDetailPage.tsx`. This includes a standard text editor for static documents and a specialized "Component Editor" for composite documents to manage the template and component map.
-
-2.  **Frontend CRUD for Project Members:**
-
+1.  **Project Member Management (Quick Win):**
       * **Frontend UI & Logic:** Build a project settings page where project owners can manage members (add/remove users, change roles) by inserting/deleting/updating rows in the `project_members` table.
 
-### **4.3. Future: Phase 4 - Events & Tagging**
+2.  **Events & Timeline System:**
 
   * **Database Schema:** A new migration must be created to add the `event_documents` join table.
   * **Frontend UI & Logic:**

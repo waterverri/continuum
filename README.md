@@ -58,9 +58,13 @@ This is Continuum. It's not just a place to store your notes. It's an engine tha
 ## Features
 
 * **User Authentication:** Full user sign-up and login with email/password and Google.
-* **Secure API:** Backend API protected with JWT authentication.
+* **Project Management:** Create, manage, and collaborate on writing projects with role-based access control.
+* **Document Management:** Complete CRUD system for static and composite documents.
+* **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents using {{placeholder}} syntax.
+* **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document references.
+* **Real-time Resolution:** View how composite documents resolve into final assembled content.
+* **Secure API:** Backend API protected with JWT authentication and Row Level Security.
 * **Automated Deployments:** Full CI/CD pipelines for the frontend, backend, and database migrations.
-* **Project-Based Scaffolding:** A basic dashboard view for authenticated users.
 
 ## Architectural Overview
 
