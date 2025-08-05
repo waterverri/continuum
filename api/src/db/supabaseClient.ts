@@ -12,12 +12,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Create a user-authenticated client that respects RLS policies
-export const createUserSupabaseClient = (userToken: string) => {
+export const createUserSupabaseClient = async (userToken: string) => {
   const client = createClient(supabaseUrl, supabaseAnonKey);
-  // Set the user's JWT token for RLS-aware operations
-  client.auth.setSession({
+  
+  // Set the access token for this client instance
+  await client.auth.setSession({
     access_token: userToken,
     refresh_token: '', // Not needed for server-side calls
   });
+  
   return client;
 };
