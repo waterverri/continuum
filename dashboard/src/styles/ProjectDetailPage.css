@@ -22,6 +22,7 @@
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease;
+  overflow: hidden;
 }
 
 .sidebar__header {
@@ -87,6 +88,12 @@
 .sidebar__filters .filter-input {
   width: 100%;
   box-sizing: border-box;
+}
+
+.sidebar__filters .filter-select {
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .sidebar__filters .filter-row {
@@ -659,7 +666,8 @@
   width: 100%;
 }
 
-.filter-select {
+/* Modal filter select styles */
+.modal-filters .filter-select {
   flex: 1;
   min-width: 150px;
 }
