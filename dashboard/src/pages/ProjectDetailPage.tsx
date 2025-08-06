@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { 
@@ -17,6 +17,296 @@ interface DocumentFormData {
   document_type: string;
   is_composite: boolean;
   components: Record<string, string>;
+}
+
+// Custom hook for document filtering
+function useDocumentFilter(documents: Document[]) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [formatFilter, setFormatFilter] = useState('');
+
+  const filteredDocuments = useMemo(() => {
+    return documents.filter(doc => {
+      const matchesSearch = !searchTerm || 
+        doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.content && doc.content.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesType = !typeFilter || doc.document_type === typeFilter;
+      
+      const matchesFormat = !formatFilter || 
+        (formatFilter === 'composite' && doc.is_composite) ||
+        (formatFilter === 'static' && !doc.is_composite);
+
+      return matchesSearch && matchesType && matchesFormat;
+    });
+  }, [documents, searchTerm, typeFilter, formatFilter]);
+
+  const availableTypes = useMemo(() => {
+    return [...new Set(documents.map(doc => doc.document_type).filter(Boolean))];
+  }, [documents]);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('');
+    setFormatFilter('');
+  };
+
+  return {
+    searchTerm,
+    setSearchTerm,
+    typeFilter,
+    setTypeFilter,
+    formatFilter,
+    setFormatFilter,
+    filteredDocuments,
+    availableTypes,
+    resetFilters,
+    hasActiveFilters: searchTerm || typeFilter || formatFilter
+  };
+}
+
+// Document Search Input Component
+interface DocumentSearchInputProps {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function DocumentSearchInput({ searchTerm, onSearchChange, placeholder = 'Search documents...' }: DocumentSearchInputProps) {
+  return (
+    <div className="filter-group">
+      <input
+        type="text"
+        className="filter-input"
+        placeholder={placeholder}
+        value={searchTerm}
+        onChange={(e) => onSearchChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+// Document Type Filter Component
+interface DocumentTypeFilterProps {
+  typeFilter: string;
+  onTypeChange: (value: string) => void;
+  availableTypes: string[];
+}
+
+function DocumentTypeFilter({ typeFilter, onTypeChange, availableTypes }: DocumentTypeFilterProps) {
+  return (
+    <select 
+      className="filter-select"
+      value={typeFilter}
+      onChange={(e) => onTypeChange(e.target.value)}
+    >
+      <option value="">All Types</option>
+      {availableTypes.map(type => (
+        <option key={type} value={type}>{type}</option>
+      ))}
+    </select>
+  );
+}
+
+// Document Format Filter Component
+interface DocumentFormatFilterProps {
+  formatFilter: string;
+  onFormatChange: (value: string) => void;
+}
+
+function DocumentFormatFilter({ formatFilter, onFormatChange }: DocumentFormatFilterProps) {
+  return (
+    <select 
+      className="filter-select"
+      value={formatFilter}
+      onChange={(e) => onFormatChange(e.target.value)}
+    >
+      <option value="">All Formats</option>
+      <option value="static">Static Documents</option>
+      <option value="composite">Composite Documents</option>
+    </select>
+  );
+}
+
+// Combined Filters Component
+interface DocumentFiltersProps {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  typeFilter: string;
+  onTypeChange: (value: string) => void;
+  formatFilter: string;
+  onFormatChange: (value: string) => void;
+  availableTypes: string[];
+  searchPlaceholder?: string;
+  showFilters?: boolean;
+}
+
+function DocumentFilters({ 
+  searchTerm, 
+  onSearchChange, 
+  typeFilter, 
+  onTypeChange, 
+  formatFilter, 
+  onFormatChange, 
+  availableTypes,
+  searchPlaceholder,
+  showFilters = true
+}: DocumentFiltersProps) {
+  return (
+    <div className="modal-filters">
+      <DocumentSearchInput 
+        searchTerm={searchTerm}
+        onSearchChange={onSearchChange}
+        placeholder={searchPlaceholder}
+      />
+      
+      {showFilters && (
+        <div className="filter-row">
+          <DocumentTypeFilter 
+            typeFilter={typeFilter}
+            onTypeChange={onTypeChange}
+            availableTypes={availableTypes}
+          />
+          <DocumentFormatFilter 
+            formatFilter={formatFilter}
+            onFormatChange={onFormatChange}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Document List Item Component
+interface DocumentListItemProps {
+  document: Document;
+  isSelected?: boolean;
+  onClick?: (document: Document) => void;
+  showPreview?: boolean;
+  showActions?: boolean;
+  onEdit?: (document: Document) => void;
+  onDelete?: (documentId: string) => void;
+  variant?: 'sidebar' | 'picker';
+}
+
+function DocumentListItem({ 
+  document, 
+  isSelected = false, 
+  onClick, 
+  showPreview = false,
+  showActions = false,
+  onEdit,
+  onDelete,
+  variant = 'sidebar'
+}: DocumentListItemProps) {
+  const handleClick = () => {
+    if (onClick) {
+      onClick(document);
+    }
+  };
+
+  const className = variant === 'sidebar' 
+    ? `document-item ${isSelected ? 'document-item--selected' : ''}` 
+    : 'document-picker-item';
+
+  return (
+    <div className={className} onClick={handleClick}>
+      <div className={variant === 'sidebar' ? 'document-item__header' : 'document-picker-header'}>
+        <h4>{document.title}</h4>
+        <span className={variant === 'sidebar' ? 'document-item__meta' : 'document-picker-meta'}>
+          {document.is_composite ? '🔗 Composite' : '📄 Static'}
+          {document.document_type && ` • ${document.document_type}`}
+        </span>
+      </div>
+      
+      {showPreview && document.content && (
+        <div className="document-picker-preview">
+          {document.content.substring(0, 150)}
+          {document.content.length > 150 && '...'}
+        </div>
+      )}
+      
+      {variant === 'picker' && (
+        <div className="document-picker-id">
+          ID: {document.id.substring(0, 8)}...
+        </div>
+      )}
+      
+      {showActions && (
+        <div className="document-item__actions">
+          {onEdit && (
+            <button 
+              className="btn btn--sm"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onEdit(document); 
+              }}
+            >
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button 
+              className="btn btn--sm btn--danger"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onDelete(document.id); 
+              }}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Document List Component
+interface DocumentListProps {
+  documents: Document[];
+  selectedDocumentId?: string;
+  onDocumentClick?: (document: Document) => void;
+  onDocumentEdit?: (document: Document) => void;
+  onDocumentDelete?: (documentId: string) => void;
+  variant?: 'sidebar' | 'picker';
+  emptyMessage?: string;
+}
+
+function DocumentList({ 
+  documents, 
+  selectedDocumentId, 
+  onDocumentClick, 
+  onDocumentEdit, 
+  onDocumentDelete,
+  variant = 'sidebar',
+  emptyMessage = 'No documents found.'
+}: DocumentListProps) {
+  if (documents.length === 0) {
+    return (
+      <div className="empty-state">
+        <p>{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={variant === 'sidebar' ? 'document-list' : 'document-picker-list'}>
+      {documents.map(doc => (
+        <DocumentListItem
+          key={doc.id}
+          document={doc}
+          isSelected={selectedDocumentId === doc.id}
+          onClick={onDocumentClick}
+          onEdit={onDocumentEdit}
+          onDelete={onDocumentDelete}
+          showPreview={variant === 'picker'}
+          showActions={variant === 'sidebar'}
+          variant={variant}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function ProjectDetailPage() {
@@ -40,6 +330,9 @@ export default function ProjectDetailPage() {
     is_composite: false,
     components: {}
   });
+  
+  // Use document filter hook for sidebar
+  const sidebarFilter = useDocumentFilter(documents);
 
   const getAccessToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -183,6 +476,16 @@ export default function ProjectDetailPage() {
     setFormData({ ...formData, components: newComponents });
   };
 
+  const handleSidebarDocumentClick = (document: Document) => {
+    setSelectedDocument(document);
+    setSidebarOpen(false);
+  };
+
+  const handleSidebarDocumentEdit = (document: Document) => {
+    startEdit(document);
+    setSidebarOpen(false);
+  };
+
   if (loading) return <div className="loading">Loading documents...</div>;
 
   return (
@@ -221,44 +524,37 @@ export default function ProjectDetailPage() {
           </div>
         )}
         
-        <div className="document-list">
-          {documents.map(doc => (
-            <div 
-              key={doc.id} 
-              className={`document-item ${selectedDocument?.id === doc.id ? 'document-item--selected' : ''}`}
-              onClick={() => {
-                setSelectedDocument(doc);
-                setSidebarOpen(false);
-              }}
+        {/* Document Search and Filters */}
+        <div className="sidebar__filters">
+          <DocumentFilters
+            searchTerm={sidebarFilter.searchTerm}
+            onSearchChange={sidebarFilter.setSearchTerm}
+            typeFilter={sidebarFilter.typeFilter}
+            onTypeChange={sidebarFilter.setTypeFilter}
+            formatFilter={sidebarFilter.formatFilter}
+            onFormatChange={sidebarFilter.setFormatFilter}
+            availableTypes={sidebarFilter.availableTypes}
+            searchPlaceholder="Search documents..."
+          />
+          {sidebarFilter.hasActiveFilters && (
+            <button 
+              className="btn btn--sm btn--secondary"
+              onClick={sidebarFilter.resetFilters}
             >
-              <div className="document-item__header">
-                <h4>{doc.title}</h4>
-                <small className="document-item__meta">
-                  {doc.is_composite ? '🔗 Composite' : '📄 Static'} • 
-                  {doc.document_type || 'No type'}
-                </small>
-              </div>
-              <div className="document-item__actions">
-                <button 
-                  className="btn btn--sm"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    startEdit(doc); 
-                    setSidebarOpen(false);
-                  }}
-                >
-                  Edit
-                </button>
-                <button 
-                  className="btn btn--sm btn--danger"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id); }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+              Clear Filters
+            </button>
+          )}
         </div>
+        
+        <DocumentList
+          documents={sidebarFilter.filteredDocuments}
+          selectedDocumentId={selectedDocument?.id}
+          onDocumentClick={handleSidebarDocumentClick}
+          onDocumentEdit={handleSidebarDocumentEdit}
+          onDocumentDelete={handleDeleteDocument}
+          variant="sidebar"
+          emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
+        />
         
         <div className="sidebar__footer">
           <Link to="/" className="back-link">← Back to All Projects</Link>
@@ -537,25 +833,11 @@ interface DocumentPickerModalProps {
 }
 
 function DocumentPickerModal({ documents, componentKey, onSelect, onCancel }: DocumentPickerModalProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [formatFilter, setFormatFilter] = useState('');
+  const documentFilter = useDocumentFilter(documents);
 
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = !searchTerm || 
-      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doc.content && doc.content.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesType = !typeFilter || doc.document_type === typeFilter;
-    
-    const matchesFormat = !formatFilter || 
-      (formatFilter === 'composite' && doc.is_composite) ||
-      (formatFilter === 'static' && !doc.is_composite);
-
-    return matchesSearch && matchesType && matchesFormat;
-  });
-
-  const documentTypes = [...new Set(documents.map(doc => doc.document_type).filter(Boolean))];
+  const handleDocumentSelect = (document: Document) => {
+    onSelect(document.id);
+  };
 
   return (
     <div className="modal-overlay">
@@ -565,74 +847,24 @@ function DocumentPickerModal({ documents, componentKey, onSelect, onCancel }: Do
           <button className="modal-close" onClick={onCancel}>×</button>
         </div>
         
-        <div className="modal-filters">
-          <div className="filter-group">
-            <input
-              type="text"
-              className="filter-input"
-              placeholder="Search by title or content..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="filter-row">
-            <select 
-              className="filter-select"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="">All Types</option>
-              {documentTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            
-            <select 
-              className="filter-select"
-              value={formatFilter}
-              onChange={(e) => setFormatFilter(e.target.value)}
-            >
-              <option value="">All Formats</option>
-              <option value="static">Static Documents</option>
-              <option value="composite">Composite Documents</option>
-            </select>
-          </div>
-        </div>
+        <DocumentFilters
+          searchTerm={documentFilter.searchTerm}
+          onSearchChange={documentFilter.setSearchTerm}
+          typeFilter={documentFilter.typeFilter}
+          onTypeChange={documentFilter.setTypeFilter}
+          formatFilter={documentFilter.formatFilter}
+          onFormatChange={documentFilter.setFormatFilter}
+          availableTypes={documentFilter.availableTypes}
+          searchPlaceholder="Search by title or content..."
+        />
 
         <div className="modal-body">
-          <div className="document-picker-list">
-            {filteredDocuments.length === 0 ? (
-              <div className="empty-state">
-                <p>No documents found matching your criteria.</p>
-              </div>
-            ) : (
-              filteredDocuments.map(doc => (
-                <div 
-                  key={doc.id}
-                  className="document-picker-item"
-                  onClick={() => onSelect(doc.id)}
-                >
-                  <div className="document-picker-header">
-                    <h4>{doc.title}</h4>
-                    <span className="document-picker-meta">
-                      {doc.is_composite ? '🔗 Composite' : '📄 Static'}
-                      {doc.document_type && ` • ${doc.document_type}`}
-                    </span>
-                  </div>
-                  {doc.content && (
-                    <div className="document-picker-preview">
-                      {doc.content.substring(0, 150)}
-                      {doc.content.length > 150 && '...'}
-                    </div>
-                  )}
-                  <div className="document-picker-id">
-                    ID: {doc.id.substring(0, 8)}...
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <DocumentList
+            documents={documentFilter.filteredDocuments}
+            onDocumentClick={handleDocumentSelect}
+            variant="picker"
+            emptyMessage="No documents found matching your criteria."
+          />
         </div>
 
         <div className="modal-footer">
