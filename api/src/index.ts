@@ -86,7 +86,7 @@ app.get('/preset/:projectId/:presetName', async (req: Request, res: Response) =>
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Supabase configuration missing for external API');
+      console.error('Supabase configuration missing for external API. Please configure SUPABASE_SERVICE_KEY in environment variables.');
       return res.status(500).send('Service configuration error');
     }
 
