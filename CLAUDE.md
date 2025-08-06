@@ -32,9 +32,10 @@ Navigate to `/dashboard` directory:
 - Database deployment handled via GitHub Actions workflow
 
 ### Testing Infrastructure
-- **Frontend**: Vitest + React Testing Library with comprehensive component and integration tests
+- **Frontend**: Vitest + React Testing Library with focused unit tests for core functionality
 - **Backend**: Jest + Supertest for API endpoints, services, and middleware testing
-- **Coverage**: Both frontend and backend have extensive test coverage including mocks for external dependencies
+- **Test Strategy**: Prioritizes unit tests for business logic validation, production testing for integration scenarios
+- **Coverage**: Core functionality verified through targeted unit tests with clean mock architecture
 
 ## Architecture Overview
 
@@ -75,7 +76,12 @@ Continuum is a full-stack application for writers to manage story context with t
 - User authentication and project CRUD with RLS policies
 - Complete document management system with composite document support
 - Professional UI with responsive design and modal interfaces
-- Comprehensive testing infrastructure (30+ frontend tests, 13+ backend tests)
+- **Refactored Document Filtering System** with reusable components:
+  - `useDocumentFilter` custom hook for shared filtering logic
+  - Modular filter components (search, type, format filtering)
+  - Enhanced sidebar with comprehensive search and filtering capabilities
+  - Performance optimizations with memoization
+- Focused unit test suite for core functionality validation
 - CI/CD pipelines for automated deployment
 
 **Next**: Events and tagging system, project member management, preset engine for dynamic context generation
@@ -97,3 +103,5 @@ Dashboard requires `.env.local` with:
 - Composite documents require server-side validation to prevent cyclic dependencies
 - All database schema changes must be implemented as Supabase migrations
 - Frontend components follow project conventions established in existing pages like `ProjectDetailPage.tsx`
+- **Component Architecture**: Refactored filtering system demonstrates proper component composition with reusable hooks and modular design patterns
+- **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks
