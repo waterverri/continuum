@@ -29,6 +29,10 @@ export default function ProjectDetailPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [resolvedContent, setResolvedContent] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showDocumentPicker, setShowDocumentPicker] = useState(false);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [componentKeyToAdd, setComponentKeyToAdd] = useState<string | null>(null);
+  const [keyInputValue, setKeyInputValue] = useState('');
   const [formData, setFormData] = useState<DocumentFormData>({
     title: '',
     content: '',
@@ -140,14 +144,37 @@ export default function ProjectDetailPage() {
   };
 
   const addComponent = () => {
-    const key = prompt('Enter placeholder key (without {{}}):');
-    const docId = prompt('Enter document ID to reference:');
-    if (key && docId) {
+    setKeyInputValue('');
+    setShowKeyInput(true);
+  };
+
+  const confirmComponentKey = () => {
+    if (keyInputValue.trim()) {
+      setComponentKeyToAdd(keyInputValue.trim());
+      setShowKeyInput(false);
+      setShowDocumentPicker(true);
+    }
+  };
+
+  const cancelKeyInput = () => {
+    setShowKeyInput(false);
+    setKeyInputValue('');
+  };
+
+  const selectDocumentForComponent = (documentId: string) => {
+    if (componentKeyToAdd) {
       setFormData({
         ...formData,
-        components: { ...formData.components, [key]: docId }
+        components: { ...formData.components, [componentKeyToAdd]: documentId }
       });
     }
+    setShowDocumentPicker(false);
+    setComponentKeyToAdd(null);
+  };
+
+  const cancelDocumentSelection = () => {
+    setShowDocumentPicker(false);
+    setComponentKeyToAdd(null);
   };
 
   const removeComponent = (key: string) => {
@@ -262,6 +289,7 @@ export default function ProjectDetailPage() {
               addComponent={addComponent}
               removeComponent={removeComponent}
               isCreating={isCreating}
+              documents={documents}
             />
           )}
           
@@ -286,6 +314,26 @@ export default function ProjectDetailPage() {
           )}
         </div>
       </div>
+      
+      {/* Component Key Input Modal */}
+      {showKeyInput && (
+        <ComponentKeyInputModal
+          value={keyInputValue}
+          onChange={setKeyInputValue}
+          onConfirm={confirmComponentKey}
+          onCancel={cancelKeyInput}
+        />
+      )}
+      
+      {/* Document Picker Modal */}
+      {showDocumentPicker && (
+        <DocumentPickerModal
+          documents={documents.filter(doc => doc.id !== selectedDocument?.id)}
+          componentKey={componentKeyToAdd}
+          onSelect={selectDocumentForComponent}
+          onCancel={cancelDocumentSelection}
+        />
+      )}
     </div>
   );
 }
@@ -299,6 +347,7 @@ interface DocumentFormProps {
   addComponent: () => void;
   removeComponent: (key: string) => void;
   isCreating: boolean;
+  documents: Document[];
 }
 
 function DocumentForm({ 
@@ -308,8 +357,14 @@ function DocumentForm({
   onCancel, 
   addComponent, 
   removeComponent,
-  isCreating 
+  isCreating,
+  documents
 }: DocumentFormProps) {
+  
+  const getDocumentTitle = (docId: string) => {
+    const doc = documents.find(d => d.id === docId);
+    return doc ? doc.title : `Unknown Document (${docId.substring(0, 8)}...)`;
+  };
   return (
     <div className="document-form">
       <h3 className="document-form__title">
@@ -368,9 +423,16 @@ function DocumentForm({
           <div className="components-list">
             {Object.entries(formData.components).map(([key, docId]) => (
               <div key={key} className="component-item">
-                <span className="component-mapping">
-                  <strong>{`{{${key}}}`}</strong> → {docId}
-                </span>
+                <div className="component-mapping">
+                  <div className="component-key">
+                    <strong>{`{{${key}}}`}</strong>
+                  </div>
+                  <div className="component-arrow">→</div>
+                  <div className="component-document">
+                    <span className="document-title">{getDocumentTitle(docId)}</span>
+                    <small className="document-id">ID: {docId.substring(0, 8)}...</small>
+                  </div>
+                </div>
                 <button 
                   className="btn btn--sm btn--danger"
                   onClick={() => removeComponent(key)}
@@ -462,6 +524,185 @@ function DocumentViewer({ document, resolvedContent, onResolve }: DocumentViewer
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Document Picker Modal Component
+interface DocumentPickerModalProps {
+  documents: Document[];
+  componentKey: string | null;
+  onSelect: (documentId: string) => void;
+  onCancel: () => void;
+}
+
+function DocumentPickerModal({ documents, componentKey, onSelect, onCancel }: DocumentPickerModalProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [formatFilter, setFormatFilter] = useState('');
+
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = !searchTerm || 
+      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doc.content && doc.content.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesType = !typeFilter || doc.document_type === typeFilter;
+    
+    const matchesFormat = !formatFilter || 
+      (formatFilter === 'composite' && doc.is_composite) ||
+      (formatFilter === 'static' && !doc.is_composite);
+
+    return matchesSearch && matchesType && matchesFormat;
+  });
+
+  const documentTypes = [...new Set(documents.map(doc => doc.document_type).filter(Boolean))];
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content document-picker-modal">
+        <div className="modal-header">
+          <h3>Select Document for {componentKey && `{{${componentKey}}}`}</h3>
+          <button className="modal-close" onClick={onCancel}>×</button>
+        </div>
+        
+        <div className="modal-filters">
+          <div className="filter-group">
+            <input
+              type="text"
+              className="filter-input"
+              placeholder="Search by title or content..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="filter-row">
+            <select 
+              className="filter-select"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">All Types</option>
+              {documentTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            
+            <select 
+              className="filter-select"
+              value={formatFilter}
+              onChange={(e) => setFormatFilter(e.target.value)}
+            >
+              <option value="">All Formats</option>
+              <option value="static">Static Documents</option>
+              <option value="composite">Composite Documents</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="document-picker-list">
+            {filteredDocuments.length === 0 ? (
+              <div className="empty-state">
+                <p>No documents found matching your criteria.</p>
+              </div>
+            ) : (
+              filteredDocuments.map(doc => (
+                <div 
+                  key={doc.id}
+                  className="document-picker-item"
+                  onClick={() => onSelect(doc.id)}
+                >
+                  <div className="document-picker-header">
+                    <h4>{doc.title}</h4>
+                    <span className="document-picker-meta">
+                      {doc.is_composite ? '🔗 Composite' : '📄 Static'}
+                      {doc.document_type && ` • ${doc.document_type}`}
+                    </span>
+                  </div>
+                  {doc.content && (
+                    <div className="document-picker-preview">
+                      {doc.content.substring(0, 150)}
+                      {doc.content.length > 150 && '...'}
+                    </div>
+                  )}
+                  <div className="document-picker-id">
+                    ID: {doc.id.substring(0, 8)}...
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn--secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component Key Input Modal
+interface ComponentKeyInputModalProps {
+  value: string;
+  onChange: (value: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ComponentKeyInputModal({ value, onChange, onConfirm, onCancel }: ComponentKeyInputModalProps) {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      onConfirm();
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content component-key-modal">
+        <div className="modal-header">
+          <h3>Add Component</h3>
+          <button className="modal-close" onClick={onCancel}>×</button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="key-input-section">
+            <label className="form-label">
+              Placeholder Key (without {`{{}}`}):
+              <input
+                type="text"
+                className="form-input"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="e.g., chapter1, character_intro, setting"
+                autoFocus
+              />
+            </label>
+            <p className="key-input-help">
+              This key will be used as {value && `{{${value}}}`} in your template content.
+            </p>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn--secondary" onClick={onCancel}>
+            Cancel
+          </button>
+          <button 
+            className="btn btn--primary" 
+            onClick={onConfirm}
+            disabled={!value.trim()}
+          >
+            Next: Select Document
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
