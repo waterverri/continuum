@@ -228,8 +228,12 @@ describe('Authentication Middleware', () => {
 
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
-      // Mock a network error during token validation
-      jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
+      // Set up a mock that will cause an error during JSON parsing
+      (global as any).mockFetchResponse = {
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new Error('Network error'))
+      };
 
       const response = await request(app)
         .get('/protected/test')

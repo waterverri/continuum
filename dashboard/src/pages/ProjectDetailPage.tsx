@@ -478,6 +478,8 @@ export default function ProjectDetailPage() {
 
   const handleSidebarDocumentClick = (document: Document) => {
     setSelectedDocument(document);
+    setIsEditing(false);
+    setResolvedContent(null);
     setSidebarOpen(false);
   };
 
@@ -812,7 +814,7 @@ function DocumentViewer({ document, resolvedContent, onResolve }: DocumentViewer
         </div>
       </div>
       
-      {resolvedContent && (
+      {document.is_composite && resolvedContent && (
         <div className="content-section">
           <h4>Resolved Content:</h4>
           <div className="content-display content-display--resolved">
