@@ -42,7 +42,7 @@ function useDocumentFilter(documents: Document[]) {
   }, [documents, searchTerm, typeFilter, formatFilter]);
 
   const availableTypes = useMemo(() => {
-    return [...new Set(documents.map(doc => doc.document_type).filter(Boolean))];
+    return [...new Set(documents.map(doc => doc.document_type).filter((type): type is string => Boolean(type)))];
   }, [documents]);
 
   const resetFilters = () => {
