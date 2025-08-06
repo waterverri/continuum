@@ -64,11 +64,92 @@ apiRouter.use(validateSupabaseJwt);
 
 // Import route handlers
 import documentRouter from './routes/documents';
+import presetRouter from './routes/presets';
 
 // Mount route handlers
 apiRouter.use('/documents', documentRouter);
+apiRouter.use('/presets', presetRouter);
 
 app.use('/api', apiRouter);
+
+// --- Public External API for LLM Systems ---
+// Import document resolution service
+import { resolveCompositeDocument } from './services/documentService';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+// GET /preset/:presetName - Public endpoint for external LLM systems
+app.get('/preset/:presetName', async (req: Request, res: Response) => {
+  try {
+    const { presetName } = req.params;
+    
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing for external API');
+      return res.status(500).send('Service configuration error');
+    }
+
+    // Use service key for server-side access (bypassing RLS for this public endpoint)
+    const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey);
+
+    // Find the preset by name (we'll need to search across all projects for now)
+    const { data: preset, error: presetError } = await supabase
+      .from('presets')
+      .select('id, name, rules, project_id')
+      .eq('name', presetName)
+      .single();
+
+    if (presetError || !preset) {
+      return res.status(404).send('Preset not found');
+    }
+
+    const documentId = preset.rules?.document_id;
+    if (!documentId) {
+      return res.status(400).send('Preset has no associated document');
+    }
+
+    // Fetch the document
+    const { data: document, error: docError } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', documentId)
+      .eq('project_id', preset.project_id)
+      .single();
+
+    if (docError || !document) {
+      return res.status(404).send('Document not found');
+    }
+
+    // Resolve the document content (handling composite documents)
+    let finalContent: string;
+    if (document.is_composite) {
+      // For composite documents, we need a service key token for resolution
+      const { content, error } = await resolveCompositeDocument(
+        document,
+        preset.project_id,
+        supabaseServiceKey, // Using service key instead of user token
+        new Set()
+      );
+      
+      if (error) {
+        console.error(`Error resolving composite document ${documentId}:`, error);
+        return res.status(500).send('Error resolving document content');
+      }
+      
+      finalContent = content;
+    } else {
+      finalContent = document.content || '';
+    }
+
+    // Return as plain text
+    res.set('Content-Type', 'text/plain');
+    res.send(finalContent);
+  } catch (error) {
+    console.error('Error in GET /preset/:presetName:', error);
+    res.status(500).send('Internal server error');
+  }
+});
 
 
 // --- Local Development Server ---

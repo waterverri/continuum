@@ -6,9 +6,12 @@ import {
   createDocument, 
   updateDocument, 
   deleteDocument, 
-  getDocument
+  getDocument,
+  getPresets,
+  createPreset,
+  deletePreset
 } from '../api';
-import type { Document } from '../api';
+import type { Document, Preset } from '../api';
 import '../styles/ProjectDetailPage.css';
 
 interface DocumentFormData {
@@ -312,6 +315,7 @@ function DocumentList({
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -323,6 +327,7 @@ export default function ProjectDetailPage() {
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [componentKeyToAdd, setComponentKeyToAdd] = useState<string | null>(null);
   const [keyInputValue, setKeyInputValue] = useState('');
+  const [showPresetPicker, setShowPresetPicker] = useState(false);
   const [formData, setFormData] = useState<DocumentFormData>({
     title: '',
     content: '',
@@ -354,9 +359,22 @@ export default function ProjectDetailPage() {
     }
   }, [projectId]);
 
+  const loadPresets = useCallback(async () => {
+    if (!projectId) return;
+    
+    try {
+      const token = await getAccessToken();
+      const presets = await getPresets(projectId, token);
+      setPresets(presets);
+    } catch (err) {
+      console.error('Failed to load presets:', err);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     loadDocuments();
-  }, [loadDocuments]);
+    loadPresets();
+  }, [loadDocuments, loadPresets]);
 
   const handleCreateDocument = async () => {
     if (!projectId) return;
@@ -421,6 +439,35 @@ export default function ProjectDetailPage() {
       is_composite: false,
       components: {}
     });
+  };
+
+  const handleCreatePreset = async (name: string, document: Document) => {
+    if (!projectId) return;
+    
+    try {
+      const token = await getAccessToken();
+      const newPreset = await createPreset(projectId, name, document.id, token);
+      setPresets([newPreset, ...presets]);
+      setShowPresetPicker(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create preset');
+    }
+  };
+
+  const handleDeletePreset = async (presetId: string) => {
+    if (!confirm('Are you sure you want to delete this preset?')) return;
+    
+    try {
+      const token = await getAccessToken();
+      await deletePreset(presetId, token);
+      setPresets(presets.filter(preset => preset.id !== presetId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete preset');
+    }
+  };
+
+  const getPresetUrl = (presetName: string) => {
+    return `${import.meta.env.VITE_API_URL}/preset/${presetName}`;
   };
 
   const startEdit = (doc: Document) => {
@@ -558,6 +605,55 @@ export default function ProjectDetailPage() {
           emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
         />
         
+        {/* Presets Section */}
+        <div className="sidebar__section">
+          <div className="sidebar__section-header">
+            <h3>Published Presets</h3>
+            <button 
+              className="btn btn--sm btn--secondary"
+              onClick={() => setShowPresetPicker(true)}
+            >
+              + Create Preset
+            </button>
+          </div>
+          
+          {presets.length === 0 ? (
+            <div className="empty-state">
+              <p>No presets created yet.</p>
+              <p>Create a preset to publish a document as an external API endpoint.</p>
+            </div>
+          ) : (
+            <div className="preset-list">
+              {presets.map((preset) => (
+                <div key={preset.id} className="preset-item">
+                  <div className="preset-header">
+                    <h4>{preset.name}</h4>
+                    <button 
+                      className="btn btn--sm btn--danger"
+                      onClick={() => handleDeletePreset(preset.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <div className="preset-meta">
+                    Document: {preset.document?.title || 'Unknown'}
+                  </div>
+                  <div className="preset-url">
+                    <small>API Endpoint:</small>
+                    <code className="preset-url-text">{getPresetUrl(preset.name)}</code>
+                    <button 
+                      className="btn btn--xs"
+                      onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
         <div className="sidebar__footer">
           <Link to="/" className="back-link">← Back to All Projects</Link>
         </div>
@@ -630,6 +726,15 @@ export default function ProjectDetailPage() {
           componentKey={componentKeyToAdd}
           onSelect={selectDocumentForComponent}
           onCancel={cancelDocumentSelection}
+        />
+      )}
+
+      {/* Preset Picker Modal */}
+      {showPresetPicker && (
+        <PresetPickerModal
+          documents={documents}
+          onSelect={handleCreatePreset}
+          onCancel={() => setShowPresetPicker(false)}
         />
       )}
     </div>
@@ -934,6 +1039,122 @@ function ComponentKeyInputModal({ value, onChange, onConfirm, onCancel }: Compon
             disabled={!value.trim()}
           >
             Next: Select Document
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Preset Picker Modal Component
+interface PresetPickerModalProps {
+  documents: Document[];
+  onSelect: (name: string, document: Document) => void;
+  onCancel: () => void;
+}
+
+function PresetPickerModal({ documents, onSelect, onCancel }: PresetPickerModalProps) {
+  const [presetName, setPresetName] = useState('');
+  const [step, setStep] = useState<'name' | 'document'>('name');
+
+  const handleNameConfirm = () => {
+    if (presetName.trim()) {
+      setStep('document');
+    }
+  };
+
+  const handleDocumentSelect = (document: Document) => {
+    onSelect(presetName, document);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && step === 'name') {
+      handleNameConfirm();
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  if (step === 'name') {
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content preset-name-modal">
+          <div className="modal-header">
+            <h3>Create Preset</h3>
+            <button className="modal-close" onClick={onCancel}>×</button>
+          </div>
+          
+          <div className="modal-body">
+            <div className="preset-name-section">
+              <label className="form-label">
+                Preset Name (will be used in API endpoint):
+                <input
+                  type="text"
+                  className="form-input"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="e.g., character-sheet, world-guide"
+                  autoFocus
+                />
+              </label>
+              <p className="preset-name-help">
+                This will create the endpoint: <code>/preset/{presetName || '{name}'}</code>
+              </p>
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button className="btn btn--secondary" onClick={onCancel}>
+              Cancel
+            </button>
+            <button 
+              className="btn btn--primary" 
+              onClick={handleNameConfirm}
+              disabled={!presetName.trim()}
+            >
+              Next: Select Document
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content document-picker-modal">
+        <div className="modal-header">
+          <h3>Select Document for "{presetName}"</h3>
+          <button className="modal-close" onClick={onCancel}>×</button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="document-picker-list">
+            {documents.map((document) => (
+              <DocumentListItem
+                key={document.id}
+                document={document}
+                onClick={handleDocumentSelect}
+                showPreview={true}
+                variant="picker"
+              />
+            ))}
+            {documents.length === 0 && (
+              <div className="empty-state">
+                <p>No documents available.</p>
+                <p>Create a document first before creating a preset.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn--secondary" onClick={() => setStep('name')}>
+            Back
+          </button>
+          <button className="btn btn--secondary" onClick={onCancel}>
+            Cancel
           </button>
         </div>
       </div>

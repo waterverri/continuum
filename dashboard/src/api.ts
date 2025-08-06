@@ -16,6 +16,15 @@ export interface Document {
   resolved_content?: string;
 }
 
+export interface Preset {
+  id: string;
+  project_id: string;
+  name: string;
+  rules: { document_id: string };
+  created_at: string;
+  document?: Document;
+}
+
 export const getPresetContext = async (presetId: string, accessToken: string) => {
     // Example of a future API call
     const response = await fetch(`${API_URL}/api/presets/${presetId}/context`, {
@@ -111,5 +120,51 @@ export const deleteDocument = async (projectId: string, documentId: string, acce
 
     if (!response.ok) {
         throw new Error('Failed to delete document');
+    }
+};
+
+// Preset API functions
+export const getPresets = async (projectId: string, accessToken: string): Promise<Preset[]> => {
+    const response = await fetch(`${API_URL}/api/presets/${projectId}`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch presets');
+    }
+
+    return await response.json();
+};
+
+export const createPreset = async (projectId: string, name: string, documentId: string, accessToken: string): Promise<Preset> => {
+    const response = await fetch(`${API_URL}/api/presets/${projectId}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, documentId }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create preset');
+    }
+
+    return await response.json();
+};
+
+export const deletePreset = async (presetId: string, accessToken: string): Promise<void> => {
+    const response = await fetch(`${API_URL}/api/presets/${presetId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to delete preset');
     }
 };
