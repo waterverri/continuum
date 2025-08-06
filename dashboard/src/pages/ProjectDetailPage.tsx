@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { 
@@ -9,6 +9,7 @@ import {
   getDocument
 } from '../api';
 import type { Document } from '../api';
+import '../styles/ProjectDetailPage.css';
 
 interface DocumentFormData {
   title: string;
@@ -27,6 +28,7 @@ export default function ProjectDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [resolvedContent, setResolvedContent] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [formData, setFormData] = useState<DocumentFormData>({
     title: '',
     content: '',
@@ -35,16 +37,12 @@ export default function ProjectDetailPage() {
     components: {}
   });
 
-  useEffect(() => {
-    loadDocuments();
-  }, [projectId]);
-
   const getAccessToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || '';
   };
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     if (!projectId) return;
     
     try {
@@ -57,7 +55,11 @@ export default function ProjectDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
 
   const handleCreateDocument = async () => {
     if (!projectId) return;
@@ -154,52 +156,75 @@ export default function ProjectDetailPage() {
     setFormData({ ...formData, components: newComponents });
   };
 
-  if (loading) return <div>Loading documents...</div>;
+  if (loading) return <div className="loading">Loading documents...</div>;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', gap: '20px', padding: '20px' }}>
+    <div className="project-detail-page">
+      {/* Mobile overlay */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      
       {/* Sidebar - Document List */}
-      <div style={{ width: '300px', borderRight: '1px solid #ccc', paddingRight: '20px' }}>
-        <div style={{ marginBottom: '20px' }}>
+      <div className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`}>
+        <div className="sidebar__header">
           <h2>Documents</h2>
-          <button onClick={() => setIsCreating(true)}>Create New Document</button>
+          <button 
+            className="sidebar__close"
+            onClick={() => setSidebarOpen(false)}
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="sidebar__actions">
+          <button 
+            className="btn btn--primary"
+            onClick={() => {
+              setIsCreating(true);
+              setSidebarOpen(false);
+            }}
+          >
+            Create New Document
+          </button>
         </div>
         
         {error && (
-          <div style={{ color: 'red', marginBottom: '10px' }}>
+          <div className="error-message">
             {error}
             <button onClick={() => setError(null)}>×</button>
           </div>
         )}
         
-        <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="document-list">
           {documents.map(doc => (
             <div 
               key={doc.id} 
-              style={{ 
-                padding: '10px', 
-                border: '1px solid #ddd', 
-                marginBottom: '10px',
-                cursor: 'pointer',
-                backgroundColor: selectedDocument?.id === doc.id ? '#f0f0f0' : 'white'
+              className={`document-item ${selectedDocument?.id === doc.id ? 'document-item--selected' : ''}`}
+              onClick={() => {
+                setSelectedDocument(doc);
+                setSidebarOpen(false);
               }}
-              onClick={() => setSelectedDocument(doc)}
             >
-              <h4>{doc.title}</h4>
-              <small>
-                {doc.is_composite ? '🔗 Composite' : '📄 Static'} • 
-                {doc.document_type || 'No type'}
-              </small>
-              <div style={{ marginTop: '5px' }}>
+              <div className="document-item__header">
+                <h4>{doc.title}</h4>
+                <small className="document-item__meta">
+                  {doc.is_composite ? '🔗 Composite' : '📄 Static'} • 
+                  {doc.document_type || 'No type'}
+                </small>
+              </div>
+              <div className="document-item__actions">
                 <button 
-                  onClick={(e) => { e.stopPropagation(); startEdit(doc); }}
-                  style={{ marginRight: '5px' }}
+                  className="btn btn--sm"
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    startEdit(doc); 
+                    setSidebarOpen(false);
+                  }}
                 >
                   Edit
                 </button>
                 <button 
+                  className="btn btn--sm btn--danger"
                   onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id); }}
-                  style={{ color: 'red' }}
                 >
                   Delete
                 </button>
@@ -208,42 +233,58 @@ export default function ProjectDetailPage() {
           ))}
         </div>
         
-        <div style={{ marginTop: '20px' }}>
-          <Link to="/">← Back to All Projects</Link>
+        <div className="sidebar__footer">
+          <Link to="/" className="back-link">← Back to All Projects</Link>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1 }}>
-        {(isCreating || isEditing) && (
-          <DocumentForm
-            formData={formData}
-            setFormData={setFormData}
-            onSave={isCreating ? handleCreateDocument : handleUpdateDocument}
-            onCancel={() => {
-              setIsCreating(false);
-              setIsEditing(false);
-              resetForm();
-            }}
-            addComponent={addComponent}
-            removeComponent={removeComponent}
-            isCreating={isCreating}
-          />
-        )}
-        
-        {!isCreating && !isEditing && selectedDocument && (
-          <DocumentViewer
-            document={selectedDocument}
-            resolvedContent={resolvedContent}
-            onResolve={() => handleResolveDocument(selectedDocument)}
-          />
-        )}
-        
-        {!isCreating && !isEditing && !selectedDocument && (
-          <div style={{ textAlign: 'center', marginTop: '50px' }}>
-            <h3>Select a document to view or create a new one</h3>
-          </div>
-        )}
+      <div className="main-content">
+        <div className="main-content__header">
+          <button 
+            className="sidebar-toggle"
+            onClick={() => setSidebarOpen(true)}
+          >
+            ☰ Documents
+          </button>
+        </div>
+        <div className="main-content__body">
+          {(isCreating || isEditing) && (
+            <DocumentForm
+              formData={formData}
+              setFormData={setFormData}
+              onSave={isCreating ? handleCreateDocument : handleUpdateDocument}
+              onCancel={() => {
+                setIsCreating(false);
+                setIsEditing(false);
+                resetForm();
+              }}
+              addComponent={addComponent}
+              removeComponent={removeComponent}
+              isCreating={isCreating}
+            />
+          )}
+          
+          {!isCreating && !isEditing && selectedDocument && (
+            <DocumentViewer
+              document={selectedDocument}
+              resolvedContent={resolvedContent}
+              onResolve={() => handleResolveDocument(selectedDocument)}
+            />
+          )}
+          
+          {!isCreating && !isEditing && !selectedDocument && (
+            <div className="empty-state">
+              <h3>Select a document to view or create a new one</h3>
+              <button 
+                className="btn btn--primary"
+                onClick={() => setSidebarOpen(true)}
+              >
+                Browse Documents
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -270,36 +311,38 @@ function DocumentForm({
   isCreating 
 }: DocumentFormProps) {
   return (
-    <div>
-      <h3>{isCreating ? 'Create New Document' : 'Edit Document'}</h3>
+    <div className="document-form">
+      <h3 className="document-form__title">
+        {isCreating ? 'Create New Document' : 'Edit Document'}
+      </h3>
       
-      <div style={{ marginBottom: '15px' }}>
-        <label>
+      <div className="form-group">
+        <label className="form-label">
           Title:
           <input
             type="text"
+            className="form-input"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            style={{ width: '100%', padding: '5px', marginTop: '5px' }}
           />
         </label>
       </div>
       
-      <div style={{ marginBottom: '15px' }}>
-        <label>
+      <div className="form-group">
+        <label className="form-label">
           Document Type:
           <input
             type="text"
+            className="form-input"
             value={formData.document_type}
             onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
             placeholder="e.g., character, scene, location"
-            style={{ width: '100%', padding: '5px', marginTop: '5px' }}
           />
         </label>
       </div>
       
-      <div style={{ marginBottom: '15px' }}>
-        <label>
+      <div className="form-group">
+        <label className="form-checkbox">
           <input
             type="checkbox"
             checked={formData.is_composite}
@@ -309,22 +352,28 @@ function DocumentForm({
               components: e.target.checked ? formData.components : {}
             })}
           />
-          Composite Document (assembles content from other documents)
+          <span>Composite Document (assembles content from other documents)</span>
         </label>
       </div>
       
       {formData.is_composite && (
-        <div style={{ marginBottom: '15px', border: '1px solid #ddd', padding: '10px' }}>
+        <div className="components-section">
           <h4>Components</h4>
-          <p>Use placeholders like {`{{key}}`} in your content template below.</p>
-          <button onClick={addComponent}>Add Component</button>
-          <div style={{ marginTop: '10px' }}>
+          <p className="components-description">
+            Use placeholders like {`{{key}}`} in your content template below.
+          </p>
+          <button className="btn btn--secondary" onClick={addComponent}>
+            Add Component
+          </button>
+          <div className="components-list">
             {Object.entries(formData.components).map(([key, docId]) => (
-              <div key={key} style={{ marginBottom: '5px', padding: '5px', backgroundColor: '#f9f9f9' }}>
-                <span><strong>{`{{${key}}}`}</strong> → {docId}</span>
+              <div key={key} className="component-item">
+                <span className="component-mapping">
+                  <strong>{`{{${key}}}`}</strong> → {docId}
+                </span>
                 <button 
+                  className="btn btn--sm btn--danger"
                   onClick={() => removeComponent(key)}
-                  style={{ marginLeft: '10px', color: 'red' }}
                 >
                   Remove
                 </button>
@@ -334,14 +383,14 @@ function DocumentForm({
         </div>
       )}
       
-      <div style={{ marginBottom: '15px' }}>
-        <label>
+      <div className="form-group">
+        <label className="form-label">
           Content:
           <textarea
+            className="form-textarea"
             value={formData.content}
             onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             rows={formData.is_composite ? 10 : 15}
-            style={{ width: '100%', padding: '5px', marginTop: '5px' }}
             placeholder={formData.is_composite ? 
               "Enter your template with placeholders like {{key}}..." : 
               "Enter your document content..."
@@ -350,11 +399,13 @@ function DocumentForm({
         </label>
       </div>
       
-      <div>
-        <button onClick={onSave} style={{ marginRight: '10px' }}>
+      <div className="form-actions">
+        <button className="btn btn--primary" onClick={onSave}>
           {isCreating ? 'Create' : 'Save'}
         </button>
-        <button onClick={onCancel}>Cancel</button>
+        <button className="btn btn--secondary" onClick={onCancel}>
+          Cancel
+        </button>
       </div>
     </div>
   );
@@ -369,54 +420,44 @@ interface DocumentViewerProps {
 
 function DocumentViewer({ document, resolvedContent, onResolve }: DocumentViewerProps) {
   return (
-    <div>
-      <div style={{ marginBottom: '20px', borderBottom: '1px solid #ddd', paddingBottom: '10px' }}>
-        <h3>{document.title}</h3>
-        <p>
+    <div className="document-viewer">
+      <div className="document-viewer__header">
+        <h3 className="document-viewer__title">{document.title}</h3>
+        <p className="document-viewer__meta">
           <strong>Type:</strong> {document.document_type || 'No type'} • 
           <strong>Format:</strong> {document.is_composite ? 'Composite Document' : 'Static Document'}
         </p>
         {document.is_composite && (
-          <button onClick={onResolve} style={{ marginTop: '10px' }}>
+          <button className="btn btn--primary" onClick={onResolve}>
             🔗 Resolve Template
           </button>
         )}
       </div>
       
       {document.is_composite && Object.keys(document.components || {}).length > 0 && (
-        <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f9f9f9' }}>
+        <div className="document-components">
           <h4>Components:</h4>
-          {Object.entries(document.components || {}).map(([key, docId]) => (
-            <div key={key}><strong>{`{{${key}}}`}</strong> → {docId}</div>
-          ))}
+          <div className="components-list">
+            {Object.entries(document.components || {}).map(([key, docId]) => (
+              <div key={key} className="component-mapping">
+                <strong>{`{{${key}}}`}</strong> → {docId}
+              </div>
+            ))}
+          </div>
         </div>
       )}
       
-      <div style={{ marginBottom: '20px' }}>
+      <div className="content-section">
         <h4>Raw Content:</h4>
-        <div style={{ 
-          border: '1px solid #ddd', 
-          padding: '15px', 
-          backgroundColor: '#fafafa',
-          whiteSpace: 'pre-wrap',
-          maxHeight: '400px',
-          overflowY: 'auto'
-        }}>
+        <div className="content-display content-display--raw">
           {document.content || 'No content'}
         </div>
       </div>
       
       {resolvedContent && (
-        <div>
+        <div className="content-section">
           <h4>Resolved Content:</h4>
-          <div style={{ 
-            border: '1px solid #ddd', 
-            padding: '15px', 
-            backgroundColor: '#f0f8ff',
-            whiteSpace: 'pre-wrap',
-            maxHeight: '400px',
-            overflowY: 'auto'
-          }}>
+          <div className="content-display content-display--resolved">
             {resolvedContent}
           </div>
         </div>

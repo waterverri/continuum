@@ -23,8 +23,8 @@ export default function ProjectNavigationPage() {
       setLoading(true);
       const projectsData = await getProjects();
       setProjects(projectsData || []);
-    } catch (error: any) {
-      setError(`Failed to fetch projects: ${error.message}`);
+    } catch (error: unknown) {
+      setError(`Failed to fetch projects: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -45,8 +45,8 @@ export default function ProjectNavigationPage() {
       setProjects([newProject, ...projects]); // Add new project to the top of the list
       setNewProjectName(''); // Clear input
       setError(null);
-    } catch (error: any) {
-      setError(`Failed to create project: ${error.message}`);
+    } catch (error: unknown) {
+      setError(`Failed to create project: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -55,8 +55,8 @@ export default function ProjectNavigationPage() {
         try {
             await deleteProject(projectId);
             setProjects(projects.filter(p => p.id !== projectId)); // Update UI instantly
-        } catch (error: any) {
-            setError(`Failed to delete project: ${error.message}`);
+        } catch (error: unknown) {
+            setError(`Failed to delete project: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
   }
