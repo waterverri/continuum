@@ -30,15 +30,15 @@ describe('Preset API Routes', () => {
 
   describe('Preset URL generation', () => {
     it('should generate correct API endpoint URLs', () => {
-      const generatePresetUrl = (baseUrl: string, presetName: string): string => {
-        return `${baseUrl}/preset/${encodeURIComponent(presetName)}`;
+      const generatePresetUrl = (baseUrl: string, projectId: string, presetName: string): string => {
+        return `${baseUrl}/preset/${encodeURIComponent(projectId)}/${encodeURIComponent(presetName)}`;
       };
 
-      expect(generatePresetUrl('https://api.example.com', 'character-sheet'))
-        .toBe('https://api.example.com/preset/character-sheet');
+      expect(generatePresetUrl('https://api.example.com', 'proj-123', 'character-sheet'))
+        .toBe('https://api.example.com/preset/proj-123/character-sheet');
       
-      expect(generatePresetUrl('https://api.example.com', 'world guide'))
-        .toBe('https://api.example.com/preset/world%20guide');
+      expect(generatePresetUrl('https://api.example.com', 'proj-123', 'world guide'))
+        .toBe('https://api.example.com/preset/proj-123/world%20guide');
     });
   });
 

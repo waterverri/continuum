@@ -77,10 +77,10 @@ app.use('/api', apiRouter);
 import { resolveCompositeDocument } from './services/documentService';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-// GET /preset/:presetName - Public endpoint for external LLM systems
-app.get('/preset/:presetName', async (req: Request, res: Response) => {
+// GET /preset/:projectId/:presetName - Public endpoint for external LLM systems
+app.get('/preset/:projectId/:presetName', async (req: Request, res: Response) => {
   try {
-    const { presetName } = req.params;
+    const { projectId, presetName } = req.params;
     
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -90,14 +90,15 @@ app.get('/preset/:presetName', async (req: Request, res: Response) => {
       return res.status(500).send('Service configuration error');
     }
 
-    // Use service key for server-side access (bypassing RLS for this public endpoint)
+    // Use service key for server-side access (bypasses RLS)
     const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey);
 
-    // Find the preset by name (we'll need to search across all projects for now)
+    // Find the preset by name within the specified project
     const { data: preset, error: presetError } = await supabase
       .from('presets')
       .select('id, name, rules, project_id')
       .eq('name', presetName)
+      .eq('project_id', projectId)
       .single();
 
     if (presetError || !preset) {
@@ -124,11 +125,11 @@ app.get('/preset/:presetName', async (req: Request, res: Response) => {
     // Resolve the document content (handling composite documents)
     let finalContent: string;
     if (document.is_composite) {
-      // For composite documents, we need a service key token for resolution
+      // For composite documents, we need the service key for resolution
       const { content, error } = await resolveCompositeDocument(
         document,
         preset.project_id,
-        supabaseServiceKey, // Using service key instead of user token
+        supabaseServiceKey, // Using service key for server-side resolution
         new Set()
       );
       

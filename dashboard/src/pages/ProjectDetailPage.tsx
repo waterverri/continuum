@@ -467,7 +467,7 @@ export default function ProjectDetailPage() {
   };
 
   const getPresetUrl = (presetName: string) => {
-    return `${import.meta.env.VITE_API_URL}/preset/${presetName}`;
+    return `${import.meta.env.VITE_API_URL}/preset/${projectId}/${presetName}`;
   };
 
   const startEdit = (doc: Document) => {
@@ -1099,7 +1099,7 @@ function PresetPickerModal({ documents, onSelect, onCancel }: PresetPickerModalP
                 />
               </label>
               <p className="preset-name-help">
-                This will create the endpoint: <code>/preset/{presetName || '{name}'}</code>
+                This will create the endpoint: <code>/preset/&#123;project-id&#125;/{presetName || '{name}'}</code>
               </p>
             </div>
           </div>
