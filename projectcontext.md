@@ -1,6 +1,6 @@
 # **Project Context: Continuum (For Developer & LLM Use)**
 
-**Last Updated:** June 20, 2025
+**Last Updated:** August 6, 2025
 
 ### **About This Document**
 
@@ -117,15 +117,28 @@ The `documents` table is the most complex entity. Relationships between document
           * Document resolution engine for composite documents with recursive {{placeholder}} resolution
           * User-authenticated Supabase clients ensuring RLS compliance
       * **Frontend UI:** Complete document management interface in `ProjectDetailPage.tsx` with:
-          * Sidebar document list with visual indicators for static vs composite documents
-          * Specialized form editor supporting both document types
-          * Component editor for managing {{placeholder}} mappings in composite documents
+          * Mobile-responsive design with hideable sidebar navigation
+          * Professional modal-based component selection (replacing browser prompts)
+          * Document picker with advanced filtering (search, type, format)
+          * Improved component management with visual document title display
           * Document viewer with raw content display and real-time template resolution
           * Error handling and loading states throughout
+  * **Phase 4: Enhanced UX & Testing Infrastructure (RECENTLY COMPLETED):**
+      * **UI/UX Improvements:**
+          * Responsive mobile-first design for all document management interfaces
+          * Professional modal system replacing all browser prompt() dialogs
+          * Document selection by title with content previews (users never see IDs)
+          * Advanced filtering system with search, document type, and format filters
+          * Improved header spacing and layout consistency
+      * **Testing Framework:**
+          * **Frontend Testing:** Vitest + React Testing Library with 30+ comprehensive tests
+          * **Backend Testing:** Jest + Supertest with 13+ integration and unit tests
+          * **Test Coverage:** Components, services, API endpoints, authentication middleware
+          * **Mock Infrastructure:** Complete mocking of Supabase, API calls, and external dependencies
 
-### **4.2. Next Up: Phase 4 - Events & Tagging**
+### **4.2. Next Up: Phase 5 - Events & Tagging**
 
-**Note:** With core document management complete, the next phase focuses on temporal organization and metadata management.
+**Note:** With core document management and UI/testing infrastructure complete, the next phase focuses on temporal organization and metadata management.
 
 1.  **Project Member Management (Quick Win):**
       * **Frontend UI & Logic:** Build a project settings page where project owners can manage members (add/remove users, change roles) by inserting/deleting/updating rows in the `project_members` table.
@@ -138,7 +151,7 @@ The `documents` table is the most complex entity. Relationships between document
       * Implement UI for creating links between events and documents via the `event_documents` table.
       * Implement UI for tags, allowing them to be attached to and detached from both documents and events.
 
-### **4.4. Future: Phase 5 - The Core "Preset" Engine**
+### **4.4. Future: Phase 6 - The Core "Preset" Engine**
 
   * **API:**
       * Build CRUD endpoints for presets.
@@ -153,23 +166,40 @@ This structure outlines where the application's logic and code currently live.
 ```
 /continuum/
 ├── api/                        # Backend Node.js Cloud Function
-│   ├── package.json
+│   ├── package.json            # Dependencies including Jest, Supertest for testing
 │   ├── tsconfig.json
-│   └── src/
-│       ├── index.ts            # Main function entry point with Express routes & auth middleware
-│       └── db/                 # Database interaction layer
-│           └── supabaseClient.ts
-│       # (New logic for composite document validation would go here)
+│   ├── jest.config.js          # Jest testing configuration
+│   ├── src/
+│   │   ├── index.ts            # Main function entry point with Express routes & auth middleware
+│   │   ├── db/                 # Database interaction layer
+│   │   │   └── supabaseClient.ts
+│   │   ├── routes/             # API route handlers
+│   │   │   └── documents.ts    # Document CRUD endpoints
+│   │   └── services/           # Business logic layer
+│   │       └── documentService.ts # Composite document resolution & validation
+│   └── test/                   # Testing infrastructure
+│       ├── setup.ts            # Jest configuration and mocks
+│       ├── services/           # Service layer tests
+│       ├── routes/             # API endpoint integration tests
+│       └── middleware/         # Authentication middleware tests
 │
-└── dashboard/                  # Frontend Web Application
-│   ├── package.json
+├── dashboard/                  # Frontend Web Application
+│   ├── package.json            # Dependencies including Vitest, React Testing Library
+│   ├── vitest.config.ts        # Vitest testing configuration
 │   ├── firebase.json
 │   └── src/
 │       ├── accessors/          # Modules for direct Supabase data access
 │       │   └── projectAccessor.ts
 │       ├── pages/              # Page-level components
 │       │   ├── ProjectNavigationPage.tsx
-│       │   └── ProjectDetailPage.tsx
+│       │   └── ProjectDetailPage.tsx # Enhanced with modal interfaces
+│       ├── styles/             # Component-specific CSS modules
+│       │   └── ProjectDetailPage.css # Responsive design styles
+│       ├── test/               # Testing infrastructure
+│       │   ├── setup.ts        # Test configuration and mocks
+│       │   ├── test-utils.tsx  # Custom render functions and mock data
+│       │   ├── components/     # Component tests
+│       │   └── accessors/      # Data accessor tests
 │       ├── App.tsx             # Main component, handles routing & auth state
 │       ├── Auth.tsx            # Login/Signup UI component
 │       ├── main.tsx            # Application entry point
@@ -180,6 +210,7 @@ This structure outlines where the application's logic and code currently live.
     ├── migrations/
     │   ├── 0001_initial_schema.sql         # Base tables, types, and triggers
     │   ├── 0002_implement_rls_policies.sql # Core RLS policies for projects & docs
-    │   └── 0003_fix_project_members_policy.sql # RLS policies for the members table
+    │   ├── 0003_fix_project_members_policy.sql # RLS policies for the members table
+    │   └── 0004_add_document_management_columns.sql # Document management enhancements
     └── config.toml
 ```

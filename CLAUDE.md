@@ -11,6 +11,9 @@ Navigate to `/api` directory:
 - `npm run compile` - Compile TypeScript
 - `npm run clean` - Clean build artifacts
 - `npm run fix` - Run gts fix for code formatting
+- `npm test` - Run unit and integration tests with Jest
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Generate test coverage report
 
 ### Dashboard (React + Vite)
 Navigate to `/dashboard` directory:
@@ -19,10 +22,19 @@ Navigate to `/dashboard` directory:
 - `npm run build` - Build for production (runs TypeScript check + Vite build)
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
+- `npm run test` - Run tests in watch mode with Vitest
+- `npm run test:run` - Run tests once
+- `npm run test:ui` - Run tests with UI interface
+- `npm run coverage` - Generate test coverage report
 
 ### Database
 - Migrations are in `supabase/migrations/`
 - Database deployment handled via GitHub Actions workflow
+
+### Testing Infrastructure
+- **Frontend**: Vitest + React Testing Library with comprehensive component and integration tests
+- **Backend**: Jest + Supertest for API endpoints, services, and middleware testing
+- **Coverage**: Both frontend and backend have extensive test coverage including mocks for external dependencies
 
 ## Architecture Overview
 
@@ -59,11 +71,14 @@ Continuum is a full-stack application for writers to manage story context with t
 
 ## Current Implementation Status
 
-**Completed**: User authentication, project CRUD, RLS policies, CI/CD pipelines
+**Completed**: 
+- User authentication and project CRUD with RLS policies
+- Complete document management system with composite document support
+- Professional UI with responsive design and modal interfaces
+- Comprehensive testing infrastructure (30+ frontend tests, 13+ backend tests)
+- CI/CD pipelines for automated deployment
 
-**In Progress**: Document management with composite document logic requiring cyclic dependency validation
-
-**Next**: Events, tagging system, preset engine for dynamic context generation
+**Next**: Events and tagging system, project member management, preset engine for dynamic context generation
 
 ## Environment Setup
 
