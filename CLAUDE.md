@@ -81,6 +81,12 @@ Continuum is a full-stack application for writers to manage story context with t
   - Modular filter components (search, type, format filtering)
   - Enhanced sidebar with comprehensive search and filtering capabilities
   - Performance optimizations with memoization
+- **Document Group Management System**:
+  - Derivative document creation with free-form document types
+  - Group-based component selection in composite documents
+  - Group type switching UI with advanced modal interfaces
+  - Backend group APIs with intelligent document resolution
+  - Extended group reference format: `group:groupId:preferredType`
 - Focused unit test suite for core functionality validation
 - CI/CD pipelines for automated deployment
 
@@ -104,4 +110,6 @@ Dashboard requires `.env.local` with:
 - All database schema changes must be implemented as Supabase migrations
 - Frontend components follow project conventions established in existing pages like `ProjectDetailPage.tsx`
 - **Component Architecture**: Refactored filtering system demonstrates proper component composition with reusable hooks and modular design patterns
+- **Document Groups**: Support derivative relationships via `group_id` with dynamic type selection in composite documents
+- **Group Reference Format**: Extended format `group:groupId:preferredType` enables specific document type selection within groups
 - **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks

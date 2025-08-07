@@ -113,6 +113,7 @@ The `documents` table is the most complex entity. Relationships between document
       * **Database Schema:** Migration `0004_add_document_management_columns.sql` added `title`, `is_composite`, and `components` columns to the documents table.
       * **Backend API:** Full REST API implemented in `api/src/routes/documents.ts` with:
           * Document CRUD operations (GET, POST, PUT, DELETE) for individual projects
+          * Document group management endpoints (GET /groups, GET /groups/:id, GET /groups/:id/resolve)
           * Cyclic dependency validation using DFS algorithm in `api/src/services/documentService.ts`
           * Document resolution engine for composite documents with recursive {{placeholder}} resolution
           * User-authenticated Supabase clients ensuring RLS compliance
@@ -141,10 +142,37 @@ The `documents` table is the most complex entity. Relationships between document
           * **Focused Unit Testing:** Core business logic verified through targeted unit tests
           * **Clean Test Architecture:** Removed complex integration tests in favor of production validation
           * **Build Validation:** All TypeScript compilation errors resolved for deployment readiness
+  * **Phase 5: Document Group Management System (COMPLETED):**
+      * **Derivative Document Creation:**
+          * Users can create derivative documents (summaries, translations, etc.) from any source document
+          * Free-form document types with no system-imposed restrictions
+          * Automatic group assignment using `group_id` for document families
+          * Modal interface with source document information and custom type input
+      * **Group-Based Composite Documents:**
+          * Component type selector allowing choice between individual documents or document groups
+          * Group picker modal showing representative documents and group metadata
+          * Enhanced component display with group type indicators and document counts
+          * Intelligent representative document selection (prefers source/original types)
+      * **Advanced Group Type Switching:**
+          * Group switcher modal for choosing specific document types within groups
+          * Extended group reference format: `group:groupId:preferredType`
+          * Auto mode vs. specific type selection with visual indicators
+          * Real-time type switching without losing component configuration
+      * **Backend Group API Infrastructure:**
+          * `GET /api/documents/:projectId/groups` - List all document groups
+          * `GET /api/documents/:projectId/groups/:groupId` - Get group documents  
+          * `GET /api/documents/:projectId/groups/:groupId/resolve` - Resolve group content
+          * Enhanced document resolution service supporting group references
+          * Robust cycle detection validation for group-based dependencies
+      * **Enhanced Document Resolution Engine:**
+          * Support for group references with optional preferred types
+          * Dynamic document selection based on type preferences
+          * Fallback logic for missing types within groups
+          * Seamless integration with existing composite document system
 
-### **4.2. Next Up: Phase 5 - Events & Tagging**
+### **4.2. Next Up: Phase 6 - Events & Tagging**
 
-**Note:** With core document management and UI/testing infrastructure complete, the next phase focuses on temporal organization and metadata management.
+**Note:** With core document management, group management system, and UI/testing infrastructure complete, the next phase focuses on temporal organization and metadata management.
 
 1.  **Project Member Management (Quick Win):**
       * **Frontend UI & Logic:** Build a project settings page where project owners can manage members (add/remove users, change roles) by inserting/deleting/updating rows in the `project_members` table.
@@ -196,9 +224,11 @@ This structure outlines where the application's logic and code currently live.
 │   └── src/
 │       ├── accessors/          # Modules for direct Supabase data access
 │       │   └── projectAccessor.ts
+│       ├── components/        # Reusable UI components
+│       │   └── GroupSwitcherModal.tsx # Group type selection modal
 │       ├── pages/              # Page-level components
 │       │   ├── ProjectNavigationPage.tsx
-│       │   └── ProjectDetailPage.tsx # Enhanced with modal interfaces
+│       │   └── ProjectDetailPage.tsx # Enhanced with group management and modal interfaces
 │       ├── styles/             # Component-specific CSS modules
 │       │   └── ProjectDetailPage.css # Responsive design styles
 │       ├── test/               # Testing infrastructure
