@@ -4,8 +4,8 @@
   display: flex;
   flex-direction: column;
   height: 100%; /* Take full height of main */
-  overflow: hidden;
   position: relative;
+  /* Don't set overflow hidden on the main container */
 }
 
 /* Desktop: sidebar and main content side by side */
@@ -25,7 +25,7 @@
   }
 }
 
-/* Sidebar */
+/* Sidebar - Fixed height container */
 .sidebar {
   width: var(--sidebar-width);
   background-color: var(--color-background);
@@ -33,11 +33,11 @@
   display: flex;
   flex-direction: column;
   transition: width var(--transition-normal);
-  overflow: hidden;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
   height: 100%;
+  /* Don't set overflow here - let child containers handle it */
 }
 
 .sidebar__header {
@@ -191,41 +191,39 @@
   margin-bottom: var(--spacing-md);
 }
 
-/* Documents Container - Takes remaining sidebar space */
+/* Documents Container - Outer container with fixed height and scroll */
 .sidebar__documents-container {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.document-list {
-  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--spacing-md) var(--spacing-xl);
-  min-height: 0;
-  /* Show scrollbar and contain scroll */
+  /* This outer container has the scrollbar */
   scrollbar-width: auto;
   scrollbar-color: #cbd5e0 #f7fafc;
 }
 
-/* Webkit scrollbar styling for sidebar */
-.document-list::-webkit-scrollbar {
+/* Document list - Inner container with natural height */
+.document-list {
+  /* No height restrictions - let content determine height */
+  padding: var(--spacing-md) var(--spacing-xl);
+  /* Remove all overflow settings - let parent handle scroll */
+}
+
+/* Webkit scrollbar styling for sidebar outer container */
+.sidebar__documents-container::-webkit-scrollbar {
   width: 8px;
 }
 
-.document-list::-webkit-scrollbar-track {
+.sidebar__documents-container::-webkit-scrollbar-track {
   background: #f7fafc;
 }
 
-.document-list::-webkit-scrollbar-thumb {
+.sidebar__documents-container::-webkit-scrollbar-thumb {
   background: #cbd5e0;
   border-radius: 4px;
 }
 
-.document-list::-webkit-scrollbar-thumb:hover {
+.sidebar__documents-container::-webkit-scrollbar-thumb:hover {
   background: #a0aec0;
 }
 
@@ -268,14 +266,23 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   height: 100%;
+  /* Don't set overflow hidden - let body handle it */
 }
 
+/* Main content body - Outer container with fixed height and scroll */
 .main-content__body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
+  /* Show scrollbar for main content */
+  scrollbar-width: auto;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+/* Main content inner container - Natural height */
+.main-content__inner {
   padding: var(--spacing-2xl);
   min-width: 500px;
   max-width: 1200px;
@@ -283,10 +290,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 0;
-  /* Show scrollbar for main content */
-  scrollbar-width: auto;
-  scrollbar-color: #cbd5e0 #f7fafc;
+  /* Let content determine height */
 }
 
 /* Webkit scrollbar styling for main content */

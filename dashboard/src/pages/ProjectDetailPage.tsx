@@ -444,39 +444,41 @@ export default function ProjectDetailPage() {
       {/* Main Content Area */}
       <div className="main-content">
         <div className="main-content__body">
-          {(state.isCreating || state.isEditing) && (
-            <DocumentForm
-              formData={state.formData}
-              setFormData={state.setFormData}
-              onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
-              onCancel={state.cancelEdit}
-              addComponent={addComponent}
-              removeComponent={removeComponent}
-              onOpenGroupSwitcher={openGroupSwitcher}
-              isCreating={state.isCreating}
-              documents={state.documents}
-            />
-          )}
-          
-          {!state.isCreating && !state.isEditing && state.selectedDocument && (
-            <DocumentViewer
-              document={state.selectedDocument}
-              resolvedContent={state.resolvedContent}
-              onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-            />
-          )}
-          
-          {!state.isCreating && !state.isEditing && !state.selectedDocument && (
-            <div className="empty-state">
-              <h3>Select a document to view or create a new one</h3>
-              <button 
-                className="btn btn--primary"
-                onClick={() => state.setSidebarOpen(true)}
-              >
-                Browse Documents
-              </button>
-            </div>
-          )}
+          <div className="main-content__inner">
+            {(state.isCreating || state.isEditing) && (
+              <DocumentForm
+                formData={state.formData}
+                setFormData={state.setFormData}
+                onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
+                onCancel={state.cancelEdit}
+                addComponent={addComponent}
+                removeComponent={removeComponent}
+                onOpenGroupSwitcher={openGroupSwitcher}
+                isCreating={state.isCreating}
+                documents={state.documents}
+              />
+            )}
+            
+            {!state.isCreating && !state.isEditing && state.selectedDocument && (
+              <DocumentViewer
+                document={state.selectedDocument}
+                resolvedContent={state.resolvedContent}
+                onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+              />
+            )}
+            
+            {!state.isCreating && !state.isEditing && !state.selectedDocument && (
+              <div className="empty-state">
+                <h3>Select a document to view or create a new one</h3>
+                <button 
+                  className="btn btn--primary"
+                  onClick={() => state.setSidebarOpen(true)}
+                >
+                  Browse Documents
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
