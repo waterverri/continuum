@@ -49,6 +49,7 @@ export default function ProjectDetailPage() {
   // Sidebar collapse states
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
+  const [rightSidebarMobileOpen, setRightSidebarMobileOpen] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -209,16 +210,24 @@ export default function ProjectDetailPage() {
       onCreateDocument: () => {
         state.startCreate();
         state.setSidebarOpen(false);
+        setRightSidebarMobileOpen(false);
       },
       onToggleSidebar: () => state.setSidebarOpen(!state.sidebarOpen),
-      onToggleRightSidebar: () => setRightSidebarCollapsed(!rightSidebarCollapsed)
+      onToggleRightSidebar: () => {
+        // On mobile, toggle mobile open state; on desktop, toggle collapse
+        if (window.innerWidth <= 768) {
+          setRightSidebarMobileOpen(!rightSidebarMobileOpen);
+        } else {
+          setRightSidebarCollapsed(!rightSidebarCollapsed);
+        }
+      }
     });
     
     // Cleanup when component unmounts
     return () => {
       setProjectActions({});
     };
-  }, [setProjectActions, state.startCreate, state.setSidebarOpen, rightSidebarCollapsed]);
+  }, [setProjectActions, state.startCreate, state.setSidebarOpen, rightSidebarCollapsed, rightSidebarMobileOpen]);
 
   if (state.loading) return <div className="loading">Loading documents...</div>;
 
@@ -227,6 +236,7 @@ export default function ProjectDetailPage() {
       
       {/* Mobile overlays */}
       {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
+      {rightSidebarMobileOpen && <div className="sidebar-overlay" onClick={() => setRightSidebarMobileOpen(false)} />}
       
       {/* Left Sidebar - Documents Only */}
       <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${leftSidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
@@ -348,16 +358,24 @@ export default function ProjectDetailPage() {
       </div>
       
       {/* Right Sidebar - Widgets */}
-      <div className={`right-sidebar ${rightSidebarCollapsed ? 'right-sidebar--collapsed' : ''}`}>
+      <div className={`right-sidebar ${rightSidebarCollapsed ? 'right-sidebar--collapsed' : ''} ${rightSidebarMobileOpen ? 'right-sidebar--mobile-open' : ''}`}>
         <div className="right-sidebar__header">
           <h3>Widgets</h3>
-          <button 
-            className="right-sidebar__collapse-toggle"
-            onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
-            title={rightSidebarCollapsed ? 'Expand widgets' : 'Collapse widgets'}
-          >
-            {rightSidebarCollapsed ? '◀' : '▶'}
-          </button>
+          <div className="right-sidebar__header-actions">
+            <button 
+              className="right-sidebar__collapse-toggle"
+              onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+              title={rightSidebarCollapsed ? 'Expand widgets' : 'Collapse widgets'}
+            >
+              {rightSidebarCollapsed ? '◀' : '▶'}
+            </button>
+            <button 
+              className="right-sidebar__close"
+              onClick={() => setRightSidebarMobileOpen(false)}
+            >
+              ×
+            </button>
+          </div>
         </div>
         
         <div className="right-sidebar__content">
