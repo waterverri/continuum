@@ -46,22 +46,8 @@ export default function ProjectDetailPage() {
   // Use document filter hook for sidebar
   const sidebarFilter = useDocumentFilter(state.documents);
 
-  // Collapsible sections state
-  const [sidebarSections, setSidebarSections] = useState({
-    filters: true,
-    tags: false,
-    presets: false
-  });
-
   // Desktop sidebar collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  const toggleSidebarSection = (section: keyof typeof sidebarSections) => {
-    setSidebarSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
 
   // Load initial data
   useEffect(() => {
@@ -237,23 +223,23 @@ export default function ProjectDetailPage() {
   return (
     <div className="project-detail-page">
       
-      {/* Mobile overlay */}
+      {/* Mobile overlays */}
       {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
       
-      {/* Sidebar - Document List */}
-      <div className={`sidebar ${state.sidebarOpen ? 'sidebar--open' : ''} ${sidebarCollapsed ? 'sidebar--collapsed' : ''}`}>
-        <div className="sidebar__header">
+      {/* Left Sidebar - Documents Only */}
+      <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${sidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
+        <div className="left-sidebar__header">
           <h2>Documents</h2>
-          <div className="sidebar__header-actions">
+          <div className="left-sidebar__header-actions">
             <button 
-              className="sidebar__collapse-toggle"
+              className="left-sidebar__collapse-toggle"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {sidebarCollapsed ? '▶' : '◀'}
             </button>
             <button 
-              className="sidebar__close"
+              className="left-sidebar__close"
               onClick={() => state.setSidebarOpen(false)}
             >
               ×
@@ -269,166 +255,40 @@ export default function ProjectDetailPage() {
           </div>
         )}
         
-        {/* All Fixed Sections at Top */}
-        <div className="sidebar__fixed-sections">
-          {/* Collapsible Filters Section */}
-          <div className="sidebar__collapsible-section">
-            <button 
-              className="sidebar__section-toggle"
-              onClick={() => toggleSidebarSection('filters')}
-            >
-              <span>Filters & Search</span>
-              <span className={`sidebar__toggle-icon ${sidebarSections.filters ? 'expanded' : ''}`}>
-                ▼
-              </span>
-            </button>
-            
-            {sidebarSections.filters && (
-              <div className="sidebar__section-content sidebar__filters">
-                <DocumentFilters
-                  searchTerm={sidebarFilter.searchTerm}
-                  onSearchChange={sidebarFilter.setSearchTerm}
-                  typeFilter={sidebarFilter.typeFilter}
-                  onTypeChange={sidebarFilter.setTypeFilter}
-                  formatFilter={sidebarFilter.formatFilter}
-                  onFormatChange={sidebarFilter.setFormatFilter}
-                  availableTypes={sidebarFilter.availableTypes}
-                  searchPlaceholder="Search documents..."
-                />
-                
-                {projectId && (
-                  <TagFilter 
-                    projectId={projectId}
-                    selectedTagIds={sidebarFilter.selectedTagIds}
-                    onTagSelectionChange={sidebarFilter.setSelectedTagIds}
-                    compact={true}
-                  />
-                )}
-                
-                {sidebarFilter.hasActiveFilters && (
-                  <button 
-                    className="btn btn--sm btn--secondary"
-                    onClick={sidebarFilter.resetFilters}
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+        {/* Document Filters */}
+        <div className="left-sidebar__filters">
+          <DocumentFilters
+            searchTerm={sidebarFilter.searchTerm}
+            onSearchChange={sidebarFilter.setSearchTerm}
+            typeFilter={sidebarFilter.typeFilter}
+            onTypeChange={sidebarFilter.setTypeFilter}
+            formatFilter={sidebarFilter.formatFilter}
+            onFormatChange={sidebarFilter.setFormatFilter}
+            availableTypes={sidebarFilter.availableTypes}
+            searchPlaceholder="Search documents..."
+          />
           
-          {/* Collapsible Tags Section */}
-          <div className="sidebar__collapsible-section">
+          {projectId && (
+            <TagFilter 
+              projectId={projectId}
+              selectedTagIds={sidebarFilter.selectedTagIds}
+              onTagSelectionChange={sidebarFilter.setSelectedTagIds}
+              compact={true}
+            />
+          )}
+          
+          {sidebarFilter.hasActiveFilters && (
             <button 
-              className="sidebar__section-toggle"
-              onClick={() => toggleSidebarSection('tags')}
+              className="btn btn--sm btn--secondary"
+              onClick={sidebarFilter.resetFilters}
             >
-              <span>Project Tags ({state.tags.length})</span>
-              <span className={`sidebar__toggle-icon ${sidebarSections.tags ? 'expanded' : ''}`}>
-                ▼
-              </span>
+              Clear Filters
             </button>
-            
-            {sidebarSections.tags && (
-              <div className="sidebar__section-content">
-                <div className="sidebar__section-actions">
-                  <button 
-                    className="btn btn--sm btn--secondary"
-                    onClick={() => state.openModal('showTagManager')}
-                  >
-                    Manage Tags
-                  </button>
-                </div>
-                
-                {state.tags.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No tags created yet.</p>
-                    <p>Create tags to organize your documents.</p>
-                  </div>
-                ) : (
-                  <div className="tags-summary">
-                    <div className="tags-preview">
-                      {state.tags.map(tag => (
-                        <span 
-                          key={tag.id}
-                          className="tag-badge tag-badge--sm"
-                          style={{ backgroundColor: tag.color, color: 'white' }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Collapsible Presets Section */}
-          <div className="sidebar__collapsible-section">
-            <button 
-              className="sidebar__section-toggle"
-              onClick={() => toggleSidebarSection('presets')}
-            >
-              <span>Published Presets ({state.presets.length})</span>
-              <span className={`sidebar__toggle-icon ${sidebarSections.presets ? 'expanded' : ''}`}>
-                ▼
-              </span>
-            </button>
-            
-            {sidebarSections.presets && (
-              <div className="sidebar__section-content">
-                <div className="sidebar__section-actions">
-                  <button 
-                    className="btn btn--sm btn--secondary"
-                    onClick={() => state.openModal('showPresetPicker')}
-                  >
-                    + Create Preset
-                  </button>
-                </div>
-                
-                {state.presets.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No presets created yet.</p>
-                    <p>Create a preset to publish a document as an external API endpoint.</p>
-                  </div>
-                ) : (
-                  <div className="preset-list">
-                    {state.presets.map((preset) => (
-                      <div key={preset.id} className="preset-item">
-                        <div className="preset-header">
-                          <h4>{preset.name}</h4>
-                          <button 
-                            className="btn btn--sm btn--danger"
-                            onClick={() => operations.handleDeletePreset(preset.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                        <div className="preset-meta">
-                          Document: {preset.document?.title || 'Unknown'}
-                        </div>
-                        <div className="preset-url">
-                          <small>API Endpoint:</small>
-                          <code className="preset-url-text">{getPresetUrl(preset.name)}</code>
-                          <button 
-                            className="btn btn--xs"
-                            onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
-                          >
-                            Copy
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          )}
         </div>
         
         {/* Documents List - Takes Remaining Space */}
-        <div className="sidebar__documents-container">
+        <div className="left-sidebar__documents">
           <DocumentList
             documents={sidebarFilter.filteredDocuments}
             allDocuments={state.documents}
@@ -481,6 +341,98 @@ export default function ProjectDetailPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Right Sidebar - Widgets */}
+      <div className="right-sidebar">
+        <div className="right-sidebar__header">
+          <h3>Widgets</h3>
+        </div>
+        
+        <div className="right-sidebar__content">
+          {/* Tags Widget */}
+          <div className="widget">
+            <div className="widget__header">
+              <h4>Project Tags ({state.tags.length})</h4>
+              <button 
+                className="btn btn--sm btn--secondary"
+                onClick={() => state.openModal('showTagManager')}
+              >
+                Manage
+              </button>
+            </div>
+            
+            <div className="widget__content">
+              {state.tags.length === 0 ? (
+                <div className="empty-state">
+                  <p>No tags created yet.</p>
+                  <p>Create tags to organize your documents.</p>
+                </div>
+              ) : (
+                <div className="tags-grid">
+                  {state.tags.map(tag => (
+                    <span 
+                      key={tag.id}
+                      className="tag-badge"
+                      style={{ backgroundColor: tag.color, color: 'white' }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Presets Widget */}
+          <div className="widget">
+            <div className="widget__header">
+              <h4>Published Presets ({state.presets.length})</h4>
+              <button 
+                className="btn btn--sm btn--secondary"
+                onClick={() => state.openModal('showPresetPicker')}
+              >
+                + Create
+              </button>
+            </div>
+            
+            <div className="widget__content">
+              {state.presets.length === 0 ? (
+                <div className="empty-state">
+                  <p>No presets created yet.</p>
+                  <p>Create a preset to publish a document as an external API endpoint.</p>
+                </div>
+              ) : (
+                <div className="presets-list">
+                  {state.presets.map((preset) => (
+                    <div key={preset.id} className="preset-card">
+                      <div className="preset-card__header">
+                        <h5>{preset.name}</h5>
+                        <button 
+                          className="btn btn--xs btn--danger"
+                          onClick={() => operations.handleDeletePreset(preset.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="preset-card__meta">
+                        {preset.document?.title || 'Unknown'}
+                      </div>
+                      <div className="preset-card__actions">
+                        <button 
+                          className="btn btn--xs"
+                          onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
+                        >
+                          Copy URL
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
