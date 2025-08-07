@@ -46,8 +46,9 @@ export default function ProjectDetailPage() {
   // Use document filter hook for sidebar
   const sidebarFilter = useDocumentFilter(state.documents);
 
-  // Desktop sidebar collapse state
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Sidebar collapse states
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -209,14 +210,15 @@ export default function ProjectDetailPage() {
         state.startCreate();
         state.setSidebarOpen(false);
       },
-      onToggleSidebar: () => state.setSidebarOpen(!state.sidebarOpen)
+      onToggleSidebar: () => state.setSidebarOpen(!state.sidebarOpen),
+      onToggleRightSidebar: () => setRightSidebarCollapsed(!rightSidebarCollapsed)
     });
     
     // Cleanup when component unmounts
     return () => {
       setProjectActions({});
     };
-  }, [setProjectActions, state.startCreate, state.setSidebarOpen]);
+  }, [setProjectActions, state.startCreate, state.setSidebarOpen, rightSidebarCollapsed]);
 
   if (state.loading) return <div className="loading">Loading documents...</div>;
 
@@ -227,16 +229,16 @@ export default function ProjectDetailPage() {
       {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
       
       {/* Left Sidebar - Documents Only */}
-      <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${sidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
+      <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${leftSidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
         <div className="left-sidebar__header">
           <h2>Documents</h2>
           <div className="left-sidebar__header-actions">
             <button 
               className="left-sidebar__collapse-toggle"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+              title={leftSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {sidebarCollapsed ? '▶' : '◀'}
+              {leftSidebarCollapsed ? '▶' : '◀'}
             </button>
             <button 
               className="left-sidebar__close"
@@ -346,9 +348,16 @@ export default function ProjectDetailPage() {
       </div>
       
       {/* Right Sidebar - Widgets */}
-      <div className="right-sidebar">
+      <div className={`right-sidebar ${rightSidebarCollapsed ? 'right-sidebar--collapsed' : ''}`}>
         <div className="right-sidebar__header">
           <h3>Widgets</h3>
+          <button 
+            className="right-sidebar__collapse-toggle"
+            onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+            title={rightSidebarCollapsed ? 'Expand widgets' : 'Collapse widgets'}
+          >
+            {rightSidebarCollapsed ? '◀' : '▶'}
+          </button>
         </div>
         
         <div className="right-sidebar__content">

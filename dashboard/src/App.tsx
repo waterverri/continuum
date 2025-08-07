@@ -9,8 +9,16 @@ import './App.css';
 
 // Context for project page actions
 const ProjectActionsContext = createContext<{
-  setProjectActions: (actions: { onCreateDocument?: () => void; onToggleSidebar?: () => void }) => void;
-  projectActions: { onCreateDocument?: () => void; onToggleSidebar?: () => void };
+  setProjectActions: (actions: { 
+    onCreateDocument?: () => void; 
+    onToggleSidebar?: () => void;
+    onToggleRightSidebar?: () => void;
+  }) => void;
+  projectActions: { 
+    onCreateDocument?: () => void; 
+    onToggleSidebar?: () => void;
+    onToggleRightSidebar?: () => void;
+  };
 }>({ 
   setProjectActions: () => {}, 
   projectActions: {} 
@@ -24,6 +32,7 @@ function App() {
   const [projectActions, setProjectActions] = useState<{
     onCreateDocument?: () => void;
     onToggleSidebar?: () => void;
+    onToggleRightSidebar?: () => void;
   }>({});
 
   useEffect(() => {
@@ -69,7 +78,7 @@ function App() {
 const AppHeader = ({ session }: { session: Session | null }) => {
   const location = useLocation();
   const { projectActions } = useProjectActions();
-  const { onCreateDocument, onToggleSidebar } = projectActions;
+  const { onCreateDocument, onToggleSidebar, onToggleRightSidebar } = projectActions;
   
   if (!session) return null;
   
@@ -104,12 +113,21 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       
       <div className="app-header__right">
         {isProjectDetailPage && (
-          <button 
-            className="btn btn--primary"
-            onClick={onCreateDocument}
-          >
-            + Create Document
-          </button>
+          <>
+            <button 
+              className="app-header__sidebar-toggle"
+              onClick={onToggleRightSidebar}
+              title="Toggle widgets sidebar"
+            >
+              ⚙️
+            </button>
+            <button 
+              className="btn btn--primary"
+              onClick={onCreateDocument}
+            >
+              + Create Document
+            </button>
+          </>
         )}
         <span>Logged in as: {session.user.email}</span>
         <button onClick={handleSignOut}>Sign out</button>
