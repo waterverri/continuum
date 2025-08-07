@@ -33,7 +33,7 @@ With Continuum, you create a new kind of document—a **Blueprint**. You title i
 >
 > **Protagonist Mindset: Elara**
 > A cynical but resourceful spy, shaped by the loss of her parents. She trusts actions, not words, and harbors a deep-seated resentment for the mentor she believes abandoned her.
-> *Full Profile: {{elara_character_profile}}*
+> *Full Profile: {{group:elara_docs:summary}}* _(Uses condensed version from Elara's document group)_
 >
 > **Relevant History:**
 > A summary of the last time they met, ten years prior during the Festival of Silver Sails.
@@ -43,7 +43,7 @@ With Continuum, you create a new kind of document—a **Blueprint**. You title i
 > Elara clutches the silver locket her mother gave her, a constant, physical reminder of her loss.
 > *Description: {{item_silver_locket}}*
 
-Each `{{...}}` is a living link to another document in your world. There is no copy-pasting. You are not duplicating information; you are **weaving it together**. If you update Elara's main profile, this blueprint is automatically updated the moment you next need it.
+Each `{{...}}` is a living link to another document in your world. There is no copy-pasting. You are not duplicating information; you are **weaving it together**. Notice the `{{group:elara_docs:summary}}` reference—this pulls from a group of documents about Elara, specifically choosing the "summary" version. You might have a full character profile, a brief summary, and detailed backstory all grouped together. Continuum intelligently selects the right version for your context. If you update any document in Elara's group, this blueprint is automatically updated the moment you next need it.
 
 This blueprint document is what you save as a **Preset**.
 
@@ -60,9 +60,11 @@ This is Continuum. It's not just a place to store your notes. It's an engine tha
 * **User Authentication:** Full user sign-up and login with email/password and Google.
 * **Project Management:** Create, manage, and collaborate on writing projects with role-based access control.
 * **Document Management:** Complete CRUD system for static and composite documents.
-* **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents using {{placeholder}} syntax.
-* **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document references.
-* **Real-time Resolution:** View how composite documents resolve into final assembled content.
+* **Document Groups:** Create derivative documents (summaries, translations, etc.) organized by groups with intelligent type selection.
+* **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents or entire document groups using {{placeholder}} syntax.
+* **Advanced Group Selection:** Choose specific document types within groups or use intelligent auto-selection for composite documents.
+* **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document and group references.
+* **Real-time Resolution:** View how composite documents resolve into final assembled content with group-based substitutions.
 * **Secure API:** Backend API protected with JWT authentication and Row Level Security.
 * **Automated Deployments:** Full CI/CD pipelines for the frontend, backend, and database migrations.
 
@@ -108,16 +110,22 @@ Prerequisites for development:
 
 **Document Management System:**
 - **Complete CRUD operations** for both static and composite documents
-- **Composite document engine** with recursive {{placeholder}} resolution
-- **Cyclic dependency validation** using DFS algorithms
+- **Document group management** with derivative document creation and intelligent type selection
+- **Composite document engine** with recursive {{placeholder}} resolution supporting both documents and groups
+- **Advanced group switching** with modal interfaces for choosing specific document types within groups
+- **Extended reference format** (`group:groupId:preferredType`) for precise control over group content selection
+- **Cyclic dependency validation** using DFS algorithms for both documents and groups
 - **Professional UI** with responsive design and mobile-first approach
 
 **Enhanced User Experience:**
 - **Modal-based interfaces** replacing browser prompts for better UX
 - **Advanced filtering system** with reusable search, type, and format filters
 - **Enhanced document picker** with comprehensive filtering and content previews  
+- **Group management modals** for derivative creation and type switching
+- **Visual group indicators** showing document relationships and type preferences
+- **Intelligent component selection** with choice between documents and groups
 - **Responsive design** optimized for desktop, tablet, and mobile devices
-- **Real-time content resolution** for composite documents
+- **Real-time content resolution** for composite documents with group substitutions
 - **Unified component architecture** with modular, performant filtering components
 
 **Testing Infrastructure:**
