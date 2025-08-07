@@ -226,12 +226,10 @@ export default function ProjectDetailPage() {
         onToggleSidebar={() => state.setSidebarOpen(!state.sidebarOpen)}
       />
       
-      {/* Main body container */}
-      <div className="project-detail-page__body">
-        {/* Mobile overlay */}
-        {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
-        
-        {/* Sidebar - Document List */}
+      {/* Mobile overlay */}
+      {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
+      
+      {/* Sidebar - Document List */}
       <div className={`sidebar ${state.sidebarOpen ? 'sidebar--open' : ''} ${sidebarCollapsed ? 'sidebar--collapsed' : ''}`}>
         <div className="sidebar__header">
           <h2>Documents</h2>
@@ -430,45 +428,44 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </div>
-        </div>
+      </div>
 
-        {/* Main Content Area */}
-        <div className="main-content">
-          <div className="main-content__body">
-            {(state.isCreating || state.isEditing) && (
-              <DocumentForm
-                formData={state.formData}
-                setFormData={state.setFormData}
-                onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
-                onCancel={state.cancelEdit}
-                addComponent={addComponent}
-                removeComponent={removeComponent}
-                onOpenGroupSwitcher={openGroupSwitcher}
-                isCreating={state.isCreating}
-                documents={state.documents}
-              />
-            )}
-            
-            {!state.isCreating && !state.isEditing && state.selectedDocument && (
-              <DocumentViewer
-                document={state.selectedDocument}
-                resolvedContent={state.resolvedContent}
-                onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-              />
-            )}
-            
-            {!state.isCreating && !state.isEditing && !state.selectedDocument && (
-              <div className="empty-state">
-                <h3>Select a document to view or create a new one</h3>
-                <button 
-                  className="btn btn--primary"
-                  onClick={() => state.setSidebarOpen(true)}
-                >
-                  Browse Documents
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Main Content Area */}
+      <div className="main-content">
+        <div className="main-content__body">
+          {(state.isCreating || state.isEditing) && (
+            <DocumentForm
+              formData={state.formData}
+              setFormData={state.setFormData}
+              onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
+              onCancel={state.cancelEdit}
+              addComponent={addComponent}
+              removeComponent={removeComponent}
+              onOpenGroupSwitcher={openGroupSwitcher}
+              isCreating={state.isCreating}
+              documents={state.documents}
+            />
+          )}
+          
+          {!state.isCreating && !state.isEditing && state.selectedDocument && (
+            <DocumentViewer
+              document={state.selectedDocument}
+              resolvedContent={state.resolvedContent}
+              onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+            />
+          )}
+          
+          {!state.isCreating && !state.isEditing && !state.selectedDocument && (
+            <div className="empty-state">
+              <h3>Select a document to view or create a new one</h3>
+              <button 
+                className="btn btn--primary"
+                onClick={() => state.setSidebarOpen(true)}
+              >
+                Browse Documents
+              </button>
+            </div>
+          )}
         </div>
       </div>
       

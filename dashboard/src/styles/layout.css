@@ -8,17 +8,45 @@
   position: relative;
 }
 
-.project-detail-page__body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+/* Below header: sidebar and main content side by side */
+.project-detail-page > .sidebar,
+.project-detail-page > .main-content {
+  flex: 0 0 auto; /* Don't grow/shrink from their base size */
 }
 
-/* Main body container */
-.project-detail-page__body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+.project-detail-page > .sidebar {
+  order: 1;
+}
+
+.project-detail-page > .main-content {
+  order: 2;
+  flex: 1; /* Take remaining space */
+}
+
+/* Desktop: use horizontal flex layout below header */
+@media (min-width: 769px) {
+  .project-detail-page {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  /* Header spans full width */
+  .project-detail-page > .project-header {
+    order: 0;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  
+  /* Sidebar and main content side by side */
+  .project-detail-page > .sidebar {
+    order: 1;
+    flex: 0 0 var(--sidebar-width);
+  }
+  
+  .project-detail-page > .main-content {
+    order: 2;
+    flex: 1;
+  }
 }
 
 /* Sidebar */
@@ -170,13 +198,15 @@
   margin-bottom: var(--spacing-md);
 }
 
-/* Documents Container - Main Focus - Fixed Height */
+/* Documents Container - Fixed Height - Always 60vh regardless of other sections */
 .sidebar__documents-container {
-  flex: 1;
-  min-height: 0;
+  height: 60vh;
+  min-height: 300px;
+  max-height: 60vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .document-list {
