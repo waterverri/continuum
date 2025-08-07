@@ -945,3 +945,33 @@
 .empty-state p:last-child {
   margin-bottom: 0;
 }
+
+/* Derivative Modal Styles */
+.derivative-modal {
+  width: 90%;
+  max-width: 600px;
+}
+
+.source-document-info {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.source-document-info p {
+  margin: 0.25rem 0;
+}
+
+.derivative-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Document Group Indicator */
+.group-indicator {
+  color: #28a745;
+  font-weight: 500;
+}

@@ -27,12 +27,37 @@ export async function validateNoCyclicDependencies(
     const recursionStack = new Set<string>();
     
     // Check if any component creates a cycle
-    for (const componentId of Object.values(components)) {
-      if (await hasCycle(componentId, documentId, visited, recursionStack, projectId, userToken)) {
-        return { 
-          valid: false, 
-          error: `Cyclic dependency detected: Document ${componentId} would create a circular reference` 
-        };
+    for (const reference of Object.values(components)) {
+      if (reference.startsWith('group:')) {
+        // For group references, we need to check all documents in the group
+        const parts = reference.split(':');
+        const groupId = parts[1];
+        const userSupabase = createUserSupabaseClient(userToken);
+        
+        const { data: groupDocs, error } = await userSupabase
+          .from('documents')
+          .select('id')
+          .eq('project_id', projectId)
+          .eq('group_id', groupId);
+        
+        if (!error && groupDocs) {
+          for (const doc of groupDocs) {
+            if (await hasCycle(doc.id, documentId, visited, recursionStack, projectId, userToken)) {
+              return { 
+                valid: false, 
+                error: `Cyclic dependency detected: Group ${groupId} contains document ${doc.id} that would create a circular reference` 
+              };
+            }
+          }
+        }
+      } else {
+        // Direct document reference
+        if (await hasCycle(reference, documentId, visited, recursionStack, projectId, userToken)) {
+          return { 
+            valid: false, 
+            error: `Cyclic dependency detected: Document ${reference} would create a circular reference` 
+          };
+        }
       }
     }
     
@@ -143,17 +168,56 @@ export async function resolveCompositeDocument(
     const userSupabase = createUserSupabaseClient(userToken);
     
     // Replace each placeholder with resolved content
-    for (const [placeholder, componentId] of Object.entries(document.components)) {
-      // Fetch the component document
-      const { data: componentDoc, error } = await userSupabase
-        .from('documents')
-        .select('*')
-        .eq('id', componentId)
-        .eq('project_id', projectId)
-        .single();
+    for (const [placeholder, reference] of Object.entries(document.components)) {
+      let componentDoc: Document | null = null;
       
-      if (error || !componentDoc) {
-        console.warn(`Component document ${componentId} not found for placeholder ${placeholder}`);
+      if (reference.startsWith('group:')) {
+        // Handle group reference with optional preferred type: group:groupId:preferredType
+        const parts = reference.split(':');
+        const groupId = parts[1];
+        const preferredType = parts[2] || null;
+        
+        const { data: groupDocs, error } = await userSupabase
+          .from('documents')
+          .select('*')
+          .eq('project_id', projectId)
+          .eq('group_id', groupId)
+          .order('created_at', { ascending: false });
+        
+        if (error || !groupDocs || groupDocs.length === 0) {
+          console.warn(`Group ${groupId} not found for placeholder ${placeholder}`);
+          continue;
+        }
+        
+        // Select document from group based on preference
+        if (preferredType) {
+          // Use specific preferred type if available
+          componentDoc = groupDocs.find(doc => doc.document_type === preferredType) || groupDocs[0];
+        } else {
+          // Use default representative document selection
+          componentDoc = groupDocs.find(doc => 
+            !doc.document_type || doc.document_type === 'source' || doc.document_type === 'original'
+          ) || groupDocs[0];
+        }
+      } else {
+        // Handle direct document reference
+        const { data: doc, error } = await userSupabase
+          .from('documents')
+          .select('*')
+          .eq('id', reference)
+          .eq('project_id', projectId)
+          .single();
+        
+        if (error || !doc) {
+          console.warn(`Component document ${reference} not found for placeholder ${placeholder}`);
+          continue;
+        }
+        
+        componentDoc = doc;
+      }
+      
+      if (!componentDoc) {
+        console.warn(`No component document found for reference ${reference} in placeholder ${placeholder}`);
         continue;
       }
       

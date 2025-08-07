@@ -261,4 +261,191 @@ router.delete('/:projectId/:documentId', async (req: RequestWithUser, res: Respo
   }
 });
 
+/**
+ * GET /api/documents/:projectId/groups
+ * List all document groups for a project
+ */
+router.get('/:projectId/groups', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Get all documents with group_id for this project
+    const { data: documents, error } = await userSupabase
+      .from('documents')
+      .select('*')
+      .eq('project_id', projectId)
+      .not('group_id', 'is', null)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching grouped documents:', error);
+      return res.status(500).json({ error: 'Failed to fetch document groups' });
+    }
+    
+    // Group documents by group_id
+    const groupMap = new Map<string, {
+      groupId: string;
+      documents: Document[];
+      representativeDoc: Document;
+    }>();
+    
+    documents.forEach((doc: Document) => {
+      if (!groupMap.has(doc.group_id!)) {
+        groupMap.set(doc.group_id!, {
+          groupId: doc.group_id!,
+          documents: [],
+          representativeDoc: doc
+        });
+      }
+      
+      const group = groupMap.get(doc.group_id!)!;
+      group.documents.push(doc);
+      
+      // Update representative doc (prefer source documents or documents without document_type)
+      if (!group.representativeDoc.document_type || 
+          (doc.document_type && (doc.document_type === 'source' || doc.document_type === 'original')) ||
+          (!doc.document_type && group.representativeDoc.document_type)) {
+        group.representativeDoc = doc;
+      }
+    });
+    
+    const groups = Array.from(groupMap.values());
+    res.json({ groups });
+  } catch (error) {
+    console.error('Error in GET /documents/:projectId/groups:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/documents/:projectId/groups/:groupId
+ * Get all documents in a specific group
+ */
+router.get('/:projectId/groups/:groupId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, groupId } = req.params;
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    const { data: documents, error } = await userSupabase
+      .from('documents')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching group documents:', error);
+      return res.status(500).json({ error: 'Failed to fetch group documents' });
+    }
+    
+    if (documents.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    // Find representative document
+    const representativeDoc = documents.find(doc => 
+      !doc.document_type || doc.document_type === 'source' || doc.document_type === 'original'
+    ) || documents[0];
+    
+    res.json({ 
+      groupId,
+      documents, 
+      representativeDoc,
+      totalCount: documents.length
+    });
+  } catch (error) {
+    console.error('Error in GET /documents/:projectId/groups/:groupId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/documents/:projectId/groups/:groupId/resolve
+ * Get the representative document content for a group (used for composite document resolution)
+ */
+router.get('/:projectId/groups/:groupId/resolve', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, groupId } = req.params;
+    const { preferredType } = req.query; // Optional: prefer specific document type
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    const { data: documents, error } = await userSupabase
+      .from('documents')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching group documents for resolution:', error);
+      return res.status(500).json({ error: 'Failed to resolve group' });
+    }
+    
+    if (documents.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    let selectedDoc: Document;
+    
+    // If preferredType is specified, try to find that type first
+    if (preferredType && typeof preferredType === 'string') {
+      selectedDoc = documents.find(doc => doc.document_type === preferredType) || documents[0];
+    } else {
+      // Default selection logic: prefer source, original, or documents without type
+      selectedDoc = documents.find(doc => 
+        !doc.document_type || doc.document_type === 'source' || doc.document_type === 'original'
+      ) || documents[0];
+    }
+    
+    // If selected document is composite, resolve it
+    if (selectedDoc.is_composite) {
+      try {
+        const { content: resolvedContent } = await resolveCompositeDocument(
+          selectedDoc as Document,
+          projectId,
+          userToken
+        );
+        res.json({ 
+          document: selectedDoc,
+          resolvedContent,
+          groupId,
+          selectedFromGroup: true,
+          availableTypes: [...new Set(documents.map(d => d.document_type).filter(Boolean))]
+        });
+      } catch (resolveError) {
+        console.error('Error resolving composite document in group:', resolveError);
+        res.json({ 
+          document: selectedDoc,
+          resolvedContent: selectedDoc.content,
+          groupId,
+          selectedFromGroup: true,
+          resolutionError: 'Failed to resolve composite content',
+          availableTypes: [...new Set(documents.map(d => d.document_type).filter(Boolean))]
+        });
+      }
+    } else {
+      res.json({ 
+        document: selectedDoc,
+        resolvedContent: selectedDoc.content,
+        groupId,
+        selectedFromGroup: true,
+        availableTypes: [...new Set(documents.map(d => d.document_type).filter(Boolean))]
+      });
+    }
+  } catch (error) {
+    console.error('Error in GET /documents/:projectId/groups/:groupId/resolve:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

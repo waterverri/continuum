@@ -168,3 +168,78 @@ export const deletePreset = async (presetId: string, accessToken: string): Promi
         throw new Error('Failed to delete preset');
     }
 };
+
+// Group API types
+export interface DocumentGroup {
+  groupId: string;
+  documents: Document[];
+  representativeDoc: Document;
+}
+
+export interface GroupResolveResponse {
+  document: Document;
+  resolvedContent: string;
+  groupId: string;
+  selectedFromGroup: boolean;
+  availableTypes: string[];
+  resolutionError?: string;
+}
+
+// Group API functions
+export const getDocumentGroups = async (projectId: string, accessToken: string): Promise<DocumentGroup[]> => {
+  const response = await fetch(`${API_URL}/api/documents/${projectId}/groups`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch document groups');
+  }
+
+  const data = await response.json();
+  return data.groups;
+};
+
+export const getGroupDocuments = async (projectId: string, groupId: string, accessToken: string): Promise<{
+  groupId: string;
+  documents: Document[];
+  representativeDoc: Document;
+  totalCount: number;
+}> => {
+  const response = await fetch(`${API_URL}/api/documents/${projectId}/groups/${groupId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch group documents');
+  }
+
+  return await response.json();
+};
+
+export const resolveGroupDocument = async (
+  projectId: string, 
+  groupId: string, 
+  accessToken: string,
+  preferredType?: string
+): Promise<GroupResolveResponse> => {
+  const url = new URL(`${API_URL}/api/documents/${projectId}/groups/${groupId}/resolve`);
+  if (preferredType) {
+    url.searchParams.set('preferredType', preferredType);
+  }
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to resolve group document');
+  }
+
+  return await response.json();
+};

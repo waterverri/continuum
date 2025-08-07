@@ -9,9 +9,10 @@ import {
   getDocument,
   getPresets,
   createPreset,
-  deletePreset
+  deletePreset,
 } from '../api';
 import type { Document, Preset } from '../api';
+import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
 import '../styles/ProjectDetailPage.css';
 
 interface DocumentFormData {
@@ -20,6 +21,7 @@ interface DocumentFormData {
   document_type: string;
   is_composite: boolean;
   components: Record<string, string>;
+  group_id?: string;
 }
 
 // Custom hook for document filtering
@@ -183,23 +185,27 @@ function DocumentFilters({
 // Document List Item Component
 interface DocumentListItemProps {
   document: Document;
+  allDocuments?: Document[];
   isSelected?: boolean;
   onClick?: (document: Document) => void;
   showPreview?: boolean;
   showActions?: boolean;
   onEdit?: (document: Document) => void;
   onDelete?: (documentId: string) => void;
+  onCreateDerivative?: (document: Document) => void;
   variant?: 'sidebar' | 'picker';
 }
 
 function DocumentListItem({ 
   document, 
+  allDocuments = [],
   isSelected = false, 
   onClick, 
   showPreview = false,
   showActions = false,
   onEdit,
   onDelete,
+  onCreateDerivative,
   variant = 'sidebar'
 }: DocumentListItemProps) {
   const handleClick = () => {
@@ -207,6 +213,25 @@ function DocumentListItem({
       onClick(document);
     }
   };
+
+  const getGroupInfo = () => {
+    if (!document.group_id) return null;
+    
+    const groupMembers = allDocuments.filter(doc => doc.group_id === document.group_id);
+    const memberCount = groupMembers.length;
+    
+    if (memberCount <= 1) return null;
+    
+    const groupTypes = [...new Set(groupMembers.map(doc => doc.document_type).filter(Boolean))];
+    
+    return {
+      count: memberCount,
+      types: groupTypes,
+      groupId: document.group_id
+    };
+  };
+
+  const groupInfo = getGroupInfo();
 
   const className = variant === 'sidebar' 
     ? `document-item ${isSelected ? 'document-item--selected' : ''}` 
@@ -219,6 +244,14 @@ function DocumentListItem({
         <span className={variant === 'sidebar' ? 'document-item__meta' : 'document-picker-meta'}>
           {document.is_composite ? '🔗 Composite' : '📄 Static'}
           {document.document_type && ` • ${document.document_type}`}
+          {groupInfo && (
+            <span 
+              className="group-indicator" 
+              title={`Part of group with ${groupInfo.count} members: ${groupInfo.types.join(', ')}`}
+            >
+              {' • '}👥 Group ({groupInfo.count})
+            </span>
+          )}
         </span>
       </div>
       
@@ -248,6 +281,17 @@ function DocumentListItem({
               Edit
             </button>
           )}
+          {onCreateDerivative && (
+            <button 
+              className="btn btn--sm btn--secondary"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onCreateDerivative(document); 
+              }}
+            >
+              + Derivative
+            </button>
+          )}
           {onDelete && (
             <button 
               className="btn btn--sm btn--danger"
@@ -268,20 +312,24 @@ function DocumentListItem({
 // Document List Component
 interface DocumentListProps {
   documents: Document[];
+  allDocuments?: Document[];
   selectedDocumentId?: string;
   onDocumentClick?: (document: Document) => void;
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
+  onCreateDerivative?: (document: Document) => void;
   variant?: 'sidebar' | 'picker';
   emptyMessage?: string;
 }
 
 function DocumentList({ 
   documents, 
+  allDocuments,
   selectedDocumentId, 
   onDocumentClick, 
   onDocumentEdit, 
   onDocumentDelete,
+  onCreateDerivative,
   variant = 'sidebar',
   emptyMessage = 'No documents found.'
 }: DocumentListProps) {
@@ -299,10 +347,12 @@ function DocumentList({
         <DocumentListItem
           key={doc.id}
           document={doc}
+          allDocuments={allDocuments || documents}
           isSelected={selectedDocumentId === doc.id}
           onClick={onDocumentClick}
           onEdit={onDocumentEdit}
           onDelete={onDocumentDelete}
+          onCreateDerivative={onCreateDerivative}
           showPreview={variant === 'picker'}
           showActions={variant === 'sidebar'}
           variant={variant}
@@ -328,12 +378,20 @@ export default function ProjectDetailPage() {
   const [componentKeyToAdd, setComponentKeyToAdd] = useState<string | null>(null);
   const [keyInputValue, setKeyInputValue] = useState('');
   const [showPresetPicker, setShowPresetPicker] = useState(false);
+  const [showDerivativeModal, setShowDerivativeModal] = useState(false);
+  const [sourceDocument, setSourceDocument] = useState<Document | null>(null);
+  const [showComponentTypeSelector, setShowComponentTypeSelector] = useState(false);
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [showGroupSwitcher, setShowGroupSwitcher] = useState(false);
+  const [switcherComponentKey, setSwitcherComponentKey] = useState<string | null>(null);
+  const [switcherGroupId, setSwitcherGroupId] = useState<string | null>(null);
   const [formData, setFormData] = useState<DocumentFormData>({
     title: '',
     content: '',
     document_type: '',
     is_composite: false,
-    components: {}
+    components: {},
+    group_id: undefined
   });
   
   // Use document filter hook for sidebar
@@ -437,7 +495,8 @@ export default function ProjectDetailPage() {
       content: '',
       document_type: '',
       is_composite: false,
-      components: {}
+      components: {},
+      group_id: undefined
     });
   };
 
@@ -470,6 +529,52 @@ export default function ProjectDetailPage() {
     return `${import.meta.env.VITE_API_URL}/preset/${projectId}/${presetName}`;
   };
 
+  const handleCreateDerivative = (document: Document) => {
+    setSourceDocument(document);
+    setShowDerivativeModal(true);
+  };
+
+  const handleDerivativeCreation = async (derivativeType: string, title: string) => {
+    if (!projectId || !sourceDocument) return;
+    
+    try {
+      const token = await getAccessToken();
+      
+      // Create derivative document with same group_id as source
+      const groupId = sourceDocument.group_id || sourceDocument.id; // Use source's group_id or create new group
+      
+      const derivativeDoc = await createDocument(projectId, {
+        title,
+        content: '', // Start with empty content
+        document_type: derivativeType,
+        is_composite: false,
+        components: {},
+        group_id: groupId
+      }, token);
+
+      // If source document doesn't have a group_id yet, update it to be part of the same group
+      if (!sourceDocument.group_id) {
+        await updateDocument(projectId, sourceDocument.id, {
+          ...sourceDocument,
+          group_id: groupId
+        }, token);
+        
+        // Update local state
+        setDocuments(documents.map(doc => 
+          doc.id === sourceDocument.id 
+            ? { ...doc, group_id: groupId }
+            : doc
+        ));
+      }
+
+      setDocuments([derivativeDoc, ...documents]);
+      setShowDerivativeModal(false);
+      setSourceDocument(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create derivative document');
+    }
+  };
+
   const startEdit = (doc: Document) => {
     setSelectedDocument(doc);
     setFormData({
@@ -477,7 +582,8 @@ export default function ProjectDetailPage() {
       content: doc.content || '',
       document_type: doc.document_type || '',
       is_composite: doc.is_composite,
-      components: doc.components || {}
+      components: doc.components || {},
+      group_id: doc.group_id
     });
     setIsEditing(true);
     setResolvedContent(null);
@@ -492,8 +598,79 @@ export default function ProjectDetailPage() {
     if (keyInputValue.trim()) {
       setComponentKeyToAdd(keyInputValue.trim());
       setShowKeyInput(false);
-      setShowDocumentPicker(true);
+      setShowComponentTypeSelector(true);
     }
+  };
+
+  const selectComponentType = (type: 'document' | 'group') => {
+    setShowComponentTypeSelector(false);
+    if (type === 'document') {
+      setShowDocumentPicker(true);
+    } else {
+      setShowGroupPicker(true);
+    }
+  };
+
+  const cancelComponentTypeSelection = () => {
+    setShowComponentTypeSelector(false);
+    setComponentKeyToAdd(null);
+  };
+
+  const selectDocumentForComponent = (documentId: string) => {
+    if (componentKeyToAdd && selectedDocument) {
+      const updatedComponents = {
+        ...selectedDocument.components,
+        [componentKeyToAdd]: documentId
+      };
+      setFormData(prev => ({ ...prev, components: updatedComponents }));
+      setShowDocumentPicker(false);
+      setComponentKeyToAdd(null);
+    }
+  };
+
+  const selectGroupForComponent = (groupId: string) => {
+    if (componentKeyToAdd && selectedDocument) {
+      const updatedComponents = {
+        ...selectedDocument.components,
+        [componentKeyToAdd]: `group:${groupId}`
+      };
+      setFormData(prev => ({ ...prev, components: updatedComponents }));
+      setShowGroupPicker(false);
+      setComponentKeyToAdd(null);
+    }
+  };
+
+  const cancelDocumentSelection = () => {
+    setShowDocumentPicker(false);
+    setComponentKeyToAdd(null);
+  };
+
+  const cancelGroupSelection = () => {
+    setShowGroupPicker(false);
+    setComponentKeyToAdd(null);
+  };
+
+  const openGroupSwitcher = (componentKey: string, groupId: string) => {
+    setSwitcherComponentKey(componentKey);
+    setSwitcherGroupId(groupId);
+    setShowGroupSwitcher(true);
+  };
+
+  const switchGroupType = (componentKey: string, groupId: string, preferredType?: string) => {
+    const updatedComponents = {
+      ...selectedDocument?.components,
+      [componentKey]: preferredType ? `group:${groupId}:${preferredType}` : `group:${groupId}`
+    };
+    setFormData(prev => ({ ...prev, components: updatedComponents }));
+    setShowGroupSwitcher(false);
+    setSwitcherComponentKey(null);
+    setSwitcherGroupId(null);
+  };
+
+  const cancelGroupSwitcher = () => {
+    setShowGroupSwitcher(false);
+    setSwitcherComponentKey(null);
+    setSwitcherGroupId(null);
   };
 
   const cancelKeyInput = () => {
@@ -501,21 +678,6 @@ export default function ProjectDetailPage() {
     setKeyInputValue('');
   };
 
-  const selectDocumentForComponent = (documentId: string) => {
-    if (componentKeyToAdd) {
-      setFormData({
-        ...formData,
-        components: { ...formData.components, [componentKeyToAdd]: documentId }
-      });
-    }
-    setShowDocumentPicker(false);
-    setComponentKeyToAdd(null);
-  };
-
-  const cancelDocumentSelection = () => {
-    setShowDocumentPicker(false);
-    setComponentKeyToAdd(null);
-  };
 
   const removeComponent = (key: string) => {
     const newComponents = { ...formData.components };
@@ -597,10 +759,12 @@ export default function ProjectDetailPage() {
         
         <DocumentList
           documents={sidebarFilter.filteredDocuments}
+          allDocuments={documents}
           selectedDocumentId={selectedDocument?.id}
           onDocumentClick={handleSidebarDocumentClick}
           onDocumentEdit={handleSidebarDocumentEdit}
           onDocumentDelete={handleDeleteDocument}
+          onCreateDerivative={handleCreateDerivative}
           variant="sidebar"
           emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
         />
@@ -682,6 +846,7 @@ export default function ProjectDetailPage() {
               }}
               addComponent={addComponent}
               removeComponent={removeComponent}
+              onOpenGroupSwitcher={openGroupSwitcher}
               isCreating={isCreating}
               documents={documents}
             />
@@ -729,6 +894,49 @@ export default function ProjectDetailPage() {
         />
       )}
 
+      {/* Derivative Modal */}
+      {showDerivativeModal && (
+        <DerivativeModal
+          sourceDocument={sourceDocument}
+          onConfirm={handleDerivativeCreation}
+          onCancel={() => {
+            setShowDerivativeModal(false);
+            setSourceDocument(null);
+          }}
+        />
+      )}
+
+      {/* Component Type Selector Modal */}
+      {showComponentTypeSelector && (
+        <ComponentTypeSelectorModal
+          componentKey={componentKeyToAdd}
+          onSelect={selectComponentType}
+          onCancel={cancelComponentTypeSelection}
+        />
+      )}
+
+      {/* Group Picker Modal */}
+      {showGroupPicker && (
+        <GroupPickerModal
+          documents={documents}
+          componentKey={componentKeyToAdd}
+          onSelect={selectGroupForComponent}
+          onCancel={cancelGroupSelection}
+        />
+      )}
+
+      {/* Group Switcher Modal */}
+      {showGroupSwitcher && switcherGroupId && switcherComponentKey && projectId && (
+        <GroupSwitcherModal
+          projectId={projectId}
+          groupId={switcherGroupId}
+          componentKey={switcherComponentKey}
+          currentReference={selectedDocument?.components?.[switcherComponentKey] || ''}
+          onSwitch={switchGroupType}
+          onCancel={cancelGroupSwitcher}
+        />
+      )}
+
       {/* Preset Picker Modal */}
       {showPresetPicker && (
         <PresetPickerModal
@@ -749,6 +957,7 @@ interface DocumentFormProps {
   onCancel: () => void;
   addComponent: () => void;
   removeComponent: (key: string) => void;
+  onOpenGroupSwitcher?: (componentKey: string, groupId: string) => void;
   isCreating: boolean;
   documents: Document[];
 }
@@ -760,13 +969,36 @@ function DocumentForm({
   onCancel, 
   addComponent, 
   removeComponent,
+  onOpenGroupSwitcher,
   isCreating,
   documents
 }: DocumentFormProps) {
   
-  const getDocumentTitle = (docId: string) => {
-    const doc = documents.find(d => d.id === docId);
-    return doc ? doc.title : `Unknown Document (${docId.substring(0, 8)}...)`;
+  const getDocumentTitle = (reference: string) => {
+    if (reference.startsWith('group:')) {
+      const parts = reference.split(':');
+      const groupId = parts[1];
+      const preferredType = parts[2] || null;
+      
+      const groupDocs = documents.filter(d => d.group_id === groupId);
+      if (groupDocs.length > 0) {
+        let representative: Document;
+        if (preferredType) {
+          // Use specific preferred type if available
+          representative = groupDocs.find(d => d.document_type === preferredType) || groupDocs[0];
+        } else {
+          // Use default representative document selection
+          representative = groupDocs.find(d => !d.document_type || d.document_type === 'source' || d.document_type === 'original') || groupDocs[0];
+        }
+        
+        const typeLabel = preferredType ? ` - ${preferredType}` : '';
+        return `${representative.title} (Group${typeLabel} - ${groupDocs.length} docs)`;
+      }
+      return `Unknown Group (${groupId.substring(0, 8)}...)`;
+    } else {
+      const doc = documents.find(d => d.id === reference);
+      return doc ? doc.title : `Unknown Document (${reference.substring(0, 8)}...)`;
+    }
   };
   return (
     <div className="document-form">
@@ -833,15 +1065,40 @@ function DocumentForm({
                   <div className="component-arrow">→</div>
                   <div className="component-document">
                     <span className="document-title">{getDocumentTitle(docId)}</span>
-                    <small className="document-id">ID: {docId.substring(0, 8)}...</small>
+                    <small className="document-id">
+                      {docId.startsWith('group:') ? 
+                        (() => {
+                          const parts = docId.split(':');
+                          const groupId = parts[1];
+                          const preferredType = parts[2];
+                          return `Group ID: ${groupId.substring(0, 8)}...${preferredType ? ` (${preferredType})` : ''}`;
+                        })() 
+                        : `ID: ${docId.substring(0, 8)}...`
+                      }
+                    </small>
                   </div>
                 </div>
-                <button 
-                  className="btn btn--sm btn--danger"
-                  onClick={() => removeComponent(key)}
-                >
-                  Remove
-                </button>
+                <div className="component-actions">
+                  {docId.startsWith('group:') && (
+                    <button 
+                      className="btn btn--sm btn--secondary"
+                      onClick={() => {
+                        const parts = docId.split(':');
+                        const groupId = parts[1] || '';
+                        onOpenGroupSwitcher?.(key, groupId);
+                      }}
+                      style={{ marginRight: '0.5rem' }}
+                    >
+                      Switch Type
+                    </button>
+                  )}
+                  <button 
+                    className="btn btn--sm btn--danger"
+                    onClick={() => removeComponent(key)}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1046,6 +1303,107 @@ function ComponentKeyInputModal({ value, onChange, onConfirm, onCancel }: Compon
   );
 }
 
+// Derivative Document Modal Component
+interface DerivativeModalProps {
+  sourceDocument: Document | null;
+  onConfirm: (derivativeType: string, title: string) => void;
+  onCancel: () => void;
+}
+
+function DerivativeModal({ sourceDocument, onConfirm, onCancel }: DerivativeModalProps) {
+  const [derivativeType, setDerivativeType] = useState('');
+  const [title, setTitle] = useState('');
+
+  const handleConfirm = () => {
+    if (derivativeType.trim() && title.trim()) {
+      onConfirm(derivativeType.trim(), title.trim());
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleConfirm();
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  const generateSuggestedTitle = (type: string) => {
+    if (!sourceDocument) return '';
+    const baseTitle = sourceDocument.title;
+    return type ? `${baseTitle} - ${type}` : baseTitle;
+  };
+
+  const handleTypeChange = (type: string) => {
+    setDerivativeType(type);
+    if (!title || title === generateSuggestedTitle(derivativeType)) {
+      setTitle(generateSuggestedTitle(type));
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content derivative-modal">
+        <div className="modal-header">
+          <h3>Create Derivative Document</h3>
+          <button className="modal-close" onClick={onCancel}>×</button>
+        </div>
+        
+        <div className="modal-body">
+          {sourceDocument && (
+            <div className="source-document-info">
+              <p><strong>Source:</strong> {sourceDocument.title}</p>
+              {sourceDocument.document_type && (
+                <p><strong>Type:</strong> {sourceDocument.document_type}</p>
+              )}
+            </div>
+          )}
+
+          <div className="derivative-form">
+            <label className="form-label">
+              Document Type:
+              <input
+                type="text"
+                className="form-input"
+                value={derivativeType}
+                onChange={(e) => handleTypeChange(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Enter any type (e.g., summary, analysis, notes, translation)"
+                autoFocus
+              />
+            </label>
+
+            <label className="form-label">
+              Title:
+              <input
+                type="text"
+                className="form-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Enter derivative document title"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn--secondary" onClick={onCancel}>
+            Cancel
+          </button>
+          <button 
+            className="btn btn--primary" 
+            onClick={handleConfirm}
+            disabled={!derivativeType.trim() || !title.trim()}
+          >
+            Create Derivative
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Preset Picker Modal Component
 interface PresetPickerModalProps {
   documents: Document[];
@@ -1153,6 +1511,153 @@ function PresetPickerModal({ documents, onSelect, onCancel }: PresetPickerModalP
           <button className="btn btn--secondary" onClick={() => setStep('name')}>
             Back
           </button>
+          <button className="btn btn--secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component Type Selector Modal Component
+interface ComponentTypeSelectorModalProps {
+  componentKey: string | null;
+  onSelect: (type: 'document' | 'group') => void;
+  onCancel: () => void;
+}
+
+function ComponentTypeSelectorModal({ componentKey, onSelect, onCancel }: ComponentTypeSelectorModalProps) {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content component-key-modal">
+        <div className="modal-header">
+          <h3>Select Component Type</h3>
+          <button className="modal-close" onClick={onCancel}>×</button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="key-input-section">
+            <p>Choose how to populate the component key <strong>{componentKey}</strong>:</p>
+            <div className="form-actions">
+              <button 
+                className="btn btn--primary"
+                onClick={() => onSelect('document')}
+                onKeyDown={handleKeyPress}
+                autoFocus
+              >
+                Select Document
+              </button>
+              <button 
+                className="btn btn--secondary"
+                onClick={() => onSelect('group')}
+                onKeyDown={handleKeyPress}
+              >
+                Select Group
+              </button>
+            </div>
+            <p className="key-input-help">
+              <strong>Document:</strong> Choose a specific document to populate this component.<br/>
+              <strong>Group:</strong> Choose a document group - the system will use the preferred group member.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Group Picker Modal Component
+interface GroupPickerModalProps {
+  documents: Document[];
+  componentKey: string | null;
+  onSelect: (groupId: string) => void;
+  onCancel: () => void;
+}
+
+function GroupPickerModal({ documents, componentKey, onSelect, onCancel }: GroupPickerModalProps) {
+  const documentGroups = useMemo(() => {
+    const groupMap = new Map<string, { 
+      groupId: string; 
+      documents: Document[]; 
+      representativeDoc: Document 
+    }>();
+
+    documents.forEach(doc => {
+      if (doc.group_id) {
+        if (!groupMap.has(doc.group_id)) {
+          groupMap.set(doc.group_id, {
+            groupId: doc.group_id,
+            documents: [],
+            representativeDoc: doc
+          });
+        }
+        groupMap.get(doc.group_id)!.documents.push(doc);
+        
+        // Update representative doc (prefer source documents or documents without document_type)
+        const current = groupMap.get(doc.group_id)!.representativeDoc;
+        if (!current.document_type || 
+            (doc.document_type && (doc.document_type === 'source' || doc.document_type === 'original')) ||
+            (!doc.document_type && current.document_type)) {
+          groupMap.get(doc.group_id)!.representativeDoc = doc;
+        }
+      }
+    });
+
+    return Array.from(groupMap.values());
+  }, [documents]);
+
+  const handleGroupSelect = (groupId: string) => {
+    onSelect(groupId);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content document-picker-modal">
+        <div className="modal-header">
+          <h3>Select Document Group for "{componentKey}"</h3>
+          <button className="modal-close" onClick={onCancel}>×</button>
+        </div>
+        
+        <div className="modal-body">
+          {documentGroups.length > 0 ? (
+            <div className="document-picker-list">
+              {documentGroups.map(group => (
+                <div
+                  key={group.groupId}
+                  className="document-picker-item"
+                  onClick={() => handleGroupSelect(group.groupId)}
+                >
+                  <div className="document-picker-header">
+                    <h4>{group.representativeDoc.title}</h4>
+                    <div className="document-picker-meta">
+                      Group ({group.documents.length} documents)
+                    </div>
+                  </div>
+                  <div className="document-picker-preview">
+                    Types: {[...new Set(group.documents.map(d => d.document_type || 'untitled').filter(Boolean))].join(', ')}
+                  </div>
+                  <div className="document-picker-id">
+                    Group ID: {group.groupId}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <p>No document groups found.</p>
+              <p>Create derivative documents to form groups.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
           <button className="btn btn--secondary" onClick={onCancel}>
             Cancel
           </button>
