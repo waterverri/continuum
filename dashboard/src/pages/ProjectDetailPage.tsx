@@ -269,53 +269,165 @@ export default function ProjectDetailPage() {
           </div>
         )}
         
-        {/* Collapsible Filters Section */}
-        <div className="sidebar__collapsible-section">
-          <button 
-            className="sidebar__section-toggle"
-            onClick={() => toggleSidebarSection('filters')}
-          >
-            <span>Filters & Search</span>
-            <span className={`sidebar__toggle-icon ${sidebarSections.filters ? 'expanded' : ''}`}>
-              ▼
-            </span>
-          </button>
-          
-          {sidebarSections.filters && (
-            <div className="sidebar__section-content sidebar__filters">
-              <DocumentFilters
-                searchTerm={sidebarFilter.searchTerm}
-                onSearchChange={sidebarFilter.setSearchTerm}
-                typeFilter={sidebarFilter.typeFilter}
-                onTypeChange={sidebarFilter.setTypeFilter}
-                formatFilter={sidebarFilter.formatFilter}
-                onFormatChange={sidebarFilter.setFormatFilter}
-                availableTypes={sidebarFilter.availableTypes}
-                searchPlaceholder="Search documents..."
-              />
-              
-              {projectId && (
-                <TagFilter 
-                  projectId={projectId}
-                  selectedTagIds={sidebarFilter.selectedTagIds}
-                  onTagSelectionChange={sidebarFilter.setSelectedTagIds}
-                  compact={true}
+        {/* All Fixed Sections at Top */}
+        <div className="sidebar__fixed-sections">
+          {/* Collapsible Filters Section */}
+          <div className="sidebar__collapsible-section">
+            <button 
+              className="sidebar__section-toggle"
+              onClick={() => toggleSidebarSection('filters')}
+            >
+              <span>Filters & Search</span>
+              <span className={`sidebar__toggle-icon ${sidebarSections.filters ? 'expanded' : ''}`}>
+                ▼
+              </span>
+            </button>
+            
+            {sidebarSections.filters && (
+              <div className="sidebar__section-content sidebar__filters">
+                <DocumentFilters
+                  searchTerm={sidebarFilter.searchTerm}
+                  onSearchChange={sidebarFilter.setSearchTerm}
+                  typeFilter={sidebarFilter.typeFilter}
+                  onTypeChange={sidebarFilter.setTypeFilter}
+                  formatFilter={sidebarFilter.formatFilter}
+                  onFormatChange={sidebarFilter.setFormatFilter}
+                  availableTypes={sidebarFilter.availableTypes}
+                  searchPlaceholder="Search documents..."
                 />
-              )}
-              
-              {sidebarFilter.hasActiveFilters && (
-                <button 
-                  className="btn btn--sm btn--secondary"
-                  onClick={sidebarFilter.resetFilters}
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          )}
+                
+                {projectId && (
+                  <TagFilter 
+                    projectId={projectId}
+                    selectedTagIds={sidebarFilter.selectedTagIds}
+                    onTagSelectionChange={sidebarFilter.setSelectedTagIds}
+                    compact={true}
+                  />
+                )}
+                
+                {sidebarFilter.hasActiveFilters && (
+                  <button 
+                    className="btn btn--sm btn--secondary"
+                    onClick={sidebarFilter.resetFilters}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Collapsible Tags Section */}
+          <div className="sidebar__collapsible-section">
+            <button 
+              className="sidebar__section-toggle"
+              onClick={() => toggleSidebarSection('tags')}
+            >
+              <span>Project Tags ({state.tags.length})</span>
+              <span className={`sidebar__toggle-icon ${sidebarSections.tags ? 'expanded' : ''}`}>
+                ▼
+              </span>
+            </button>
+            
+            {sidebarSections.tags && (
+              <div className="sidebar__section-content">
+                <div className="sidebar__section-actions">
+                  <button 
+                    className="btn btn--sm btn--secondary"
+                    onClick={() => state.openModal('showTagManager')}
+                  >
+                    Manage Tags
+                  </button>
+                </div>
+                
+                {state.tags.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No tags created yet.</p>
+                    <p>Create tags to organize your documents.</p>
+                  </div>
+                ) : (
+                  <div className="tags-summary">
+                    <div className="tags-preview">
+                      {state.tags.map(tag => (
+                        <span 
+                          key={tag.id}
+                          className="tag-badge tag-badge--sm"
+                          style={{ backgroundColor: tag.color, color: 'white' }}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Collapsible Presets Section */}
+          <div className="sidebar__collapsible-section">
+            <button 
+              className="sidebar__section-toggle"
+              onClick={() => toggleSidebarSection('presets')}
+            >
+              <span>Published Presets ({state.presets.length})</span>
+              <span className={`sidebar__toggle-icon ${sidebarSections.presets ? 'expanded' : ''}`}>
+                ▼
+              </span>
+            </button>
+            
+            {sidebarSections.presets && (
+              <div className="sidebar__section-content">
+                <div className="sidebar__section-actions">
+                  <button 
+                    className="btn btn--sm btn--secondary"
+                    onClick={() => state.openModal('showPresetPicker')}
+                  >
+                    + Create Preset
+                  </button>
+                </div>
+                
+                {state.presets.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No presets created yet.</p>
+                    <p>Create a preset to publish a document as an external API endpoint.</p>
+                  </div>
+                ) : (
+                  <div className="preset-list">
+                    {state.presets.map((preset) => (
+                      <div key={preset.id} className="preset-item">
+                        <div className="preset-header">
+                          <h4>{preset.name}</h4>
+                          <button 
+                            className="btn btn--sm btn--danger"
+                            onClick={() => operations.handleDeletePreset(preset.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                        <div className="preset-meta">
+                          Document: {preset.document?.title || 'Unknown'}
+                        </div>
+                        <div className="preset-url">
+                          <small>API Endpoint:</small>
+                          <code className="preset-url-text">{getPresetUrl(preset.name)}</code>
+                          <button 
+                            className="btn btn--xs"
+                            onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         
-        {/* Documents List - Main Content */}
+        {/* Documents List - Takes Remaining Space */}
         <div className="sidebar__documents-container">
           <DocumentList
             documents={sidebarFilter.filteredDocuments}
@@ -329,115 +441,6 @@ export default function ProjectDetailPage() {
             variant="sidebar"
             emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
           />
-        </div>
-        
-        {/* Collapsible Tags Section */}
-        <div className="sidebar__collapsible-section">
-          <button 
-            className="sidebar__section-toggle"
-            onClick={() => toggleSidebarSection('tags')}
-          >
-            <span>Project Tags ({state.tags.length})</span>
-            <span className={`sidebar__toggle-icon ${sidebarSections.tags ? 'expanded' : ''}`}>
-              ▼
-            </span>
-          </button>
-          
-          {sidebarSections.tags && (
-            <div className="sidebar__section-content">
-              <div className="sidebar__section-actions">
-                <button 
-                  className="btn btn--sm btn--secondary"
-                  onClick={() => state.openModal('showTagManager')}
-                >
-                  Manage Tags
-                </button>
-              </div>
-              
-              {state.tags.length === 0 ? (
-                <div className="empty-state">
-                  <p>No tags created yet.</p>
-                  <p>Create tags to organize your documents.</p>
-                </div>
-              ) : (
-                <div className="tags-summary">
-                  <div className="tags-preview">
-                    {state.tags.map(tag => (
-                      <span 
-                        key={tag.id}
-                        className="tag-badge tag-badge--sm"
-                        style={{ backgroundColor: tag.color, color: 'white' }}
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Collapsible Presets Section */}
-        <div className="sidebar__collapsible-section">
-          <button 
-            className="sidebar__section-toggle"
-            onClick={() => toggleSidebarSection('presets')}
-          >
-            <span>Published Presets ({state.presets.length})</span>
-            <span className={`sidebar__toggle-icon ${sidebarSections.presets ? 'expanded' : ''}`}>
-              ▼
-            </span>
-          </button>
-          
-          {sidebarSections.presets && (
-            <div className="sidebar__section-content">
-              <div className="sidebar__section-actions">
-                <button 
-                  className="btn btn--sm btn--secondary"
-                  onClick={() => state.openModal('showPresetPicker')}
-                >
-                  + Create Preset
-                </button>
-              </div>
-              
-              {state.presets.length === 0 ? (
-                <div className="empty-state">
-                  <p>No presets created yet.</p>
-                  <p>Create a preset to publish a document as an external API endpoint.</p>
-                </div>
-              ) : (
-                <div className="preset-list">
-                  {state.presets.map((preset) => (
-                    <div key={preset.id} className="preset-item">
-                      <div className="preset-header">
-                        <h4>{preset.name}</h4>
-                        <button 
-                          className="btn btn--sm btn--danger"
-                          onClick={() => operations.handleDeletePreset(preset.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                      <div className="preset-meta">
-                        Document: {preset.document?.title || 'Unknown'}
-                      </div>
-                      <div className="preset-url">
-                        <small>API Endpoint:</small>
-                        <code className="preset-url-text">{getPresetUrl(preset.name)}</code>
-                        <button 
-                          className="btn btn--xs"
-                          onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

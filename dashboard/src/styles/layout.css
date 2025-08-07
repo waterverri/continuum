@@ -25,7 +25,7 @@
   }
 }
 
-/* Sidebar - Fixed height container */
+/* Sidebar - Fixed height container with proper flex layout */
 .sidebar {
   width: var(--sidebar-width);
   background-color: var(--color-background);
@@ -40,6 +40,14 @@
   /* Don't set overflow here - let child containers handle it */
 }
 
+/* Fixed sections container - takes needed space */
+.sidebar__fixed-sections {
+  flex: 0 0 auto; /* Don't grow, don't shrink, take natural size */
+  display: flex;
+  flex-direction: column;
+  order: 1; /* After header */
+}
+
 .sidebar__header {
   display: flex;
   justify-content: space-between;
@@ -47,6 +55,8 @@
   padding: var(--spacing-lg) var(--spacing-xl);
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-background-light);
+  flex: 0 0 auto; /* Fixed size */
+  order: 0; /* First */
 }
 
 .sidebar__header h2 {
@@ -128,10 +138,10 @@
 
 
 
-/* Sidebar Collapsible Sections */
+/* Sidebar Collapsible Sections - within fixed sections */
 .sidebar__collapsible-section {
   border-bottom: 1px solid var(--color-border-light);
-  flex-shrink: 0;
+  flex: 0 0 auto; /* Fixed size sections */
 }
 
 .sidebar__section-toggle {
@@ -191,15 +201,17 @@
   margin-bottom: var(--spacing-md);
 }
 
-/* Documents Container - Outer container with fixed height and scroll */
+/* Documents Container - Takes remaining space after fixed sections */
 .sidebar__documents-container {
-  flex: 1;
-  min-height: 0;
+  flex: 1; /* Take all remaining space */
+  min-height: 0; /* Allow shrinking */
   overflow-y: auto;
   overflow-x: hidden;
   /* This outer container has the scrollbar */
   scrollbar-width: auto;
   scrollbar-color: #cbd5e0 #f7fafc;
+  /* Ensure it's positioned after fixed sections */
+  order: 2;
 }
 
 /* Document list - Inner container with natural height */
