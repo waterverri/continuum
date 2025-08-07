@@ -3,48 +3,22 @@
 .project-detail-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 60px); /* Subtract app header height */
   overflow: hidden;
   position: relative;
 }
 
-/* Below header: sidebar and main content side by side */
-.project-detail-page > .sidebar,
-.project-detail-page > .main-content {
-  flex: 0 0 auto; /* Don't grow/shrink from their base size */
-}
-
-.project-detail-page > .sidebar {
-  order: 1;
-}
-
-.project-detail-page > .main-content {
-  order: 2;
-  flex: 1; /* Take remaining space */
-}
-
-/* Desktop: use horizontal flex layout below header */
+/* Desktop: sidebar and main content side by side */
 @media (min-width: 769px) {
   .project-detail-page {
     flex-direction: row;
-    flex-wrap: wrap;
   }
   
-  /* Header spans full width */
-  .project-detail-page > .project-header {
-    order: 0;
-    flex: 1 1 100%;
-    width: 100%;
-  }
-  
-  /* Sidebar and main content side by side */
   .project-detail-page > .sidebar {
-    order: 1;
     flex: 0 0 var(--sidebar-width);
   }
   
   .project-detail-page > .main-content {
-    order: 2;
     flex: 1;
   }
 }
@@ -61,6 +35,8 @@
   flex-shrink: 0;
   position: relative;
   z-index: 10;
+  /* Prevent scroll events from propagating to parent */
+  touch-action: pan-y;
 }
 
 .sidebar__header {
@@ -212,8 +188,12 @@
 .document-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--spacing-md) var(--spacing-xl);
   min-height: 0;
+  /* Ensure scroll stays within this container */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 /* Update Filters when in collapsible sections */

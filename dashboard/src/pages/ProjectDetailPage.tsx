@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Document } from '../api';
+import { useProjectActions } from '../App';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
 import { useDocumentFilter } from '../hooks/useDocumentFilter';
@@ -8,7 +9,6 @@ import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { DocumentList } from '../components/DocumentList';
 import { DocumentFilters } from '../components/DocumentFilters';
-import { ProjectHeader } from '../components/ProjectHeader';
 import { DocumentPickerModal } from '../components/DocumentPickerModal';
 import { ComponentKeyInputModal } from '../components/ComponentKeyInputModal';
 import { DerivativeModal } from '../components/DerivativeModal';
@@ -24,6 +24,9 @@ import '../styles/ProjectDetailPage.css';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  
+  // Get project actions context
+  const { setProjectActions } = useProjectActions();
   
   // Use custom hooks for state management
   const state = useProjectDetailState();
@@ -213,18 +216,26 @@ export default function ProjectDetailPage() {
     state.setSidebarOpen(false);
   };
 
+  // Provide action handlers to the app header through context
+  useEffect(() => {
+    setProjectActions({
+      onCreateDocument: () => {
+        state.startCreate();
+        state.setSidebarOpen(false);
+      },
+      onToggleSidebar: () => state.setSidebarOpen(!state.sidebarOpen)
+    });
+    
+    // Cleanup when component unmounts
+    return () => {
+      setProjectActions({});
+    };
+  }, [setProjectActions, state.startCreate, state.setSidebarOpen]);
+
   if (state.loading) return <div className="loading">Loading documents...</div>;
 
   return (
     <div className="project-detail-page">
-      {/* Header */}
-      <ProjectHeader 
-        onCreateDocument={() => {
-          state.startCreate();
-          state.setSidebarOpen(false);
-        }}
-        onToggleSidebar={() => state.setSidebarOpen(!state.sidebarOpen)}
-      />
       
       {/* Mobile overlay */}
       {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
