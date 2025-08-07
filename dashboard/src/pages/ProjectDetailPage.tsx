@@ -10,9 +10,15 @@ import {
   getPresets,
   createPreset,
   deletePreset,
+  getTags,
+  getDocumentTags,
 } from '../api';
-import type { Document, Preset } from '../api';
+import type { Document, Preset, Tag } from '../api';
 import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
+import { TagManager } from '../components/TagManager';
+import { TagSelector } from '../components/TagSelector';
+import { TagFilter } from '../components/TagFilter';
+import { useDocumentFilter } from '../hooks/useDocumentFilter';
 import '../styles/ProjectDetailPage.css';
 
 interface DocumentFormData {
@@ -24,51 +30,6 @@ interface DocumentFormData {
   group_id?: string;
 }
 
-// Custom hook for document filtering
-function useDocumentFilter(documents: Document[]) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [formatFilter, setFormatFilter] = useState('');
-
-  const filteredDocuments = useMemo(() => {
-    return documents.filter(doc => {
-      const matchesSearch = !searchTerm || 
-        doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (doc.content && doc.content.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesType = !typeFilter || doc.document_type === typeFilter;
-      
-      const matchesFormat = !formatFilter || 
-        (formatFilter === 'composite' && doc.is_composite) ||
-        (formatFilter === 'static' && !doc.is_composite);
-
-      return matchesSearch && matchesType && matchesFormat;
-    });
-  }, [documents, searchTerm, typeFilter, formatFilter]);
-
-  const availableTypes = useMemo(() => {
-    return [...new Set(documents.map(doc => doc.document_type).filter((type): type is string => Boolean(type)))];
-  }, [documents]);
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setTypeFilter('');
-    setFormatFilter('');
-  };
-
-  return {
-    searchTerm,
-    setSearchTerm,
-    typeFilter,
-    setTypeFilter,
-    formatFilter,
-    setFormatFilter,
-    filteredDocuments,
-    availableTypes,
-    resetFilters,
-    hasActiveFilters: searchTerm || typeFilter || formatFilter
-  };
-}
 
 // Document Search Input Component
 interface DocumentSearchInputProps {
@@ -193,6 +154,7 @@ interface DocumentListItemProps {
   onEdit?: (document: Document) => void;
   onDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
+  onManageTags?: (document: Document) => void;
   variant?: 'sidebar' | 'picker';
 }
 
@@ -206,6 +168,7 @@ function DocumentListItem({
   onEdit,
   onDelete,
   onCreateDerivative,
+  onManageTags,
   variant = 'sidebar'
 }: DocumentListItemProps) {
   const handleClick = () => {
@@ -255,6 +218,27 @@ function DocumentListItem({
         </span>
       </div>
       
+      {/* Tags display */}
+      {document.tags && document.tags.length > 0 && (
+        <div className={variant === 'sidebar' ? 'document-item__tags' : 'document-picker-tags'}>
+          {document.tags.slice(0, 3).map(tag => (
+            <span 
+              key={tag.id}
+              className="tag-badge tag-badge--xs"
+              style={{ backgroundColor: tag.color, color: 'white' }}
+              title={tag.name}
+            >
+              {tag.name}
+            </span>
+          ))}
+          {document.tags.length > 3 && (
+            <span className="tag-badge tag-badge--xs tag-badge--more">
+              +{document.tags.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+      
       {showPreview && document.content && (
         <div className="document-picker-preview">
           {document.content.substring(0, 150)}
@@ -292,6 +276,17 @@ function DocumentListItem({
               + Derivative
             </button>
           )}
+          {onManageTags && (
+            <button 
+              className="btn btn--sm btn--secondary"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onManageTags(document); 
+              }}
+            >
+              Tags
+            </button>
+          )}
           {onDelete && (
             <button 
               className="btn btn--sm btn--danger"
@@ -318,6 +313,7 @@ interface DocumentListProps {
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
+  onManageTags?: (document: Document) => void;
   variant?: 'sidebar' | 'picker';
   emptyMessage?: string;
 }
@@ -330,6 +326,7 @@ function DocumentList({
   onDocumentEdit, 
   onDocumentDelete,
   onCreateDerivative,
+  onManageTags,
   variant = 'sidebar',
   emptyMessage = 'No documents found.'
 }: DocumentListProps) {
@@ -353,6 +350,7 @@ function DocumentList({
           onEdit={onDocumentEdit}
           onDelete={onDocumentDelete}
           onCreateDerivative={onCreateDerivative}
+          onManageTags={onManageTags}
           showPreview={variant === 'picker'}
           showActions={variant === 'sidebar'}
           variant={variant}
@@ -366,6 +364,7 @@ export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -385,6 +384,9 @@ export default function ProjectDetailPage() {
   const [showGroupSwitcher, setShowGroupSwitcher] = useState(false);
   const [switcherComponentKey, setSwitcherComponentKey] = useState<string | null>(null);
   const [switcherGroupId, setSwitcherGroupId] = useState<string | null>(null);
+  const [showTagManager, setShowTagManager] = useState(false);
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const [tagSelectorDocumentId, setTagSelectorDocumentId] = useState<string | null>(null);
   const [formData, setFormData] = useState<DocumentFormData>({
     title: '',
     content: '',
@@ -409,7 +411,21 @@ export default function ProjectDetailPage() {
       setLoading(true);
       const token = await getAccessToken();
       const docs = await getDocuments(projectId, token);
-      setDocuments(docs);
+      
+      // Load tags for each document
+      const docsWithTags = await Promise.all(
+        docs.map(async (doc) => {
+          try {
+            const docTags = await getDocumentTags(projectId, doc.id, token);
+            return { ...doc, tags: docTags };
+          } catch (err) {
+            console.error(`Failed to load tags for document ${doc.id}:`, err);
+            return { ...doc, tags: [] };
+          }
+        })
+      );
+      
+      setDocuments(docsWithTags);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load documents');
     } finally {
@@ -429,10 +445,23 @@ export default function ProjectDetailPage() {
     }
   }, [projectId]);
 
+  const loadTags = useCallback(async () => {
+    if (!projectId) return;
+    
+    try {
+      const token = await getAccessToken();
+      const projectTags = await getTags(projectId, token);
+      setTags(projectTags);
+    } catch (err) {
+      console.error('Failed to load tags:', err);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     loadDocuments();
     loadPresets();
-  }, [loadDocuments, loadPresets]);
+    loadTags();
+  }, [loadDocuments, loadPresets, loadTags]);
 
   const handleCreateDocument = async () => {
     if (!projectId) return;
@@ -678,6 +707,18 @@ export default function ProjectDetailPage() {
     setKeyInputValue('');
   };
 
+  const openTagSelector = (documentId: string) => {
+    setTagSelectorDocumentId(documentId);
+    setShowTagSelector(true);
+  };
+
+  const closeTagSelector = () => {
+    setShowTagSelector(false);
+    setTagSelectorDocumentId(null);
+    // Reload documents to get updated tags
+    loadDocuments();
+  };
+
 
   const removeComponent = (key: string) => {
     const newComponents = { ...formData.components };
@@ -747,6 +788,16 @@ export default function ProjectDetailPage() {
             availableTypes={sidebarFilter.availableTypes}
             searchPlaceholder="Search documents..."
           />
+          
+          {projectId && (
+            <TagFilter 
+              projectId={projectId}
+              selectedTagIds={sidebarFilter.selectedTagIds}
+              onTagSelectionChange={sidebarFilter.setSelectedTagIds}
+              compact={true}
+            />
+          )}
+          
           {sidebarFilter.hasActiveFilters && (
             <button 
               className="btn btn--sm btn--secondary"
@@ -765,10 +816,47 @@ export default function ProjectDetailPage() {
           onDocumentEdit={handleSidebarDocumentEdit}
           onDocumentDelete={handleDeleteDocument}
           onCreateDerivative={handleCreateDerivative}
+          onManageTags={(document) => openTagSelector(document.id)}
           variant="sidebar"
           emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
         />
         
+        {/* Tags Section */}
+        <div className="sidebar__section">
+          <div className="sidebar__section-header">
+            <h3>Project Tags</h3>
+            <button 
+              className="btn btn--sm btn--secondary"
+              onClick={() => setShowTagManager(true)}
+            >
+              Manage Tags
+            </button>
+          </div>
+          
+          {tags.length === 0 ? (
+            <div className="empty-state">
+              <p>No tags created yet.</p>
+              <p>Create tags to organize your documents.</p>
+            </div>
+          ) : (
+            <div className="tags-summary">
+              <p>{tags.length} tag{tags.length !== 1 ? 's' : ''} available</p>
+              <div className="tags-preview">
+                {tags.slice(0, 3).map(tag => (
+                  <span 
+                    key={tag.id}
+                    className="tag-badge tag-badge--sm"
+                    style={{ backgroundColor: tag.color, color: 'white' }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+                {tags.length > 3 && <span className="tags-more">+{tags.length - 3} more</span>}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Presets Section */}
         <div className="sidebar__section">
           <div className="sidebar__section-header">
@@ -943,6 +1031,26 @@ export default function ProjectDetailPage() {
           documents={documents}
           onSelect={handleCreatePreset}
           onCancel={() => setShowPresetPicker(false)}
+        />
+      )}
+
+      {/* Tag Manager Modal */}
+      {showTagManager && projectId && (
+        <TagManager
+          projectId={projectId}
+          onClose={() => {
+            setShowTagManager(false);
+            loadTags(); // Reload tags after changes
+          }}
+        />
+      )}
+
+      {/* Tag Selector Modal */}
+      {showTagSelector && tagSelectorDocumentId && projectId && (
+        <TagSelector
+          projectId={projectId}
+          documentId={tagSelectorDocumentId}
+          onClose={closeTagSelector}
         />
       )}
     </div>

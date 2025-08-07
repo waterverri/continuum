@@ -14,6 +14,7 @@ export interface Document {
   components?: Record<string, string>;
   created_at: string;
   resolved_content?: string;
+  tags?: Tag[];
 }
 
 export interface Preset {
@@ -23,6 +24,20 @@ export interface Preset {
   rules: { document_id: string };
   created_at: string;
   document?: Document;
+}
+
+export interface Tag {
+  id: string;
+  project_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+export interface DocumentTag {
+  document_id: string;
+  tag_id: string;
+  created_at: string;
 }
 
 export const getPresetContext = async (presetId: string, accessToken: string) => {
@@ -242,4 +257,115 @@ export const resolveGroupDocument = async (
   }
 
   return await response.json();
+};
+
+// Tag API functions
+export const getTags = async (projectId: string, accessToken: string): Promise<Tag[]> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch tags');
+  }
+
+  const data = await response.json();
+  return data.tags;
+};
+
+export const createTag = async (projectId: string, name: string, color: string, accessToken: string): Promise<Tag> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, color }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create tag');
+  }
+
+  const data = await response.json();
+  return data.tag;
+};
+
+export const updateTag = async (projectId: string, tagId: string, updates: { name?: string; color?: string }, accessToken: string): Promise<Tag> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/${tagId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update tag');
+  }
+
+  const data = await response.json();
+  return data.tag;
+};
+
+export const deleteTag = async (projectId: string, tagId: string, accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/${tagId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete tag');
+  }
+};
+
+export const getDocumentTags = async (projectId: string, documentId: string, accessToken: string): Promise<Tag[]> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/documents/${documentId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch document tags');
+  }
+
+  const data = await response.json();
+  return data.tags;
+};
+
+export const addTagsToDocument = async (projectId: string, documentId: string, tagIds: string[], accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/documents/${documentId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tagIds }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add tags to document');
+  }
+};
+
+export const removeTagFromDocument = async (projectId: string, documentId: string, tagId: string, accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/documents/${documentId}/${tagId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to remove tag from document');
+  }
 };
