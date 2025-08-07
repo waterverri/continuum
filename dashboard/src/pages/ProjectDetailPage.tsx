@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import type { Document } from '../api';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
@@ -8,6 +8,7 @@ import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { DocumentList } from '../components/DocumentList';
 import { DocumentFilters } from '../components/DocumentFilters';
+import { ProjectHeader } from '../components/ProjectHeader';
 import { DocumentPickerModal } from '../components/DocumentPickerModal';
 import { ComponentKeyInputModal } from '../components/ComponentKeyInputModal';
 import { DerivativeModal } from '../components/DerivativeModal';
@@ -216,10 +217,21 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="project-detail-page">
-      {/* Mobile overlay */}
-      {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
+      {/* Header */}
+      <ProjectHeader 
+        onCreateDocument={() => {
+          state.startCreate();
+          state.setSidebarOpen(false);
+        }}
+        onToggleSidebar={() => state.setSidebarOpen(!state.sidebarOpen)}
+      />
       
-      {/* Sidebar - Document List */}
+      {/* Main body container */}
+      <div className="project-detail-page__body">
+        {/* Mobile overlay */}
+        {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
+        
+        {/* Sidebar - Document List */}
       <div className={`sidebar ${state.sidebarOpen ? 'sidebar--open' : ''} ${sidebarCollapsed ? 'sidebar--collapsed' : ''}`}>
         <div className="sidebar__header">
           <h2>Documents</h2>
@@ -240,17 +252,6 @@ export default function ProjectDetailPage() {
           </div>
         </div>
         
-        <div className="sidebar__actions">
-          <button 
-            className="btn btn--primary"
-            onClick={() => {
-              state.startCreate();
-              state.setSidebarOpen(false);
-            }}
-          >
-            Create New Document
-          </button>
-        </div>
         
         {state.error && (
           <div className="error-message">
@@ -429,56 +430,45 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </div>
-        
-        <div className="sidebar__footer">
-          <Link to="/" className="back-link">← Back to All Projects</Link>
         </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="main-content">
-        <div className="main-content__header">
-          <button 
-            className="sidebar-toggle"
-            onClick={() => state.setSidebarOpen(true)}
-          >
-            ☰ Documents
-          </button>
-        </div>
-        <div className="main-content__body">
-          {(state.isCreating || state.isEditing) && (
-            <DocumentForm
-              formData={state.formData}
-              setFormData={state.setFormData}
-              onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
-              onCancel={state.cancelEdit}
-              addComponent={addComponent}
-              removeComponent={removeComponent}
-              onOpenGroupSwitcher={openGroupSwitcher}
-              isCreating={state.isCreating}
-              documents={state.documents}
-            />
-          )}
-          
-          {!state.isCreating && !state.isEditing && state.selectedDocument && (
-            <DocumentViewer
-              document={state.selectedDocument}
-              resolvedContent={state.resolvedContent}
-              onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-            />
-          )}
-          
-          {!state.isCreating && !state.isEditing && !state.selectedDocument && (
-            <div className="empty-state">
-              <h3>Select a document to view or create a new one</h3>
-              <button 
-                className="btn btn--primary"
-                onClick={() => state.setSidebarOpen(true)}
-              >
-                Browse Documents
-              </button>
-            </div>
-          )}
+        {/* Main Content Area */}
+        <div className="main-content">
+          <div className="main-content__body">
+            {(state.isCreating || state.isEditing) && (
+              <DocumentForm
+                formData={state.formData}
+                setFormData={state.setFormData}
+                onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
+                onCancel={state.cancelEdit}
+                addComponent={addComponent}
+                removeComponent={removeComponent}
+                onOpenGroupSwitcher={openGroupSwitcher}
+                isCreating={state.isCreating}
+                documents={state.documents}
+              />
+            )}
+            
+            {!state.isCreating && !state.isEditing && state.selectedDocument && (
+              <DocumentViewer
+                document={state.selectedDocument}
+                resolvedContent={state.resolvedContent}
+                onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+              />
+            )}
+            
+            {!state.isCreating && !state.isEditing && !state.selectedDocument && (
+              <div className="empty-state">
+                <h3>Select a document to view or create a new one</h3>
+                <button 
+                  className="btn btn--primary"
+                  onClick={() => state.setSidebarOpen(true)}
+                >
+                  Browse Documents
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       

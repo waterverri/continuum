@@ -2,9 +2,23 @@
 
 .project-detail-page {
   display: flex;
-  height: calc(100vh - var(--header-height));
+  flex-direction: column;
+  height: 100vh;
   overflow: hidden;
   position: relative;
+}
+
+.project-detail-page__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Main body container */
+.project-detail-page__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* Sidebar */
@@ -102,38 +116,17 @@
   display: none;
 }
 
-.sidebar--collapsed .sidebar__actions,
 .sidebar--collapsed .sidebar__collapsible-section,
-.sidebar--collapsed .sidebar__documents-container,
-.sidebar--collapsed .sidebar__footer {
+.sidebar--collapsed .sidebar__documents-container {
   display: none;
 }
 
-.sidebar__actions {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 1px solid var(--color-border);
-}
 
-.sidebar__footer {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  margin-top: auto;
-  border-top: 1px solid var(--color-border);
-}
-
-.back-link {
-  color: var(--color-text-muted);
-  text-decoration: none;
-  font-weight: var(--font-weight-medium);
-}
-
-.back-link:hover {
-  color: var(--color-text-secondary);
-  text-decoration: underline;
-}
 
 /* Sidebar Collapsible Sections */
 .sidebar__collapsible-section {
   border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
 }
 
 .sidebar__section-toggle {
@@ -168,21 +161,29 @@
 .sidebar__section-content {
   padding: var(--spacing-lg) var(--spacing-xl);
   background-color: var(--color-background);
-  max-height: 200px;
+  max-height: 180px;
   overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .sidebar__section-actions {
   margin-bottom: var(--spacing-md);
 }
 
-/* Documents Container - Main Focus */
+/* Documents Container - Main Focus - Fixed Height */
 .sidebar__documents-container {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.document-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md) var(--spacing-xl);
+  min-height: 0;
 }
 
 /* Update Filters when in collapsible sections */
@@ -225,28 +226,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  justify-content: center;
-  align-items: center;
-}
-
-.main-content__header {
-  display: none;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-background-light);
-}
-
-.sidebar-toggle {
-  background: none;
-  border: 1px solid var(--color-border-light);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  font-weight: var(--font-weight-medium);
-}
-
-.sidebar-toggle:hover {
-  background-color: var(--color-background-lighter);
 }
 
 .main-content__body {
@@ -348,9 +327,9 @@
 
   .sidebar {
     position: fixed;
-    top: var(--header-height);
+    top: 60px; /* Header height */
     left: 0;
-    height: calc(100vh - var(--header-height));
+    height: calc(100vh - 60px);
     z-index: var(--z-sidebar);
     transform: translateX(-100%);
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
@@ -361,10 +340,8 @@
     transform: translateX(0);
   }
 
-  .sidebar--collapsed .sidebar__actions,
   .sidebar--collapsed .sidebar__collapsible-section,
-  .sidebar--collapsed .sidebar__documents-container,
-  .sidebar--collapsed .sidebar__footer {
+  .sidebar--collapsed .sidebar__documents-container {
     display: block; /* Override collapsed display for mobile */
   }
 
@@ -382,7 +359,7 @@
 
   .sidebar-overlay {
     position: fixed;
-    top: var(--header-height);
+    top: 60px; /* Header height */
     left: 0;
     right: 0;
     bottom: 0;
@@ -390,9 +367,6 @@
     z-index: var(--z-sidebar-overlay);
   }
 
-  .main-content__header {
-    display: flex;
-  }
 
   .main-content__body {
     padding: var(--spacing-lg);

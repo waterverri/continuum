@@ -6,5 +6,7 @@
 @import './components/modal.css';
 @import './components/document.css';
 @import './components/tag.css';
+@import './components/header.css';
+@import './components/document-actions.css';
 @import './layout.css';
 

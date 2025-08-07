@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import type { Document } from '../api';
 
 interface DocumentListItemProps {
@@ -27,10 +28,44 @@ function DocumentListItem({
   onManageTags,
   variant = 'sidebar'
 }: DocumentListItemProps) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    
+    if (showDropdown) {
+      window.document.addEventListener('mousedown', handleClickOutside);
+      return () => window.document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDropdown]);
+  
   const handleClick = () => {
     if (onClick) {
       onClick(document);
     }
+  };
+  
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(document);
+    setShowDropdown(false);
+  };
+  
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDropdown(!showDropdown);
+  };
+  
+  const handleDropdownAction = (action: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    action();
+    setShowDropdown(false);
   };
 
   const getGroupInfo = () => {
@@ -57,7 +92,8 @@ function DocumentListItem({
     : 'document-picker-item';
 
   return (
-    <div className={className} onClick={handleClick}>
+    <div className={className}>
+      <div className="document-item__content" onClick={handleClick}>
       <div className={variant === 'sidebar' ? 'document-item__header' : 'document-picker-header'}>
         <h4>{document.title}</h4>
         <span className={variant === 'sidebar' ? 'document-item__meta' : 'document-picker-meta'}>
@@ -108,52 +144,56 @@ function DocumentListItem({
         </div>
       )}
       
+      </div>
+      
       {showActions && (
         <div className="document-item__actions">
           {onEdit && (
             <button 
-              className="btn btn--sm"
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                onEdit(document); 
-              }}
+              className="document-action-btn document-action-btn--edit"
+              onClick={handleEditClick}
+              title="Edit document"
             >
-              Edit
+              ✏️
             </button>
           )}
-          {onCreateDerivative && (
+          <div className="document-action-dropdown" ref={dropdownRef}>
             <button 
-              className="btn btn--sm btn--secondary"
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                onCreateDerivative(document); 
-              }}
+              className="document-action-btn document-action-btn--menu"
+              onClick={handleMenuClick}
+              title="More actions"
             >
-              + Derivative
+              ⋯
             </button>
-          )}
-          {onManageTags && (
-            <button 
-              className="btn btn--sm btn--secondary"
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                onManageTags(document); 
-              }}
-            >
-              Tags
-            </button>
-          )}
-          {onDelete && (
-            <button 
-              className="btn btn--sm btn--danger"
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                onDelete(document.id); 
-              }}
-            >
-              Delete
-            </button>
-          )}
+            {showDropdown && (
+              <div className="document-dropdown-menu">
+                {onCreateDerivative && (
+                  <button 
+                    className="document-dropdown-item"
+                    onClick={handleDropdownAction(() => onCreateDerivative(document))}
+                  >
+                    + Derivative
+                  </button>
+                )}
+                {onManageTags && (
+                  <button 
+                    className="document-dropdown-item"
+                    onClick={handleDropdownAction(() => onManageTags(document))}
+                  >
+                    🏷️ Tags
+                  </button>
+                )}
+                {onDelete && (
+                  <button 
+                    className="document-dropdown-item document-dropdown-item--danger"
+                    onClick={handleDropdownAction(() => onDelete(document.id))}
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
