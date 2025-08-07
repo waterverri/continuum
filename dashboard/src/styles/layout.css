@@ -3,7 +3,7 @@
 .project-detail-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px); /* Subtract app header height */
+  height: 100%; /* Take full height of main */
   overflow: hidden;
   position: relative;
 }
@@ -16,10 +16,12 @@
   
   .project-detail-page > .sidebar {
     flex: 0 0 var(--sidebar-width);
+    height: 100%;
   }
   
   .project-detail-page > .main-content {
     flex: 1;
+    height: 100%;
   }
 }
 
@@ -35,8 +37,7 @@
   flex-shrink: 0;
   position: relative;
   z-index: 10;
-  /* Prevent scroll events from propagating to parent */
-  touch-action: pan-y;
+  height: 100%;
 }
 
 .sidebar__header {
@@ -165,24 +166,38 @@
 .sidebar__section-content {
   padding: var(--spacing-lg) var(--spacing-xl);
   background-color: var(--color-background);
-  max-height: 180px;
+  max-height: 200px;
   overflow-y: auto;
   flex-shrink: 0;
+  /* Show scrollbar for section content */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.sidebar__section-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar__section-content::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.sidebar__section-content::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
 }
 
 .sidebar__section-actions {
   margin-bottom: var(--spacing-md);
 }
 
-/* Documents Container - Fixed Height - Always 60vh regardless of other sections */
+/* Documents Container - Takes remaining sidebar space */
 .sidebar__documents-container {
-  height: 60vh;
-  min-height: 300px;
-  max-height: 60vh;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
 .document-list {
@@ -191,9 +206,27 @@
   overflow-x: hidden;
   padding: var(--spacing-md) var(--spacing-xl);
   min-height: 0;
-  /* Ensure scroll stays within this container */
-  overscroll-behavior: contain;
-  touch-action: pan-y;
+  /* Show scrollbar and contain scroll */
+  scrollbar-width: auto;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+/* Webkit scrollbar styling for sidebar */
+.document-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.document-list::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.document-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.document-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
 /* Update Filters when in collapsible sections */
@@ -236,11 +269,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100%;
 }
 
 .main-content__body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--spacing-2xl);
   min-width: 500px;
   max-width: 1200px;
@@ -248,6 +283,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-height: 0;
+  /* Show scrollbar for main content */
+  scrollbar-width: auto;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+/* Webkit scrollbar styling for main content */
+.main-content__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content__body::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.main-content__body::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.main-content__body::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
 /* Error Message */
@@ -337,9 +394,9 @@
 
   .sidebar {
     position: fixed;
-    top: 60px; /* Header height */
+    top: 0;
     left: 0;
-    height: calc(100vh - 60px);
+    height: 100%;
     z-index: var(--z-sidebar);
     transform: translateX(-100%);
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
@@ -369,14 +426,13 @@
 
   .sidebar-overlay {
     position: fixed;
-    top: 60px; /* Header height */
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: var(--z-sidebar-overlay);
   }
-
 
   .main-content__body {
     padding: var(--spacing-lg);

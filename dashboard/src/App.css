@@ -82,7 +82,28 @@ hr {
   border-top: 1px solid var(--color-border);
 }
 
-/* App header styles */
+/* Reset body and html to prevent page scrolling */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* App container - prevent page scrolling */
+.app-container {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App header - fixed at top */
 .app-header {
   display: flex;
   justify-content: space-between;
@@ -92,8 +113,16 @@ hr {
   border-bottom: 1px solid var(--color-border);
   gap: 1rem;
   height: 60px;
+  flex: 0 0 60px; /* Fixed height, no grow/shrink */
   position: relative;
   z-index: 30;
+}
+
+/* Main content area - takes remaining height */
+.app-container main {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .app-header__left,
