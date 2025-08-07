@@ -87,10 +87,18 @@ Continuum is a full-stack application for writers to manage story context with t
   - Group type switching UI with advanced modal interfaces
   - Backend group APIs with intelligent document resolution
   - Extended group reference format: `group:groupId:preferredType`
+- **Comprehensive Tagging System**:
+  - Full-stack tagging implementation with many-to-many relationships
+  - TagManager modal for creating, editing, and deleting project tags with color picker
+  - TagSelector modal for document-tag associations with intuitive UI
+  - Enhanced document filtering with tag-based search capabilities
+  - Complete REST API with CRUD operations and validation
+  - Row Level Security policies for multi-tenant tag access
+  - Comprehensive test coverage (48 tests across frontend and backend)
 - Focused unit test suite for core functionality validation
 - CI/CD pipelines for automated deployment
 
-**Next**: Events and tagging system, project member management, preset engine for dynamic context generation
+**Next**: Events system, project member management, preset engine for dynamic context generation
 
 ## Environment Setup
 
@@ -112,4 +120,7 @@ Dashboard requires `.env.local` with:
 - **Component Architecture**: Refactored filtering system demonstrates proper component composition with reusable hooks and modular design patterns
 - **Document Groups**: Support derivative relationships via `group_id` with dynamic type selection in composite documents
 - **Group Reference Format**: Extended format `group:groupId:preferredType` enables specific document type selection within groups
+- **Tagging Architecture**: Many-to-many relationship design with `tags`, `document_tags`, and `event_tags` tables for flexible content organization
+- **Tag Management**: Project-scoped tags with color coding, comprehensive CRUD operations, and real-time UI updates
+- **Tag Filtering**: Integrated tag-based filtering extends existing document search with multiple selection support
 - **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks

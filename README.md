@@ -63,6 +63,7 @@ This is Continuum. It's not just a place to store your notes. It's an engine tha
 * **Document Groups:** Create derivative documents (summaries, translations, etc.) organized by groups with intelligent type selection.
 * **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents or entire document groups using {{placeholder}} syntax.
 * **Advanced Group Selection:** Choose specific document types within groups or use intelligent auto-selection for composite documents.
+* **Tagging System:** Comprehensive document organization with color-coded tags, real-time filtering, and intuitive tag management interface.
 * **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document and group references.
 * **Real-time Resolution:** View how composite documents resolve into final assembled content with group-based substitutions.
 * **Secure API:** Backend API protected with JWT authentication and Row Level Security.
@@ -119,11 +120,12 @@ Prerequisites for development:
 
 **Enhanced User Experience:**
 - **Modal-based interfaces** replacing browser prompts for better UX
-- **Advanced filtering system** with reusable search, type, and format filters
+- **Advanced filtering system** with reusable search, type, format, and tag filters
 - **Enhanced document picker** with comprehensive filtering and content previews  
 - **Group management modals** for derivative creation and type switching
 - **Visual group indicators** showing document relationships and type preferences
 - **Intelligent component selection** with choice between documents and groups
+- **Comprehensive tagging system** with color-coded tags, intuitive management interface, and real-time filtering
 - **Responsive design** optimized for desktop, tablet, and mobile devices
 - **Real-time content resolution** for composite documents with group substitutions
 - **Unified component architecture** with modular, performant filtering components
@@ -135,11 +137,11 @@ Prerequisites for development:
 - **Clean test architecture** with streamlined mock infrastructure
 - **Production validation** strategy for complex integration scenarios
 
-### 🚀 Next Phase: Events & Tagging
+### 🚀 Next Phase: Events & Advanced Features
 - Timeline-based event management
-- Document-event relationships
-- Metadata tagging system
+- Document-event relationships  
 - Project member management
+- Preset engine for dynamic context generation
 
 ## Testing
 
