@@ -1,0 +1,111 @@
+/* Form Component Styles */
+.form-group {
+  margin-bottom: var(--spacing-xl);
+}
+
+.form-label {
+  display: block;
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-secondary);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-lg);
+  font-family: inherit;
+  transition: var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: var(--line-height-normal);
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.form-checkbox input[type="checkbox"] {
+  margin-top: 0.1rem;
+}
+
+.form-checkbox span {
+  color: var(--color-text-secondary);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-2xl);
+}
+
+/* Filter Styles */
+.filter-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.filter-row {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.filter-input,
+.filter-select {
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  background-color: var(--color-background);
+}
+
+.filter-input {
+  width: 100%;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-label {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Mobile responsive form */
+@media (max-width: 768px) {
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .filter-row {
+    flex-direction: column;
+  }
+}

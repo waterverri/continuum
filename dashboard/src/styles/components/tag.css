@@ -1,0 +1,261 @@
+/* Tag Component Styles */
+
+/* Tag Badges */
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-2xl);
+  white-space: nowrap;
+  margin-right: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  user-select: none;
+}
+
+.tag-badge--sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: calc(var(--font-size-sm) * 0.9);
+}
+
+.tag-badge--xs {
+  padding: calc(var(--spacing-xs) * 0.75) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+}
+
+.tag-badge--more {
+  background-color: var(--color-secondary) !important;
+  color: white !important;
+}
+
+/* Tags Summary */
+.tags-summary {
+  padding: var(--spacing-sm) 0;
+}
+
+.tags-summary p {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+}
+
+.tags-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.tags-more {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Tag Manager Modal */
+.tag-form {
+  background: var(--color-background-light);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.tag-form h4 {
+  margin: 0 0 var(--spacing-lg) 0;
+  color: var(--color-text-secondary);
+}
+
+.color-picker {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.color-option {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+}
+
+.color-option.selected {
+  border-color: var(--color-background);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.tag-preview {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border-lighter);
+}
+
+.tags-section {
+  margin-top: var(--spacing-xl);
+}
+
+.tags-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.tags-header h4 {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.tags-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.tag-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-border-lighter);
+  border-radius: var(--radius-md);
+}
+
+.tag-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Tag Selector Modal */
+.tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.tag-item.selectable {
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition-fast);
+  border: 2px solid transparent;
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.tag-item.selectable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tag-item.selectable.selected {
+  border-color: var(--color-success);
+  background: #f8fff9;
+}
+
+.tag-remove {
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  border-radius: var(--radius-full);
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  color: white;
+  cursor: pointer;
+  margin-left: var(--spacing-xs);
+}
+
+.tag-remove:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tag-add {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  margin-left: var(--spacing-xs);
+}
+
+.tag-selector-modal .tags-section:not(:first-child) {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--color-border-lighter);
+}
+
+.tag-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.tag-count {
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+}
+
+/* Tag Filter */
+.tag-filter {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border-lighter);
+}
+
+.tag-filter--compact {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+}
+
+.tag-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.tag-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.tag-filter-option {
+  background: transparent;
+  border: 2px solid;
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.tag-filter-option:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tag-filter-option.selected {
+  color: white !important;
+}
+
+.tag-filter-summary {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}

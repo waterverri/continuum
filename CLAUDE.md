@@ -36,6 +36,8 @@ Navigate to `/dashboard` directory:
 - **Backend**: Jest + Supertest for API endpoints, services, and middleware testing
 - **Test Strategy**: Prioritizes unit tests for business logic validation, production testing for integration scenarios
 - **Coverage**: Core functionality verified through targeted unit tests with clean mock architecture
+- **Current Status**: 32 unit tests passing across components, hooks, and utilities
+- **Testing Philosophy**: Test behavior, not implementation details; focus on user interactions and business logic
 
 ## Architecture Overview
 
@@ -95,6 +97,12 @@ Continuum is a full-stack application for writers to manage story context with t
   - Complete REST API with CRUD operations and validation
   - Row Level Security policies for multi-tenant tag access
   - Comprehensive test coverage (48 tests across frontend and backend)
+- **Fully Refactored ProjectDetailPage Architecture**:
+  - Modular component architecture with 83% code reduction (1,776 → 303 lines)
+  - Custom hooks for state management (`useProjectDetailState`) and operations (`useDocumentOperations`)
+  - 10 extracted reusable components (DocumentForm, DocumentViewer, modals, etc.)
+  - Comprehensive CSS design system with variables, utilities, and component-specific styles
+  - Maintained full test compatibility (32 tests passing) with improved maintainability
 - Focused unit test suite for core functionality validation
 - CI/CD pipelines for automated deployment
 
@@ -116,11 +124,90 @@ Dashboard requires `.env.local` with:
 - The `projectcontext.md` file contains comprehensive technical specifications and should be consulted for detailed implementation requirements
 - Composite documents require server-side validation to prevent cyclic dependencies
 - All database schema changes must be implemented as Supabase migrations
-- Frontend components follow project conventions established in existing pages like `ProjectDetailPage.tsx`
-- **Component Architecture**: Refactored filtering system demonstrates proper component composition with reusable hooks and modular design patterns
+- **Component Architecture**: Follow the established patterns in `ProjectDetailPage.tsx` for component composition, custom hooks, and state management
+- **Styling Convention**: Use the CSS design system with variables, utilities, and component-specific styles
+- **Code Organization**: Prefer small, focused components (under 200 lines) with single responsibilities over large monolithic files
 - **Document Groups**: Support derivative relationships via `group_id` with dynamic type selection in composite documents
 - **Group Reference Format**: Extended format `group:groupId:preferredType` enables specific document type selection within groups
 - **Tagging Architecture**: Many-to-many relationship design with `tags`, `document_tags`, and `event_tags` tables for flexible content organization
 - **Tag Management**: Project-scoped tags with color coding, comprehensive CRUD operations, and real-time UI updates
 - **Tag Filtering**: Integrated tag-based filtering extends existing document search with multiple selection support
 - **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks
+
+## Frontend Architecture Patterns
+
+### Component Structure
+The application follows a modular component architecture with clear separation of concerns:
+
+**Pages**: Top-level route components (e.g., `ProjectDetailPage.tsx`)
+- Orchestrate data loading and high-level state management
+- Compose feature-specific components
+- Handle routing and navigation
+
+**Components Directory Structure**:
+```
+src/
+├── components/
+│   ├── DocumentForm.tsx           # Document creation/editing
+│   ├── DocumentViewer.tsx          # Document display
+│   ├── DocumentList.tsx            # Document lists with actions
+│   ├── DocumentFilters.tsx         # Reusable filter components
+│   ├── DocumentPickerModal.tsx     # Document selection modal
+│   ├── ComponentKeyInputModal.tsx  # Component key input
+│   ├── DerivativeModal.tsx         # Derivative document creation
+│   ├── PresetPickerModal.tsx       # Preset creation flow
+│   ├── GroupSwitcherModal.tsx      # Group type switching
+│   ├── TagManager.tsx              # Tag CRUD operations
+│   ├── TagSelector.tsx             # Document-tag associations
+│   └── TagFilter.tsx               # Tag-based filtering
+├── hooks/
+│   ├── useProjectDetailState.ts    # Centralized state management
+│   ├── useDocumentOperations.ts    # Business logic & API calls
+│   └── useDocumentFilter.ts        # Filtering logic
+└── styles/
+    ├── variables.css               # Design system tokens
+    ├── utilities.css               # Utility classes
+    ├── layout.css                  # Layout and responsive styles
+    └── components/                 # Component-specific styles
+```
+
+### CSS Architecture
+**Design System Approach**:
+- CSS custom properties for consistent theming
+- Utility classes for rapid development
+- Component-scoped styles for encapsulation
+- Mobile-first responsive design
+- Consistent spacing, typography, and color scales
+
+**Import Structure**: All component styles are imported through the main CSS file using `@import` statements for optimal bundling.
+
+### Custom Hooks Pattern
+**State Management**: `useProjectDetailState` centralizes all component state with typed actions
+**Business Logic**: `useDocumentOperations` handles API calls and complex operations
+**Feature Logic**: `useDocumentFilter` provides reusable filtering capabilities
+
+## Development Guidelines for New Features
+
+### Component Development
+1. **Keep components focused**: Each component should have a single, clear responsibility
+2. **Use custom hooks**: Extract complex state logic and API operations into custom hooks
+3. **Follow naming conventions**: Use descriptive names that clearly indicate purpose
+4. **Leverage design system**: Use CSS variables, utilities, and established patterns
+5. **Write tests**: Focus on unit tests for business logic and component behavior
+
+### When Adding New Features
+1. **Check existing patterns**: Look at `ProjectDetailPage.tsx` and its related components for established patterns
+2. **Reuse components**: Before creating new components, check if existing ones can be extended or composed
+3. **Use type safety**: Ensure all TypeScript types are properly defined and used
+4. **Follow CSS architecture**: Place styles in appropriate component-specific files using the design system
+5. **Test thoroughly**: Run `npm run test:run` and `npm run build` before committing changes
+
+## Recent Refactoring (2025)
+The ProjectDetailPage underwent a major architectural refactoring that serves as the template for all future development:
+- **Component Extraction**: Large monolithic components were broken down into focused, reusable components
+- **Custom Hooks**: State management and business logic were extracted into custom hooks for better separation of concerns
+- **CSS Modularization**: Styles were organized into a comprehensive design system with variables, utilities, and component-specific modules
+- **Type Safety**: Full TypeScript coverage with proper type definitions throughout
+- **Testing Maintained**: All existing tests continue to pass, ensuring no regressions
+
+This refactoring demonstrates the preferred architecture for complex UI components in this codebase.
