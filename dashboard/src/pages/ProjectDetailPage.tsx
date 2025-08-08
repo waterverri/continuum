@@ -21,7 +21,7 @@ import { TagSelector } from '../components/TagSelector';
 import { TagFilter } from '../components/TagFilter';
 import { EventSelector } from '../components/EventSelector';
 import { EventsWidget } from '../components/EventsWidget';
-import { EventTimeline } from '../components/EventTimeline';
+import { EventTimelineModal } from '../components/EventTimelineModal';
 import { EventFilter } from '../components/EventFilter';
 import { DocumentEvolution } from '../components/DocumentEvolution';
 import '../styles/ProjectDetailPage.css';
@@ -634,19 +634,10 @@ export default function ProjectDetailPage() {
 
       {/* Event Timeline Modal */}
       {state.modals.showEventTimeline && projectId && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-content--large">
-            <div className="modal-header">
-              <h3>Event Timeline</h3>
-              <button className="modal-close" onClick={() => state.closeModal('showEventTimeline')}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <EventTimeline
-                projectId={projectId}
-              />
-            </div>
-          </div>
-        </div>
+        <EventTimelineModal
+          projectId={projectId}
+          onClose={() => state.closeModal('showEventTimeline')}
+        />
       )}
 
       {/* Document Evolution Modal */}

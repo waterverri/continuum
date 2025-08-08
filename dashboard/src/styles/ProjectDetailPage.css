@@ -9,5 +9,6 @@
 @import './components/document-actions.css';
 @import './components/evolution-timeline.css';
 @import './components/events-widget.css';
+@import './components/event-timeline-modal.css';
 @import './layout.css';
 
