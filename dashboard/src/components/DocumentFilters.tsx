@@ -1,3 +1,6 @@
+import { EventFilter } from './EventFilter';
+import type { Event } from '../api';
+
 // Document Search Input Component
 interface DocumentSearchInputProps {
   searchTerm: string;
@@ -72,6 +75,13 @@ interface DocumentFiltersProps {
   availableTypes: string[];
   searchPlaceholder?: string;
   showFilters?: boolean;
+  // Event filtering props
+  events?: Event[];
+  selectedEventIds?: string[];
+  onEventSelectionChange?: (eventIds: string[]) => void;
+  eventVersionFilter?: 'all' | 'base' | 'versions';
+  onEventVersionFilterChange?: (filter: 'all' | 'base' | 'versions') => void;
+  showEventFilters?: boolean;
 }
 
 export function DocumentFilters({ 
@@ -83,7 +93,13 @@ export function DocumentFilters({
   onFormatChange, 
   availableTypes,
   searchPlaceholder,
-  showFilters = true
+  showFilters = true,
+  events = [],
+  selectedEventIds = [],
+  onEventSelectionChange,
+  eventVersionFilter = 'all',
+  onEventVersionFilterChange,
+  showEventFilters = false
 }: DocumentFiltersProps) {
   return (
     <div className="modal-filters">
@@ -105,6 +121,16 @@ export function DocumentFilters({
             onFormatChange={onFormatChange}
           />
         </div>
+      )}
+
+      {showEventFilters && events.length > 0 && onEventSelectionChange && onEventVersionFilterChange && (
+        <EventFilter
+          events={events}
+          selectedEventIds={selectedEventIds}
+          onEventSelectionChange={onEventSelectionChange}
+          eventVersionFilter={eventVersionFilter}
+          onVersionFilterChange={onEventVersionFilterChange}
+        />
       )}
     </div>
   );

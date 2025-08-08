@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
-import type { Document } from '../api';
+import type { Document, Event } from '../api';
 
-export function useDocumentFilter(documents: Document[]) {
+export function useDocumentFilter(documents: Document[], events: Event[] = []) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [formatFilter, setFormatFilter] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [eventVersionFilter, setEventVersionFilter] = useState<'all' | 'base' | 'versions'>('all');
   
   const filteredDocuments = useMemo(() => {
     return documents.filter(doc => {
@@ -28,9 +30,22 @@ export function useDocumentFilter(documents: Document[]) {
           doc.tags!.some(tag => tag.id === tagId)
         ));
 
-      return matchesSearch && matchesType && matchesFormat && matchesTags;
+      // Event filter
+      const matchesEvents = selectedEventIds.length === 0 || 
+        (doc.event_documents && selectedEventIds.some(eventId => 
+          doc.event_documents!.some(eventDoc => eventDoc.event_id === eventId)
+        )) ||
+        (doc.event_id && selectedEventIds.includes(doc.event_id));
+
+      // Event version filter
+      const matchesEventVersion = 
+        eventVersionFilter === 'all' ||
+        (eventVersionFilter === 'base' && !doc.event_id) ||
+        (eventVersionFilter === 'versions' && doc.event_id);
+
+      return matchesSearch && matchesType && matchesFormat && matchesTags && matchesEvents && matchesEventVersion;
     });
-  }, [documents, searchTerm, typeFilter, formatFilter, selectedTagIds]);
+  }, [documents, searchTerm, typeFilter, formatFilter, selectedTagIds, selectedEventIds, eventVersionFilter]);
 
   const availableTypes = useMemo(() => {
     return [...new Set(documents.map(doc => doc.document_type).filter((type): type is string => Boolean(type)))];
@@ -41,9 +56,11 @@ export function useDocumentFilter(documents: Document[]) {
     setTypeFilter('');
     setFormatFilter('');
     setSelectedTagIds([]);
+    setSelectedEventIds([]);
+    setEventVersionFilter('all');
   };
 
-  const hasActiveFilters = !!(searchTerm || typeFilter || formatFilter || selectedTagIds.length > 0);
+  const hasActiveFilters = !!(searchTerm || typeFilter || formatFilter || selectedTagIds.length > 0 || selectedEventIds.length > 0 || eventVersionFilter !== 'all');
 
   return {
     searchTerm,
@@ -54,9 +71,14 @@ export function useDocumentFilter(documents: Document[]) {
     setFormatFilter,
     selectedTagIds,
     setSelectedTagIds,
+    selectedEventIds,
+    setSelectedEventIds,
+    eventVersionFilter,
+    setEventVersionFilter,
     filteredDocuments,
     availableTypes,
     resetFilters,
-    hasActiveFilters
+    hasActiveFilters,
+    events
   };
 }

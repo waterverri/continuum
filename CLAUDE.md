@@ -106,7 +106,7 @@ Continuum is a full-stack application for writers to manage story context with t
 - Focused unit test suite for core functionality validation
 - CI/CD pipelines for automated deployment
 
-**Next**: Events system, project member management, preset engine for dynamic context generation
+**Next**: Project member management, preset engine for dynamic context generation
 
 ## Environment Setup
 
@@ -133,6 +133,16 @@ Dashboard requires `.env.local` with:
 - **Tag Management**: Project-scoped tags with color coding, comprehensive CRUD operations, and real-time UI updates
 - **Tag Filtering**: Integrated tag-based filtering extends existing document search with multiple selection support
 - **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks
+- **✅ COMPLETED: Events & Timeline System**: 
+  - Comprehensive events management with hierarchical relationships (parent-child events)
+  - Event-document associations for temporal organization of content
+  - Document evolution tracking through event-specific versions (e.g., character development over time)
+  - Timeline visualization with Gantt chart-style interface and list view
+  - Advanced filtering system with event-based document filtering
+  - Full backend API with 17 endpoints supporting CRUD operations, hierarchies, and document evolution
+  - 6 specialized frontend components (EventManager, EventSelector, EventTimeline, etc.)
+  - 119 comprehensive unit tests validating component behavior and API functionality
+  - Database migrations with cycle detection to prevent circular event dependencies
 
 ## Frontend Architecture Patterns
 

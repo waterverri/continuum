@@ -66,11 +66,13 @@ apiRouter.use(validateSupabaseJwt);
 import documentRouter from './routes/documents';
 import presetRouter from './routes/presets';
 import tagRouter from './routes/tags';
+import eventRouter from './routes/events';
 
 // Mount route handlers
 apiRouter.use('/documents', documentRouter);
 apiRouter.use('/presets', presetRouter);
 apiRouter.use('/tags', tagRouter);
+apiRouter.use('/events', eventRouter);
 
 app.use('/api', apiRouter);
 

@@ -15,6 +15,9 @@ export interface Document {
   created_at: string;
   resolved_content?: string;
   tags?: Tag[];
+  event_id?: string; // For event-specific document versions
+  event_documents?: EventDocument[]; // For document-event associations
+  events?: Event; // For joined event data
 }
 
 export interface Preset {
@@ -37,6 +40,30 @@ export interface Tag {
 export interface DocumentTag {
   document_id: string;
   tag_id: string;
+  created_at: string;
+}
+
+export interface Event {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  time_start?: number;
+  time_end?: number;
+  display_order: number;
+  parent_event_id?: string;
+  created_at: string;
+}
+
+export interface EventDocument {
+  event_id: string;
+  document_id: string;
+  created_at: string;
+}
+
+export interface EventHierarchy {
+  parent_event_id: string;
+  child_event_id: string;
   created_at: string;
 }
 
@@ -368,4 +395,179 @@ export const removeTagFromDocument = async (projectId: string, documentId: strin
   if (!response.ok) {
     throw new Error('Failed to remove tag from document');
   }
+};
+
+// Event API functions
+export const getEvents = async (projectId: string, accessToken: string, includeHierarchy = false): Promise<{ events: Event[], hierarchy?: EventHierarchy[] }> => {
+  const url = `${API_URL}/api/events/${projectId}${includeHierarchy ? '?include_hierarchy=true' : ''}`;
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch events');
+  }
+
+  return await response.json();
+};
+
+export const getEvent = async (projectId: string, eventId: string, accessToken: string): Promise<{
+  event: Event,
+  documents: EventDocument[],
+  parentEvents: Event[],
+  childEvents: Event[]
+}> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch event');
+  }
+
+  return await response.json();
+};
+
+export const createEvent = async (projectId: string, event: Partial<Event>, accessToken: string): Promise<Event> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(event),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create event');
+  }
+
+  const data = await response.json();
+  return data.event;
+};
+
+export const updateEvent = async (projectId: string, eventId: string, event: Partial<Event>, accessToken: string): Promise<Event> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(event),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update event');
+  }
+
+  const data = await response.json();
+  return data.event;
+};
+
+export const deleteEvent = async (projectId: string, eventId: string, accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete event');
+  }
+};
+
+export const addDocumentToEvent = async (projectId: string, eventId: string, documentId: string, accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}/documents`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ document_id: documentId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add document to event');
+  }
+};
+
+export const removeDocumentFromEvent = async (projectId: string, eventId: string, documentId: string, accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}/documents/${documentId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to remove document from event');
+  }
+};
+
+export const getEventTimeline = async (projectId: string, accessToken: string): Promise<{ events: Event[], hierarchy: EventHierarchy[] }> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/timeline`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch event timeline');
+  }
+
+  return await response.json();
+};
+
+export const createDocumentVersion = async (
+  projectId: string, 
+  eventId: string, 
+  versionData: {
+    source_document_id: string;
+    title?: string;
+    content?: string;
+    document_type?: string;
+  }, 
+  accessToken: string
+): Promise<{ version: Document, source_document: Document, event: Event }> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}/document-versions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(versionData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create document version');
+  }
+
+  return await response.json();
+};
+
+export const getDocumentEvolution = async (projectId: string, groupId: string, accessToken: string): Promise<{
+  groupId: string,
+  evolution: Record<string, { base: Document | null, versions: Document[] }>,
+  totalDocuments: number
+}> => {
+  const response = await fetch(`${API_URL}/api/events/${projectId}/document-evolution/${groupId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch document evolution');
+  }
+
+  return await response.json();
 };
