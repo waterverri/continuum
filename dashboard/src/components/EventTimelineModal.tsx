@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { getEventTimeline } from '../api';
+import { getEventTimeline, getEvent, updateEvent, deleteEvent } from '../api';
 import type { Event } from '../api';
 
 interface EventTimelineModalProps {
@@ -16,12 +16,33 @@ interface TimelineData {
   timeRange: number;
 }
 
-export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTimelineModalProps) {
+interface EventFormData {
+  name: string;
+  description: string;
+  time_start: string;
+  time_end: string;
+  display_order: number;
+  parent_event_id: string;
+}
+
+export function EventTimelineModal({ projectId, onClose }: EventTimelineModalProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventDocuments, setEventDocuments] = useState<any[]>([]);
+  const [showEventDetails, setShowEventDetails] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [formData, setFormData] = useState<EventFormData>({
+    name: '',
+    description: '',
+    time_start: '',
+    time_end: '',
+    display_order: 0,
+    parent_event_id: ''
+  });
 
   const getAccessToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -41,6 +62,71 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
       setLoading(false);
     }
   }, [projectId]);
+
+  const loadEventDetails = async (event: Event) => {
+    try {
+      const token = await getAccessToken();
+      const eventDetails = await getEvent(projectId, event.id, token);
+      setEventDocuments(eventDetails.documents || []);
+      setSelectedEvent(event);
+      setShowEventDetails(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load event details');
+    }
+  };
+
+  const handleEditEvent = async () => {
+    if (!editingEvent) return;
+    
+    try {
+      const token = await getAccessToken();
+      const eventData = {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        time_start: formData.time_start ? parseInt(formData.time_start) : undefined,
+        time_end: formData.time_end ? parseInt(formData.time_end) : undefined,
+        display_order: formData.display_order,
+        parent_event_id: formData.parent_event_id || undefined
+      };
+
+      await updateEvent(projectId, editingEvent.id, eventData, token);
+      await loadTimeline();
+      setEditingEvent(null);
+      setShowEventDetails(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update event');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event? This will also remove all associated document relationships.')) {
+      return;
+    }
+
+    try {
+      const token = await getAccessToken();
+      await deleteEvent(projectId, eventId, token);
+      await loadTimeline();
+      if (selectedEvent?.id === eventId) {
+        setShowEventDetails(false);
+        setSelectedEvent(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete event');
+    }
+  };
+
+  const startEditEvent = (event: Event) => {
+    setFormData({
+      name: event.name,
+      description: event.description || '',
+      time_start: event.time_start?.toString() || '',
+      time_end: event.time_end?.toString() || '',
+      display_order: event.display_order,
+      parent_event_id: event.parent_event_id || ''
+    });
+    setEditingEvent(event);
+  };
 
   useEffect(() => {
     loadTimeline();
@@ -63,7 +149,7 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
     
     const minTime = Math.min(...startTimes);
     const maxTime = Math.max(...endTimes);
-    const timeRange = Math.max(maxTime - minTime, 1);
+    const timeRange = Math.max(maxTime - minTime, 10); // Minimum range for visibility
 
     return {
       events,
@@ -74,16 +160,17 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
   }, [events]);
 
   const getEventPosition = (event: Event) => {
-    if (!event.time_start) return { left: 0, width: 0 };
+    if (!event.time_start) return { left: 0, width: 0, visible: false };
     
     const { minTime, timeRange } = timelineData;
     const start = ((event.time_start - minTime) / timeRange) * 100;
-    const end = event.time_end ? ((event.time_end - minTime) / timeRange) * 100 : start;
-    const width = Math.max(end - start, 2); // Minimum 2% width for visibility
+    const end = event.time_end ? ((event.time_end - minTime) / timeRange) * 100 : start + 1;
+    const width = Math.max(end - start, 1); // Minimum 1% width for visibility
     
     return {
-      left: start,
-      width: width
+      left: Math.max(0, start),
+      width: Math.min(width, 100 - start),
+      visible: true
     };
   };
 
@@ -113,7 +200,7 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
   };
 
   const formatTimeDisplay = (timeValue?: number) => {
-    if (!timeValue) return 'No time';
+    if (!timeValue) return 'Not set';
     return `T${timeValue}`;
   };
 
@@ -134,10 +221,11 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
           </div>
           <div className="gantt-timeline-header" style={{ transform: `scaleX(${zoomLevel})` }}>
             <div className="timeline-ruler">
-              {Array.from({ length: Math.ceil(timelineData.timeRange / 10) + 1 }, (_, i) => {
-                const timeValue = timelineData.minTime + (i * 10);
+              {Array.from({ length: Math.ceil(timelineData.timeRange / 5) + 1 }, (_, i) => {
+                const timeValue = timelineData.minTime + (i * 5);
+                const position = (i * 5 / timelineData.timeRange) * 100;
                 return (
-                  <div key={i} className="ruler-tick" style={{ left: `${(i * 10 / timelineData.timeRange) * 100}%` }}>
+                  <div key={i} className="ruler-tick" style={{ left: `${position}%` }}>
                     <span className="ruler-label">T{timeValue}</span>
                   </div>
                 );
@@ -173,7 +261,32 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
       <div key={event.id} className={`gantt-row ${isChild ? 'child-row' : ''} level-${level}`}>
         <div className="gantt-event-label">
           <div className="event-label-content">
-            <span className="event-name">{event.name}</span>
+            <div className="event-label-header">
+              <span className="event-name">{event.name}</span>
+              <div className="event-actions">
+                <button 
+                  className="event-action-btn info"
+                  onClick={() => loadEventDetails(event)}
+                  title="View details"
+                >
+                  ℹ️
+                </button>
+                <button 
+                  className="event-action-btn edit"
+                  onClick={() => startEditEvent(event)}
+                  title="Edit event"
+                >
+                  ✎
+                </button>
+                <button 
+                  className="event-action-btn delete"
+                  onClick={() => handleDeleteEvent(event.id)}
+                  title="Delete event"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
             {event.description && (
               <span className="event-description">{event.description}</span>
             )}
@@ -192,18 +305,18 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
         </div>
         
         <div className="gantt-timeline" style={{ transform: `scaleX(${zoomLevel})` }}>
-          {hasTime && (
+          {position.visible && (
             <div 
               className={`gantt-bar ${event.time_end ? 'has-duration' : 'instant'}`}
               style={{
                 left: `${position.left}%`,
                 width: `${position.width}%`
               }}
-              onClick={() => onEventClick?.(event)}
+              onClick={() => loadEventDetails(event)}
               title={`${event.name}: ${formatTimeDisplay(event.time_start)}${event.time_end ? ` - ${formatTimeDisplay(event.time_end)}` : ''}`}
             >
               <div className="gantt-bar-content">
-                {position.width > 15 && (
+                {position.width > 10 && (
                   <span className="gantt-bar-label">{event.name}</span>
                 )}
               </div>
@@ -211,7 +324,7 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
           )}
           {!hasTime && (
             <div className="no-time-indicator" title="No time set for this event">
-              <span>⏸</span>
+              <span>⏸️</span>
             </div>
           )}
         </div>
@@ -234,7 +347,7 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
           <div className="list-column time-column">Start Time</div>
           <div className="list-column time-column">End Time</div>
           <div className="list-column duration-column">Duration</div>
-          <div className="list-column order-column">Order</div>
+          <div className="list-column order-column">Priority</div>
         </div>
         <div className="list-body">
           {sortedEvents.map(event => {
@@ -245,7 +358,7 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
               <div 
                 key={event.id} 
                 className={`list-row ${event.parent_event_id ? 'child-event' : 'parent-event'}`}
-                onClick={() => onEventClick?.(event)}
+                onClick={() => loadEventDetails(event)}
               >
                 <div className="list-column event-column">
                   <div className="event-info">
@@ -371,6 +484,114 @@ export function EventTimelineModal({ projectId, onClose, onEventClick }: EventTi
             </div>
           )}
         </div>
+
+        {/* Event Details Modal */}
+        {showEventDetails && selectedEvent && (
+          <div className="event-details-overlay">
+            <div className="event-details-modal">
+              <div className="event-details-header">
+                <h3>{selectedEvent.name}</h3>
+                <button 
+                  className="modal-close"
+                  onClick={() => {
+                    setShowEventDetails(false);
+                    setSelectedEvent(null);
+                    setEditingEvent(null);
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+              
+              <div className="event-details-body">
+                {editingEvent ? (
+                  <div className="event-edit-form">
+                    <h4>Edit Event</h4>
+                    <div className="form-group">
+                      <label>Name</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Description</label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Start Time</label>
+                        <input
+                          type="number"
+                          value={formData.time_start}
+                          onChange={(e) => setFormData(prev => ({ ...prev, time_start: e.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>End Time</label>
+                        <input
+                          type="number"
+                          value={formData.time_end}
+                          onChange={(e) => setFormData(prev => ({ ...prev, time_end: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-actions">
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setEditingEvent(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={handleEditEvent}
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="event-info">
+                      {selectedEvent.description && (
+                        <p className="event-description">{selectedEvent.description}</p>
+                      )}
+                      <div className="event-timing">
+                        <span><strong>Start:</strong> {formatTimeDisplay(selectedEvent.time_start)}</span>
+                        <span><strong>End:</strong> {formatTimeDisplay(selectedEvent.time_end)}</span>
+                        {getEventDuration(selectedEvent) && (
+                          <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} units</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="event-documents">
+                      <h4>Associated Documents ({eventDocuments.length})</h4>
+                      {eventDocuments.length === 0 ? (
+                        <p className="no-documents">No documents associated with this event.</p>
+                      ) : (
+                        <div className="documents-list">
+                          {eventDocuments.map((docAssoc: any) => (
+                            <div key={docAssoc.document_id} className="document-item">
+                              <span className="document-title">{docAssoc.documents.title}</span>
+                              <span className="document-type">{docAssoc.documents.document_type || 'Document'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

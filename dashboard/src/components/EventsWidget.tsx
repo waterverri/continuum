@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { createEvent, updateEvent, deleteEvent } from '../api';
+import { createEvent, updateEvent, deleteEvent, getEvent } from '../api';
 import type { Event } from '../api';
 
 interface EventsWidgetProps {
@@ -24,6 +24,9 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventDocuments, setEventDocuments] = useState<any[]>([]);
+  const [showEventDetails, setShowEventDetails] = useState(false);
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
     description: '',
@@ -87,6 +90,18 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     }
   };
 
+  const loadEventDetails = async (event: Event) => {
+    try {
+      const token = await getAccessToken();
+      const eventDetails = await getEvent(projectId, event.id, token);
+      setEventDocuments(eventDetails.documents || []);
+      setSelectedEvent(event);
+      setShowEventDetails(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load event details');
+    }
+  };
+
   const handleEdit = (event: Event) => {
     setFormData({
       name: event.name,
@@ -119,8 +134,13 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   };
 
   const formatTimeDisplay = (timeValue?: number) => {
-    if (!timeValue) return null;
-    return `Time ${timeValue}`;
+    if (!timeValue) return 'Not set';
+    return `T${timeValue}`;
+  };
+
+  const getEventDuration = (event: Event) => {
+    if (!event.time_start || !event.time_end) return null;
+    return event.time_end - event.time_start;
   };
 
   const getParentEventName = (parentId?: string) => {
@@ -265,6 +285,14 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                     <div className="event-card__actions">
                       <button
                         className="event-card__action"
+                        onClick={() => loadEventDetails(event)}
+                        disabled={loading}
+                        title="View details"
+                      >
+                        ℹ️
+                      </button>
+                      <button
+                        className="event-card__action"
                         onClick={() => handleEdit(event)}
                         disabled={loading}
                         title="Edit event"
@@ -305,6 +333,57 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           </div>
         )}
       </div>
+
+      {/* Event Details Modal */}
+      {showEventDetails && selectedEvent && (
+        <div className="event-details-overlay">
+          <div className="event-details-modal">
+            <div className="event-details-header">
+              <h3>{selectedEvent.name}</h3>
+              <button 
+                className="modal-close"
+                onClick={() => {
+                  setShowEventDetails(false);
+                  setSelectedEvent(null);
+                }}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="event-details-body">
+              <div className="event-info">
+                {selectedEvent.description && (
+                  <p className="event-description">{selectedEvent.description}</p>
+                )}
+                <div className="event-timing">
+                  <span><strong>Start:</strong> {formatTimeDisplay(selectedEvent.time_start)}</span>
+                  <span><strong>End:</strong> {formatTimeDisplay(selectedEvent.time_end)}</span>
+                  {getEventDuration(selectedEvent) && (
+                    <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} units</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="event-documents">
+                <h4>Associated Documents ({eventDocuments.length})</h4>
+                {eventDocuments.length === 0 ? (
+                  <p className="no-documents">No documents associated with this event.</p>
+                ) : (
+                  <div className="documents-list">
+                    {eventDocuments.map((docAssoc: any) => (
+                      <div key={docAssoc.document_id} className="document-item">
+                        <span className="document-title">{docAssoc.documents.title}</span>
+                        <span className="document-type">{docAssoc.documents.document_type || 'Document'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
