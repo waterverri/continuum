@@ -12,8 +12,7 @@ vi.mock('../../supabaseClient', () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { access_token: 'mock-token' } },
-        error: null
+        data: { session: { access_token: 'mock-token' } }
       })
     }
   }
@@ -50,17 +49,14 @@ describe('TagFilter', () => {
     onTagSelectionChange: vi.fn()
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    const { getTags } = await import('../../api');
-    vi.mocked(getTags).mockResolvedValue(mockTags);
-  });
-
-  afterEach(() => {
-    vi.resetAllMocks();
   });
 
   it('renders filter label and select dropdown', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue(mockTags);
+    
     render(<TagFilter {...mockProps} />);
     
     await waitFor(() => {
@@ -70,6 +66,9 @@ describe('TagFilter', () => {
   });
 
   it('shows all tags in dropdown options', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue(mockTags);
+    
     render(<TagFilter {...mockProps} />);
     
     await waitFor(() => {
@@ -81,6 +80,9 @@ describe('TagFilter', () => {
   });
 
   it('calls onTagSelectionChange when tag is selected', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue(mockTags);
+    
     render(<TagFilter {...mockProps} />);
     
     await waitFor(() => {
@@ -92,6 +94,9 @@ describe('TagFilter', () => {
   });
 
   it('calls onTagSelectionChange with empty array when "All Tags" is selected', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue(mockTags);
+    
     const propsWithSelection = {
       ...mockProps,
       selectedTagIds: ['tag-1']
@@ -108,6 +113,9 @@ describe('TagFilter', () => {
   });
 
   it('shows selected tag in dropdown', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue(mockTags);
+    
     const propsWithSelection = {
       ...mockProps,
       selectedTagIds: ['tag-1']
@@ -122,6 +130,9 @@ describe('TagFilter', () => {
   });
 
   it('shows empty value when multiple tags are selected', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue(mockTags);
+    
     const propsWithMultipleSelection = {
       ...mockProps,
       selectedTagIds: ['tag-1', 'tag-2']

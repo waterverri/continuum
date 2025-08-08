@@ -40,7 +40,7 @@ export function TagFilter({
   }, [loadTags]);
 
 
-  if (loading || tags.length === 0) {
+  if (loading || !tags || tags.length === 0) {
     return null; // Don't show filter if no tags exist
   }
 

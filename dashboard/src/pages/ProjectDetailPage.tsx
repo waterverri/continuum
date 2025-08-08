@@ -19,8 +19,8 @@ import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
 import { TagManager } from '../components/TagManager';
 import { TagSelector } from '../components/TagSelector';
 import { TagFilter } from '../components/TagFilter';
-import { EventManager } from '../components/EventManager';
 import { EventSelector } from '../components/EventSelector';
+import { EventsWidget } from '../components/EventsWidget';
 import { EventTimeline } from '../components/EventTimeline';
 import { EventFilter } from '../components/EventFilter';
 import { DocumentEvolution } from '../components/DocumentEvolution';
@@ -470,46 +470,14 @@ export default function ProjectDetailPage() {
           
           {/* Events Widget */}
           <div className="widget">
-            <div className="widget__header">
-              <h4>📅 Events ({state.events.length})</h4>
-              <button 
-                className="btn btn--xs btn--primary"
-                onClick={() => state.openModal('showEventManager')}
-              >
-                Manage
-              </button>
-            </div>
-            
             <div className="widget__content">
-              {state.events.length === 0 ? (
-                <div className="empty-state">
-                  <p>No events yet</p>
-                  <p>Create events to organize your timeline.</p>
-                </div>
-              ) : (
-                <div className="events-summary">
-                  {state.events
-                    .sort((a, b) => (a.time_start || 0) - (b.time_start || 0))
-                    .slice(0, 4)
-                    .map((event) => (
-                      <div key={event.id} className="event-summary-item">
-                        <div className="event-summary-name">{event.name}</div>
-                        {event.time_start && (
-                          <div className="event-summary-time">Time {event.time_start}</div>
-                        )}
-                      </div>
-                    ))}
-                  {state.events.length > 4 && (
-                    <div className="events-summary-more">
-                      <button 
-                        className="btn btn--xs btn--ghost"
-                        onClick={() => state.openModal('showEventTimeline')}
-                      >
-                        +{state.events.length - 4} more • View Timeline
-                      </button>
-                    </div>
-                  )}
-                </div>
+              {projectId && (
+                <EventsWidget
+                  projectId={projectId}
+                  events={state.events}
+                  onEventsChange={loadEvents}
+                  onTimelineClick={() => state.openModal('showEventTimeline')}
+                />
               )}
             </div>
           </div>
@@ -651,17 +619,6 @@ export default function ProjectDetailPage() {
           projectId={projectId}
           documentId={state.tagSelectorDocumentId}
           onClose={closeTagSelector}
-        />
-      )}
-
-      {/* Event Manager Modal */}
-      {state.modals.showEventManager && projectId && (
-        <EventManager
-          projectId={projectId}
-          onClose={() => {
-            state.closeModal('showEventManager');
-            loadEvents();
-          }}
         />
       )}
 
