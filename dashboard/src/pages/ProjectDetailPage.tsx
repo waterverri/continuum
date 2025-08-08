@@ -714,6 +714,14 @@ export default function ProjectDetailPage() {
                 projectId={projectId}
                 document={state.evolutionDocument}
                 onClose={closeDocumentEvolution}
+                onShowDocument={(doc) => {
+                  state.setSelectedDocument(doc);
+                  state.setIsEditing(false);
+                  state.setResolvedContent(null);
+                }}
+                onEditDocument={(doc) => {
+                  state.startEdit(doc);
+                }}
               />
             </div>
           </div>
