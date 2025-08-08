@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TagFilter } from '../../components/TagFilter';
 
 // Mock the API functions
 vi.mock('../../api', () => ({
-  getTags: vi.fn(),
+  getTags: vi.fn()
 }));
 
 // Mock the supabase client
@@ -12,7 +12,8 @@ vi.mock('../../supabaseClient', () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { access_token: 'mock-token' } }
+        data: { session: { access_token: 'mock-token' } },
+        error: null
       })
     }
   }
@@ -23,182 +24,135 @@ const mockTags = [
     id: 'tag-1',
     project_id: 'project-1',
     name: 'Character',
-    color: '#6366f1',
+    color: '#ff0000',
     created_at: '2023-01-01T00:00:00.000Z'
   },
   {
-    id: 'tag-2',
+    id: 'tag-2', 
     project_id: 'project-1',
     name: 'Location',
-    color: '#8b5cf6',
+    color: '#00ff00',
     created_at: '2023-01-01T00:00:00.000Z'
   },
   {
     id: 'tag-3',
-    project_id: 'project-1',
+    project_id: 'project-1', 
     name: 'Plot',
-    color: '#ec4899',
+    color: '#0000ff',
     created_at: '2023-01-01T00:00:00.000Z'
   }
 ];
 
 describe('TagFilter', () => {
-  const mockOnTagSelectionChange = vi.fn();
-  
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  const mockProps = {
+    projectId: 'project-1',
+    selectedTagIds: [],
+    onTagSelectionChange: vi.fn()
+  };
 
-  it('renders compact tag filter dropdown', async () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
     const { getTags } = await import('../../api');
     vi.mocked(getTags).mockResolvedValue(mockTags);
+  });
 
-    render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={[]} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={true}
-      />
-    );
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
 
+  it('renders filter label and select dropdown', async () => {
+    render(<TagFilter {...mockProps} />);
+    
     await waitFor(() => {
-      const dropdown = screen.getByRole('combobox');
-      expect(dropdown).toBeInTheDocument();
-      expect(screen.getByDisplayValue('All Tags')).toBeInTheDocument();
+      expect(screen.getByText('Filter by Tags')).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
   });
 
-  it('renders full tag filter with clickable badges', async () => {
-    const { getTags } = await import('../../api');
-    vi.mocked(getTags).mockResolvedValue(mockTags);
-
-    render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={[]} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={false}
-      />
-    );
-
+  it('shows all tags in dropdown options', async () => {
+    render(<TagFilter {...mockProps} />);
+    
     await waitFor(() => {
-      expect(screen.getByText('Filter by Tags:')).toBeInTheDocument();
+      expect(screen.getByText('All Tags')).toBeInTheDocument();
       expect(screen.getByText('Character')).toBeInTheDocument();
       expect(screen.getByText('Location')).toBeInTheDocument();
       expect(screen.getByText('Plot')).toBeInTheDocument();
     });
   });
 
-  it('handles tag selection in full mode', async () => {
-    const { getTags } = await import('../../api');
-    vi.mocked(getTags).mockResolvedValue(mockTags);
-
-    render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={[]} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={false}
-      />
-    );
-
+  it('calls onTagSelectionChange when tag is selected', async () => {
+    render(<TagFilter {...mockProps} />);
+    
     await waitFor(() => {
-      expect(screen.getByText('Character')).toBeInTheDocument();
+      const select = screen.getByRole('combobox');
+      fireEvent.change(select, { target: { value: 'tag-1' } });
     });
-
-    // Click on Character tag
-    fireEvent.click(screen.getByText('Character'));
-
-    expect(mockOnTagSelectionChange).toHaveBeenCalledWith(['tag-1']);
+    
+    expect(mockProps.onTagSelectionChange).toHaveBeenCalledWith(['tag-1']);
   });
 
-  it('handles tag deselection in full mode', async () => {
-    const { getTags } = await import('../../api');
-    vi.mocked(getTags).mockResolvedValue(mockTags);
-
-    render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={['tag-1']} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={false}
-      />
-    );
-
+  it('calls onTagSelectionChange with empty array when "All Tags" is selected', async () => {
+    const propsWithSelection = {
+      ...mockProps,
+      selectedTagIds: ['tag-1']
+    };
+    
+    render(<TagFilter {...propsWithSelection} />);
+    
     await waitFor(() => {
-      expect(screen.getByText('Character ✓')).toBeInTheDocument();
+      const select = screen.getByRole('combobox');
+      fireEvent.change(select, { target: { value: '' } });
     });
-
-    // Click on selected Character tag to deselect it
-    fireEvent.click(screen.getByText('Character ✓'));
-
-    expect(mockOnTagSelectionChange).toHaveBeenCalledWith([]);
+    
+    expect(mockProps.onTagSelectionChange).toHaveBeenCalledWith([]);
   });
 
-  it('handles tag selection in compact mode', async () => {
-    const { getTags } = await import('../../api');
-    vi.mocked(getTags).mockResolvedValue(mockTags);
-
-    render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={[]} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={true}
-      />
-    );
-
+  it('shows selected tag in dropdown', async () => {
+    const propsWithSelection = {
+      ...mockProps,
+      selectedTagIds: ['tag-1']
+    };
+    
+    render(<TagFilter {...propsWithSelection} />);
+    
     await waitFor(() => {
-      const dropdown = screen.getByRole('combobox');
-      expect(dropdown).toBeInTheDocument();
+      const select = screen.getByRole('combobox') as HTMLSelectElement;
+      expect(select.value).toBe('tag-1');
     });
-
-    // Select Character tag from dropdown
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'tag-1' } });
-
-    expect(mockOnTagSelectionChange).toHaveBeenCalledWith(['tag-1']);
   });
 
-  it('shows clear all button when tags are selected in full mode', async () => {
-    const { getTags } = await import('../../api');
-    vi.mocked(getTags).mockResolvedValue(mockTags);
-
-    render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={['tag-1', 'tag-2']} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={false}
-      />
-    );
-
+  it('shows empty value when multiple tags are selected', async () => {
+    const propsWithMultipleSelection = {
+      ...mockProps,
+      selectedTagIds: ['tag-1', 'tag-2']
+    };
+    
+    render(<TagFilter {...propsWithMultipleSelection} />);
+    
     await waitFor(() => {
-      expect(screen.getByText('Clear All')).toBeInTheDocument();
-      expect(screen.getByText('Showing documents with 2 selected tags')).toBeInTheDocument();
+      const select = screen.getByRole('combobox') as HTMLSelectElement;
+      expect(select.value).toBe('');
     });
-
-    // Click clear all
-    fireEvent.click(screen.getByText('Clear All'));
-
-    expect(mockOnTagSelectionChange).toHaveBeenCalledWith([]);
   });
 
   it('does not render when no tags exist', async () => {
     const { getTags } = await import('../../api');
     vi.mocked(getTags).mockResolvedValue([]);
-
-    const { container } = render(
-      <TagFilter 
-        projectId="project-1" 
-        selectedTagIds={[]} 
-        onTagSelectionChange={mockOnTagSelectionChange}
-        compact={false}
-      />
-    );
-
+    
+    const { container } = render(<TagFilter {...mockProps} />);
+    
     await waitFor(() => {
       expect(container.firstChild).toBeNull();
     });
+  });
+
+  it('handles loading state', async () => {
+    const { getTags } = await import('../../api');
+    vi.mocked(getTags).mockImplementation(() => new Promise(() => {})); // Never resolves
+    
+    const { container } = render(<TagFilter {...mockProps} />);
+    
+    // Should not render anything during loading
+    expect(container.firstChild).toBeNull();
   });
 });

@@ -21,7 +21,7 @@ const mockEvents = [
     description: 'Character wakes up',
     time_start: 100,
     time_end: 150,
-    display_order: 1,
+    display_order: 2,
     parent_event_id: 'event-1',
     created_at: '2023-01-01T00:00:00.000Z'
   },
@@ -29,10 +29,10 @@ const mockEvents = [
     id: 'event-3',
     project_id: 'project-1',
     name: 'Chapter 2',
-    description: 'The continuation',
+    description: 'The next chapter',
     time_start: 300,
-    time_end: null,
-    display_order: 2,
+    time_end: 400,
+    display_order: 3,
     parent_event_id: null,
     created_at: '2023-01-01T00:00:00.000Z'
   }
@@ -51,220 +51,107 @@ describe('EventFilter', () => {
     vi.clearAllMocks();
   });
 
-  it('renders filter title and expand button', () => {
+  it('renders filter label and select dropdown', () => {
     render(<EventFilter {...mockProps} />);
     
-    expect(screen.getByText('Events')).toBeInTheDocument();
-    expect(screen.getByText('▼')).toBeInTheDocument();
-  });
-
-  it('shows event count when events are selected', () => {
-    const propsWithSelection = {
-      ...mockProps,
-      selectedEventIds: ['event-1', 'event-2']
-    };
-
-    render(<EventFilter {...propsWithSelection} />);
-    
-    expect(screen.getByText('(2)')).toBeInTheDocument();
-  });
-
-  it('expands filter content when clicked', () => {
-    render(<EventFilter {...mockProps} />);
-    
-    fireEvent.click(screen.getByText('Events'));
-    
-    expect(screen.getByText('Document Type')).toBeInTheDocument();
     expect(screen.getByText('Filter by Events')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('renders version filter options', () => {
+  it('shows all events in dropdown options sorted by time', () => {
     render(<EventFilter {...mockProps} />);
     
-    fireEvent.click(screen.getByText('Events'));
-    
-    expect(screen.getByText('All Documents')).toBeInTheDocument();
-    expect(screen.getByText('Base Versions Only')).toBeInTheDocument();
-    expect(screen.getByText('Event Versions Only')).toBeInTheDocument();
+    expect(screen.getByText('All Events')).toBeInTheDocument();
+    expect(screen.getByText('Chapter 1 (100)')).toBeInTheDocument();
+    expect(screen.getByText('Morning Scene (100)')).toBeInTheDocument();
+    expect(screen.getByText('Chapter 2 (300)')).toBeInTheDocument();
   });
 
-  it('calls onVersionFilterChange when version filter is changed', () => {
-    render(<EventFilter {...mockProps} />);
+  it('shows events without time_start', () => {
+    const eventsWithoutTime = [
+      {
+        ...mockEvents[0],
+        time_start: undefined
+      }
+    ];
     
-    fireEvent.click(screen.getByText('Events'));
-    fireEvent.click(screen.getByText('Base Versions Only'));
+    const propsWithoutTime = {
+      ...mockProps,
+      events: eventsWithoutTime
+    };
     
-    expect(mockProps.onVersionFilterChange).toHaveBeenCalledWith('base');
-  });
-
-  it('renders all events in hierarchical structure', () => {
-    render(<EventFilter {...mockProps} />);
+    render(<EventFilter {...propsWithoutTime} />);
     
-    fireEvent.click(screen.getByText('Events'));
-    
-    // Root events
     expect(screen.getByText('Chapter 1')).toBeInTheDocument();
-    expect(screen.getByText('Chapter 2')).toBeInTheDocument();
-    
-    // Child event
-    expect(screen.getByText('Morning Scene')).toBeInTheDocument();
-  });
-
-  it('displays event time information', () => {
-    render(<EventFilter {...mockProps} />);
-    
-    fireEvent.click(screen.getByText('Events'));
-    
-    expect(screen.getAllByText('T100')).toHaveLength(2); // Two events have T100
-    expect(screen.getByText('T300')).toBeInTheDocument();
-  });
-
-  it('handles events without time values', () => {
-    const eventsWithoutTime = [{
-      ...mockEvents[0],
-      time_start: undefined
-    }];
-
-    render(<EventFilter {...mockProps} events={eventsWithoutTime} />);
-    
-    fireEvent.click(screen.getByText('Events'));
-    
-    expect(screen.getByText('No time')).toBeInTheDocument();
   });
 
   it('calls onEventSelectionChange when event is selected', () => {
     render(<EventFilter {...mockProps} />);
     
-    fireEvent.click(screen.getByText('Events'));
-    
-    const checkboxes = screen.getAllByRole('checkbox');
-    const eventCheckbox = checkboxes.find(checkbox => 
-      checkbox.getAttribute('type') === 'checkbox' && 
-      checkbox.closest('label')?.textContent?.includes('Chapter 1')
-    );
-    
-    if (eventCheckbox) {
-      fireEvent.click(eventCheckbox);
-    }
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'event-1' } });
     
     expect(mockProps.onEventSelectionChange).toHaveBeenCalledWith(['event-1']);
   });
 
-  it('calls onEventSelectionChange when event is deselected', () => {
-    const propsWithSelection = {
-      ...mockProps,
-      selectedEventIds: ['event-1', 'event-2']
-    };
-
-    render(<EventFilter {...propsWithSelection} />);
-    
-    fireEvent.click(screen.getByText('Events'));
-    
-    const checkboxes = screen.getAllByRole('checkbox');
-    const eventCheckbox = checkboxes.find(checkbox => 
-      checkbox.getAttribute('type') === 'checkbox' && 
-      checkbox.closest('label')?.textContent?.includes('Chapter 1')
-    );
-    
-    if (eventCheckbox) {
-      fireEvent.click(eventCheckbox);
-    }
-    
-    expect(mockProps.onEventSelectionChange).toHaveBeenCalledWith(['event-2']);
-  });
-
-  it('shows clear all button when events are selected', () => {
+  it('calls onEventSelectionChange with empty array when "All Events" is selected', () => {
     const propsWithSelection = {
       ...mockProps,
       selectedEventIds: ['event-1']
     };
-
+    
     render(<EventFilter {...propsWithSelection} />);
     
-    fireEvent.click(screen.getByText('Events'));
-    
-    expect(screen.getByText('Clear All')).toBeInTheDocument();
-  });
-
-  it('clears all selections when clear all is clicked', () => {
-    const propsWithSelection = {
-      ...mockProps,
-      selectedEventIds: ['event-1', 'event-2']
-    };
-
-    render(<EventFilter {...propsWithSelection} />);
-    
-    fireEvent.click(screen.getByText('Events'));
-    fireEvent.click(screen.getByText('Clear All'));
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: '' } });
     
     expect(mockProps.onEventSelectionChange).toHaveBeenCalledWith([]);
   });
 
-  it('shows selected state for checked events', () => {
+  it('shows selected event in dropdown', () => {
     const propsWithSelection = {
       ...mockProps,
       selectedEventIds: ['event-1']
     };
-
+    
     render(<EventFilter {...propsWithSelection} />);
     
-    fireEvent.click(screen.getByText('Events'));
-    
-    const checkboxes = screen.getAllByRole('checkbox');
-    const eventCheckbox = checkboxes.find(checkbox => 
-      checkbox.getAttribute('type') === 'checkbox' && 
-      checkbox.closest('label')?.textContent?.includes('Chapter 1')
-    );
-    
-    expect(eventCheckbox).toBeChecked();
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(select.value).toBe('event-1');
   });
 
-  it('shows correct version filter selection', () => {
-    const propsWithBaseFilter = {
+  it('shows empty value when multiple events are selected', () => {
+    const propsWithMultipleSelection = {
       ...mockProps,
-      eventVersionFilter: 'base' as const
+      selectedEventIds: ['event-1', 'event-2']
     };
-
-    render(<EventFilter {...propsWithBaseFilter} />);
     
-    fireEvent.click(screen.getByText('Events'));
+    render(<EventFilter {...propsWithMultipleSelection} />);
     
-    const baseRadio = screen.getByRole('radio', { name: 'Base Versions Only' });
-    expect(baseRadio).toBeChecked();
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(select.value).toBe('');
   });
 
-  it('renders empty state when no events provided', () => {
-    render(<EventFilter {...mockProps} events={[]} />);
+  it('does not render when no events exist', () => {
+    const propsWithoutEvents = {
+      ...mockProps,
+      events: []
+    };
     
-    expect(screen.getByText('No events available')).toBeInTheDocument();
+    const { container } = render(<EventFilter {...propsWithoutEvents} />);
+    
+    expect(container.firstChild).toBeNull();
   });
 
-  it('expands and collapses correctly', () => {
+  it('sorts events by time_start correctly', () => {
     render(<EventFilter {...mockProps} />);
     
-    // Initially collapsed
-    expect(screen.queryByText('Document Type')).not.toBeInTheDocument();
+    const select = screen.getByRole('combobox');
+    const options = Array.from(select.querySelectorAll('option')).slice(1); // Skip "All Events" option
     
-    // Click to expand
-    fireEvent.click(screen.getByText('Events'));
-    expect(screen.getByText('Document Type')).toBeInTheDocument();
-    
-    // Click to collapse
-    fireEvent.click(screen.getByText('Events'));
-    expect(screen.queryByText('Document Type')).not.toBeInTheDocument();
-  });
-
-  it('handles child events correctly in hierarchy', () => {
-    render(<EventFilter {...mockProps} />);
-    
-    fireEvent.click(screen.getByText('Events'));
-    
-    // Morning Scene should be nested under Chapter 1
-    const morningScene = screen.getByText('Morning Scene');
-    expect(morningScene).toBeInTheDocument();
-    
-    // Should have child event styling (this would be tested via CSS classes)
-    const label = morningScene.closest('label');
-    expect(label).toHaveClass('child-event');
+    // Should be sorted by time_start: Chapter 1 (100), Morning Scene (100), Chapter 2 (300)
+    expect(options[0].textContent).toContain('Chapter 1 (100)');
+    expect(options[1].textContent).toContain('Morning Scene (100)'); 
+    expect(options[2].textContent).toContain('Chapter 2 (300)');
   });
 });

@@ -331,7 +331,6 @@ export default function ProjectDetailPage() {
               projectId={projectId}
               selectedTagIds={sidebarFilter.selectedTagIds}
               onTagSelectionChange={sidebarFilter.setSelectedTagIds}
-              compact={true}
             />
           )}
           
@@ -472,51 +471,43 @@ export default function ProjectDetailPage() {
           {/* Events Widget */}
           <div className="widget">
             <div className="widget__header">
-              <h4>Project Events ({state.events.length})</h4>
-              <div className="widget__actions">
-                <button 
-                  className="btn btn--sm btn--secondary"
-                  onClick={() => state.openModal('showEventManager')}
-                >
-                  Manage
-                </button>
-                <button 
-                  className="btn btn--sm btn--secondary"
-                  onClick={() => state.openModal('showEventTimeline')}
-                >
-                  Timeline
-                </button>
-              </div>
+              <h4>📅 Events ({state.events.length})</h4>
+              <button 
+                className="btn btn--xs btn--primary"
+                onClick={() => state.openModal('showEventManager')}
+              >
+                Manage
+              </button>
             </div>
             
             <div className="widget__content">
               {state.events.length === 0 ? (
                 <div className="empty-state">
-                  <p>No events created yet.</p>
-                  <p>Create events to organize your story timeline and track document evolution.</p>
+                  <p>No events yet</p>
+                  <p>Create events to organize your timeline.</p>
                 </div>
               ) : (
                 <div className="events-summary">
-                  {state.events.slice(0, 5).map((event) => (
-                    <div key={event.id} className="event-summary-item">
-                      <div className="event-summary-header">
-                        <h5>{event.name}</h5>
+                  {state.events
+                    .sort((a, b) => (a.time_start || 0) - (b.time_start || 0))
+                    .slice(0, 4)
+                    .map((event) => (
+                      <div key={event.id} className="event-summary-item">
+                        <div className="event-summary-name">{event.name}</div>
                         {event.time_start && (
-                          <span className="event-time">T{event.time_start}</span>
+                          <div className="event-summary-time">Time {event.time_start}</div>
                         )}
                       </div>
-                      {event.description && (
-                        <p className="event-summary-description">
-                          {event.description.length > 60 
-                            ? event.description.substring(0, 60) + '...' 
-                            : event.description
-                          }
-                        </p>
-                      )}
+                    ))}
+                  {state.events.length > 4 && (
+                    <div className="events-summary-more">
+                      <button 
+                        className="btn btn--xs btn--ghost"
+                        onClick={() => state.openModal('showEventTimeline')}
+                      >
+                        +{state.events.length - 4} more • View Timeline
+                      </button>
                     </div>
-                  ))}
-                  {state.events.length > 5 && (
-                    <p className="more-events">...and {state.events.length - 5} more events</p>
                   )}
                 </div>
               )}

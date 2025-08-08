@@ -54,20 +54,32 @@ export function useDocumentOperations({
       const token = await getAccessToken();
       const docs = await getDocuments(projectId, token);
       
-      // Load tags for each document
-      const docsWithTags = await Promise.all(
+      // Load tags and event associations for each document
+      const docsWithTagsAndEvents = await Promise.all(
         docs.map(async (doc) => {
           try {
-            const docTags = await getDocumentTags(projectId, doc.id, token);
-            return { ...doc, tags: docTags };
+            const [docTags, eventAssociations] = await Promise.all([
+              getDocumentTags(projectId, doc.id, token),
+              // Load event associations directly via Supabase
+              (async () => {
+                const { supabase } = await import('../supabaseClient');
+                const { data: eventDocs } = await supabase
+                  .from('event_documents')
+                  .select('event_id, document_id, created_at')
+                  .eq('document_id', doc.id);
+                return eventDocs || [];
+              })()
+            ]);
+            
+            return { ...doc, tags: docTags, event_documents: eventAssociations };
           } catch (err) {
-            console.error(`Failed to load tags for document ${doc.id}:`, err);
-            return { ...doc, tags: [] };
+            console.error(`Failed to load data for document ${doc.id}:`, err);
+            return { ...doc, tags: [], event_documents: [] };
           }
         })
       );
       
-      setDocuments(docsWithTags);
+      setDocuments(docsWithTagsAndEvents);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load documents');
     } finally {
