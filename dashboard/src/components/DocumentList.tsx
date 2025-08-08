@@ -12,6 +12,8 @@ interface DocumentListItemProps {
   onDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
   onManageTags?: (document: Document) => void;
+  onManageEvents?: (document: Document) => void;
+  onDocumentEvolution?: (document: Document) => void;
   variant?: 'sidebar' | 'picker';
 }
 
@@ -26,6 +28,8 @@ function DocumentListItem({
   onDelete,
   onCreateDerivative,
   onManageTags,
+  onManageEvents,
+  onDocumentEvolution,
   variant = 'sidebar'
 }: DocumentListItemProps) {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -183,6 +187,22 @@ function DocumentListItem({
                     🏷️ Tags
                   </button>
                 )}
+                {onManageEvents && (
+                  <button 
+                    className="document-dropdown-item"
+                    onClick={handleDropdownAction(() => onManageEvents(document))}
+                  >
+                    📅 Events
+                  </button>
+                )}
+                {onDocumentEvolution && (
+                  <button 
+                    className="document-dropdown-item"
+                    onClick={handleDropdownAction(() => onDocumentEvolution(document))}
+                  >
+                    🔄 Evolution
+                  </button>
+                )}
                 {onDelete && (
                   <button 
                     className="document-dropdown-item document-dropdown-item--danger"
@@ -209,6 +229,8 @@ interface DocumentListProps {
   onDocumentDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
   onManageTags?: (document: Document) => void;
+  onManageEvents?: (document: Document) => void;
+  onDocumentEvolution?: (document: Document) => void;
   variant?: 'sidebar' | 'picker';
   emptyMessage?: string;
 }
@@ -222,6 +244,8 @@ export function DocumentList({
   onDocumentDelete,
   onCreateDerivative,
   onManageTags,
+  onManageEvents,
+  onDocumentEvolution,
   variant = 'sidebar',
   emptyMessage = 'No documents found.'
 }: DocumentListProps) {
@@ -246,6 +270,8 @@ export function DocumentList({
           onDelete={onDocumentDelete}
           onCreateDerivative={onCreateDerivative}
           onManageTags={onManageTags}
+          onManageEvents={onManageEvents}
+          onDocumentEvolution={onDocumentEvolution}
           showPreview={variant === 'picker'}
           showActions={variant === 'sidebar'}
           variant={variant}

@@ -89,7 +89,8 @@ describe('EventSelector', () => {
     render(<EventSelector {...mockProps} />);
     
     await waitFor(() => {
-      expect(screen.getByText('Chapter 1')).toBeInTheDocument();
+      // "Chapter 1" appears twice - as event name and as parent reference  
+      expect(screen.getAllByText('Chapter 1')).toHaveLength(2);
       expect(screen.getByText('Morning Scene')).toBeInTheDocument();
     });
   });
@@ -238,7 +239,8 @@ describe('EventSelector', () => {
     render(<EventSelector {...mockProps} />);
     
     await waitFor(() => {
-      expect(screen.getByText('Chapter 1')).toBeInTheDocument();
+      // "Chapter 1" appears twice - as event name and as parent reference
+      expect(screen.getAllByText('Chapter 1')).toHaveLength(2);
       expect(screen.getByText('Morning Scene')).toBeInTheDocument();
       // Child event should show parent information
       expect(screen.getByText('Parent:')).toBeInTheDocument();
@@ -258,10 +260,11 @@ describe('EventSelector', () => {
     render(<EventSelector {...mockProps} />);
     
     await waitFor(() => {
-      expect(screen.getByText('Start:')).toBeInTheDocument();
-      expect(screen.getByText('Time 100')).toBeInTheDocument();
-      expect(screen.getByText('End:')).toBeInTheDocument();
-      expect(screen.getByText('Time 200')).toBeInTheDocument();
+      // Both events have time information, so Start: and End: appear twice
+      expect(screen.getAllByText('Start:')).toHaveLength(2);
+      expect(screen.getAllByText('Time 100')).toHaveLength(2); // Both events start at time 100
+      expect(screen.getAllByText('End:')).toHaveLength(2);
+      expect(screen.getByText('Time 200')).toBeInTheDocument(); // Only first event ends at 200
     });
   });
 
@@ -284,7 +287,8 @@ describe('EventSelector', () => {
     render(<EventSelector {...mockProps} />);
     
     await waitFor(() => {
-      expect(screen.getByText('Not set')).toBeInTheDocument();
+      // "Not set" appears twice - once for start time, once for end time
+      expect(screen.getAllByText('Not set')).toHaveLength(2);
     });
   });
 

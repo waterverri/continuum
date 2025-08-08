@@ -19,6 +19,11 @@ import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
 import { TagManager } from '../components/TagManager';
 import { TagSelector } from '../components/TagSelector';
 import { TagFilter } from '../components/TagFilter';
+import { EventManager } from '../components/EventManager';
+import { EventSelector } from '../components/EventSelector';
+import { EventTimeline } from '../components/EventTimeline';
+import { EventFilter } from '../components/EventFilter';
+import { DocumentEvolution } from '../components/DocumentEvolution';
 import '../styles/ProjectDetailPage.css';
 
 
@@ -43,19 +48,39 @@ export default function ProjectDetailPage() {
     setResolvedContent: state.setResolvedContent,
   });
   
+  // Get events from state hook instead
+
   // Use document filter hook for sidebar
-  const sidebarFilter = useDocumentFilter(state.documents);
+  const sidebarFilter = useDocumentFilter(state.documents, state.events);
 
   // Sidebar collapse states
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
   const [rightSidebarMobileOpen, setRightSidebarMobileOpen] = useState(false);
 
+  // Load events
+  const loadEvents = async () => {
+    if (!projectId) return;
+    
+    try {
+      const { supabase } = await import('../supabaseClient');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const { getEvents } = await import('../api');
+      const { events: projectEvents } = await getEvents(projectId, session.access_token, true);
+      state.setEvents(projectEvents);
+    } catch (error) {
+      console.error('Failed to load events:', error);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     operations.loadDocuments();
     operations.loadPresets();
     operations.loadTags();
+    loadEvents();
   }, []);
 
   const getPresetUrl = (presetName: string) => {
@@ -185,6 +210,27 @@ export default function ProjectDetailPage() {
     operations.loadDocuments();
   };
 
+  const openEventSelector = (document: Document) => {
+    state.setEventSelectorDocument(document);
+    state.openModal('showEventSelector');
+  };
+
+  const closeEventSelector = () => {
+    state.closeModal('showEventSelector');
+    state.setEventSelectorDocument(null);
+    operations.loadDocuments();
+  };
+
+  const openDocumentEvolution = (document: Document) => {
+    state.setEvolutionDocument(document);
+    state.openModal('showDocumentEvolution');
+  };
+
+  const closeDocumentEvolution = () => {
+    state.closeModal('showDocumentEvolution');
+    state.setEvolutionDocument(null);
+  };
+
 
   const removeComponent = (key: string) => {
     const newComponents = { ...state.formData.components };
@@ -289,6 +335,14 @@ export default function ProjectDetailPage() {
             />
           )}
           
+          <EventFilter
+            events={state.events}
+            selectedEventIds={sidebarFilter.selectedEventIds}
+            onEventSelectionChange={sidebarFilter.setSelectedEventIds}
+            eventVersionFilter={sidebarFilter.eventVersionFilter}
+            onVersionFilterChange={sidebarFilter.setEventVersionFilter}
+          />
+          
           {sidebarFilter.hasActiveFilters && (
             <button 
               className="btn btn--sm btn--secondary"
@@ -310,6 +364,8 @@ export default function ProjectDetailPage() {
             onDocumentDelete={operations.handleDeleteDocument}
             onCreateDerivative={handleCreateDerivative}
             onManageTags={(document) => openTagSelector(document.id)}
+            onManageEvents={openEventSelector}
+            onDocumentEvolution={openDocumentEvolution}
             variant="sidebar"
             emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
           />
@@ -408,6 +464,60 @@ export default function ProjectDetailPage() {
                       {tag.name}
                     </span>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Events Widget */}
+          <div className="widget">
+            <div className="widget__header">
+              <h4>Project Events ({state.events.length})</h4>
+              <div className="widget__actions">
+                <button 
+                  className="btn btn--sm btn--secondary"
+                  onClick={() => state.openModal('showEventManager')}
+                >
+                  Manage
+                </button>
+                <button 
+                  className="btn btn--sm btn--secondary"
+                  onClick={() => state.openModal('showEventTimeline')}
+                >
+                  Timeline
+                </button>
+              </div>
+            </div>
+            
+            <div className="widget__content">
+              {state.events.length === 0 ? (
+                <div className="empty-state">
+                  <p>No events created yet.</p>
+                  <p>Create events to organize your story timeline and track document evolution.</p>
+                </div>
+              ) : (
+                <div className="events-summary">
+                  {state.events.slice(0, 5).map((event) => (
+                    <div key={event.id} className="event-summary-item">
+                      <div className="event-summary-header">
+                        <h5>{event.name}</h5>
+                        {event.time_start && (
+                          <span className="event-time">T{event.time_start}</span>
+                        )}
+                      </div>
+                      {event.description && (
+                        <p className="event-summary-description">
+                          {event.description.length > 60 
+                            ? event.description.substring(0, 60) + '...' 
+                            : event.description
+                          }
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {state.events.length > 5 && (
+                    <p className="more-events">...and {state.events.length - 5} more events</p>
+                  )}
                 </div>
               )}
             </div>
@@ -551,6 +661,64 @@ export default function ProjectDetailPage() {
           documentId={state.tagSelectorDocumentId}
           onClose={closeTagSelector}
         />
+      )}
+
+      {/* Event Manager Modal */}
+      {state.modals.showEventManager && projectId && (
+        <EventManager
+          projectId={projectId}
+          onClose={() => {
+            state.closeModal('showEventManager');
+            loadEvents();
+          }}
+        />
+      )}
+
+      {/* Event Selector Modal */}
+      {state.modals.showEventSelector && state.eventSelectorDocument && projectId && (
+        <EventSelector
+          projectId={projectId}
+          document={state.eventSelectorDocument}
+          onClose={closeEventSelector}
+          onUpdate={loadEvents}
+        />
+      )}
+
+      {/* Event Timeline Modal */}
+      {state.modals.showEventTimeline && projectId && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-content--large">
+            <div className="modal-header">
+              <h3>Event Timeline</h3>
+              <button className="modal-close" onClick={() => state.closeModal('showEventTimeline')}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <EventTimeline
+                projectId={projectId}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Evolution Modal */}
+      {state.modals.showDocumentEvolution && state.evolutionDocument && projectId && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-content--large">
+            <div className="modal-header">
+              <h3>Document Evolution - {state.evolutionDocument.title}</h3>
+              <button className="modal-close" onClick={closeDocumentEvolution}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <DocumentEvolution
+                projectId={projectId}
+                groupId={state.evolutionDocument.group_id || ''}
+                onClose={closeDocumentEvolution}
+                availableEvents={state.events}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Document, Preset, Tag } from '../api';
+import type { Document, Preset, Tag, Event } from '../api';
 
 interface DocumentFormData {
   title: string;
@@ -15,6 +15,7 @@ export function useProjectDetailState() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   
   // Loading and error states
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,10 @@ export function useProjectDetailState() {
     showGroupSwitcher: false,
     showTagManager: false,
     showTagSelector: false,
+    showEventManager: false,
+    showEventSelector: false,
+    showEventTimeline: false,
+    showDocumentEvolution: false,
   });
 
   // Modal-related states
@@ -59,6 +64,8 @@ export function useProjectDetailState() {
   const [switcherComponentKey, setSwitcherComponentKey] = useState<string | null>(null);
   const [switcherGroupId, setSwitcherGroupId] = useState<string | null>(null);
   const [tagSelectorDocumentId, setTagSelectorDocumentId] = useState<string | null>(null);
+  const [eventSelectorDocument, setEventSelectorDocument] = useState<Document | null>(null);
+  const [evolutionDocument, setEvolutionDocument] = useState<Document | null>(null);
 
   // Reset form function
   const resetForm = useCallback(() => {
@@ -92,6 +99,10 @@ export function useProjectDetailState() {
       showGroupSwitcher: false,
       showTagManager: false,
       showTagSelector: false,
+      showEventManager: false,
+      showEventSelector: false,
+      showEventTimeline: false,
+      showDocumentEvolution: false,
     });
   }, []);
 
@@ -132,6 +143,8 @@ export function useProjectDetailState() {
     setPresets,
     tags,
     setTags,
+    events,
+    setEvents,
     loading,
     setLoading,
     error,
@@ -163,6 +176,10 @@ export function useProjectDetailState() {
     setSwitcherGroupId,
     tagSelectorDocumentId,
     setTagSelectorDocumentId,
+    eventSelectorDocument,
+    setEventSelectorDocument,
+    evolutionDocument,
+    setEvolutionDocument,
 
     // Actions
     resetForm,
