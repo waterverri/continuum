@@ -94,6 +94,8 @@ CREATE TRIGGER prevent_event_hierarchy_cycles
 -- Function to prevent direct parent_event_id cycles
 CREATE OR REPLACE FUNCTION public.check_event_parent_cycle()
 RETURNS TRIGGER AS $$
+DECLARE
+    cycle_found boolean := false;
 BEGIN
     -- Check if setting this parent would create a cycle
     IF NEW.parent_event_id IS NOT NULL THEN
