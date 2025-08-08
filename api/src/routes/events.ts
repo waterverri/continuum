@@ -81,6 +81,55 @@ router.get('/:projectId', async (req: RequestWithUser, res: Response) => {
 });
 
 /**
+ * GET /api/events/:projectId/timeline
+ * Get events in timeline order with hierarchy information
+ */
+router.get('/:projectId/timeline', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const userToken = req.token!;
+    
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Get all events ordered by time_start, then display_order
+    const { data: events, error } = await userSupabase
+      .from('events')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('time_start', { ascending: true, nullsFirst: false })
+      .order('display_order', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching timeline events:', error);
+      return res.status(500).json({ error: 'Failed to fetch timeline events' });
+    }
+
+    // Get hierarchy information
+    const eventIds = events?.map(e => e.id) || [];
+    let hierarchyData = [];
+    
+    if (eventIds.length > 0) {
+      const { data: hierarchy, error: hierarchyError } = await userSupabase
+        .from('event_hierarchy')
+        .select('*')
+        .or(`parent_event_id.in.(${eventIds.join(',')}),child_event_id.in.(${eventIds.join(',')})`);
+      
+      if (!hierarchyError) {
+        hierarchyData = hierarchy || [];
+      }
+    }
+    
+    res.json({ 
+      events,
+      hierarchy: hierarchyData
+    });
+  } catch (error) {
+    console.error('Error in GET /events/:projectId/timeline:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * GET /api/events/:projectId/:eventId
  * Get a specific event with related documents and hierarchy
  */
@@ -433,55 +482,6 @@ router.delete('/:projectId/:eventId/documents/:documentId', async (req: RequestW
     res.status(204).send();
   } catch (error) {
     console.error('Error in DELETE /events/:projectId/:eventId/documents/:documentId:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-/**
- * GET /api/events/:projectId/timeline
- * Get events in timeline order with hierarchy information
- */
-router.get('/:projectId/timeline', async (req: RequestWithUser, res: Response) => {
-  try {
-    const { projectId } = req.params;
-    const userToken = req.token!;
-    
-    const userSupabase = createUserSupabaseClient(userToken);
-    
-    // Get all events ordered by time_start, then display_order
-    const { data: events, error } = await userSupabase
-      .from('events')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('time_start', { ascending: true, nullsFirst: false })
-      .order('display_order', { ascending: true });
-    
-    if (error) {
-      console.error('Error fetching timeline events:', error);
-      return res.status(500).json({ error: 'Failed to fetch timeline events' });
-    }
-
-    // Get hierarchy information
-    const eventIds = events?.map(e => e.id) || [];
-    let hierarchyData = [];
-    
-    if (eventIds.length > 0) {
-      const { data: hierarchy, error: hierarchyError } = await userSupabase
-        .from('event_hierarchy')
-        .select('*')
-        .or(`parent_event_id.in.(${eventIds.join(',')}),child_event_id.in.(${eventIds.join(',')})`);
-      
-      if (!hierarchyError) {
-        hierarchyData = hierarchy || [];
-      }
-    }
-    
-    res.json({ 
-      events,
-      hierarchy: hierarchyData
-    });
-  } catch (error) {
-    console.error('Error in GET /events/:projectId/timeline:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
