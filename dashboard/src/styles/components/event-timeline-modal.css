@@ -401,9 +401,10 @@
 .gantt-timeline {
   flex: 1;
   position: relative;
-  height: 100%;
+  height: 60px;
+  min-height: 60px;
   transform-origin: left center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .gantt-bar {
@@ -419,13 +420,11 @@
 }
 
 .gantt-bar.has-duration {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  border-color: var(--color-primary-dark);
+  /* Background color set via JavaScript hash */
 }
 
 .gantt-bar.instant {
-  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
-  border-color: var(--color-secondary-dark);
+  /* Background color set via JavaScript hash */
   width: 4px !important;
   border-radius: var(--radius-sm);
 }

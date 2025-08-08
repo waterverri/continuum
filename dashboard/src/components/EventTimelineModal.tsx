@@ -209,6 +209,23 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
     return event.time_end - event.time_start;
   };
 
+  const getEventColor = (eventId: string) => {
+    // Simple hash function to generate consistent colors
+    let hash = 0;
+    for (let i = 0; i < eventId.length; i++) {
+      const char = eventId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Generate HSL color with good saturation and lightness
+    const hue = Math.abs(hash) % 360;
+    const saturation = 65 + (Math.abs(hash) % 20); // 65-85%
+    const lightness = 45 + (Math.abs(hash) % 15); // 45-60%
+    
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
   const renderGanttView = () => {
     const eventsByParent = getEventsByParent();
     const rootEvents = eventsByParent.get(null) || [];
@@ -310,7 +327,9 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
               className={`gantt-bar ${event.time_end ? 'has-duration' : 'instant'}`}
               style={{
                 left: `${position.left}%`,
-                width: `${position.width}%`
+                width: `${position.width}%`,
+                backgroundColor: getEventColor(event.id),
+                borderColor: getEventColor(event.id)
               }}
               onClick={() => loadEventDetails(event)}
               title={`${event.name}: ${formatTimeDisplay(event.time_start)}${event.time_end ? ` - ${formatTimeDisplay(event.time_end)}` : ''}`}
