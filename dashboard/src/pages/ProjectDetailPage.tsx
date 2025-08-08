@@ -712,9 +712,8 @@ export default function ProjectDetailPage() {
             <div className="modal-body">
               <DocumentEvolution
                 projectId={projectId}
-                groupId={state.evolutionDocument.group_id || ''}
+                document={state.evolutionDocument}
                 onClose={closeDocumentEvolution}
-                availableEvents={state.events}
               />
             </div>
           </div>

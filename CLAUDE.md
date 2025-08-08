@@ -133,10 +133,20 @@ Dashboard requires `.env.local` with:
 - **Tag Management**: Project-scoped tags with color coding, comprehensive CRUD operations, and real-time UI updates
 - **Tag Filtering**: Integrated tag-based filtering extends existing document search with multiple selection support
 - **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks
-- **✅ COMPLETED: Events & Timeline System**: 
-  - Comprehensive events management with hierarchical relationships (parent-child events)
-  - Event-document associations for temporal organization of content
-  - Document evolution tracking through event-specific versions (e.g., character development over time)
+- **Document Evolution**: Simplified approach using existing systems:
+  - Evolution discovery through documents with event associations (via `event_documents` table)
+  - Leverages existing `group_id` system to group related document versions  
+  - DocumentEvolution component shows all documents in same group and their event associations
+  - Direct Supabase queries for efficiency - no complex backend API calls needed
+  - Advanced recursive evolution queries (evolution "through Event X") reserved for future implementation
+  - UI accessible via document dropdown "🔄 Evolution" option
+- **✅ COMPLETED: Events System**: 
+  - Complete events management with hierarchical relationships (parent-child events)
+  - Event-document associations via many-to-many `event_documents` table
+  - Full UI integration with EventManager, EventSelector, EventTimeline, and EventFilter components
+  - Document evolution discovery through existing derivative system and event associations
+  - Timeline visualization and event-based document filtering
+  - All components accessible through main interface with 110 tests passing
   - Timeline visualization with Gantt chart-style interface and list view
   - Advanced filtering system with event-based document filtering
   - Full backend API with 17 endpoints supporting CRUD operations, hierarchies, and document evolution

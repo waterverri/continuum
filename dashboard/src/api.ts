@@ -526,48 +526,4 @@ export const getEventTimeline = async (projectId: string, accessToken: string): 
   return await response.json();
 };
 
-export const createDocumentVersion = async (
-  projectId: string, 
-  eventId: string, 
-  versionData: {
-    source_document_id: string;
-    title?: string;
-    content?: string;
-    document_type?: string;
-  }, 
-  accessToken: string
-): Promise<{ version: Document, source_document: Document, event: Event }> => {
-  const response = await fetch(`${API_URL}/api/events/${projectId}/${eventId}/document-versions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(versionData),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create document version');
-  }
-
-  return await response.json();
-};
-
-export const getDocumentEvolution = async (projectId: string, groupId: string, accessToken: string): Promise<{
-  groupId: string,
-  evolution: Record<string, { base: Document | null, versions: Document[] }>,
-  totalDocuments: number
-}> => {
-  const response = await fetch(`${API_URL}/api/events/${projectId}/document-evolution/${groupId}`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch document evolution');
-  }
-
-  return await response.json();
-};
+// Document evolution functions removed - using simplified approach via direct Supabase queries
