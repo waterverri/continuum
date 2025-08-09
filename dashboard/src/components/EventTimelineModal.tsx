@@ -37,6 +37,9 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const [panOffset, setPanOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0 });
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+  const [createEventPosition, setCreateEventPosition] = useState({ timeStart: 0, timeEnd: 0 });
+  const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
@@ -136,13 +139,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
 
   // Pan functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (isCreatingEvent) return; // Don't pan when creating events
     setIsDragging(true);
     setDragStart({ x: e.clientX, panOffset });
     e.preventDefault();
-  }, [panOffset]);
+  }, [panOffset, isCreatingEvent]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || isCreatingEvent) return;
     
     const deltaX = e.clientX - dragStart.x;
     const panSensitivity = 1 / zoomLevel; // More sensitive when zoomed in
@@ -153,7 +157,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const constrainedPan = Math.max(-maxPan, Math.min(maxPan, newPanOffset));
     
     setPanOffset(constrainedPan);
-  }, [isDragging, dragStart, zoomLevel]);
+  }, [isDragging, dragStart, zoomLevel, isCreatingEvent]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -189,6 +193,59 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setPanOffset(0);
   };
 
+
+  const handleCreateEventSubmit = async () => {
+    if (!formData.name.trim()) {
+      setError('Event name is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await getAccessToken();
+      
+      const eventData = {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        time_start: formData.time_start ? parseInt(formData.time_start) : undefined,
+        time_end: formData.time_end ? parseInt(formData.time_end) : undefined,
+        display_order: formData.display_order,
+        parent_event_id: formData.parent_event_id || undefined
+      };
+
+      const { createEvent } = await import('../api');
+      await createEvent(projectId, eventData, token);
+      await loadTimeline();
+      
+      // Reset form
+      setIsCreatingEvent(false);
+      setFormData({
+        name: '',
+        description: '',
+        time_start: '',
+        time_end: '',
+        display_order: 0,
+        parent_event_id: ''
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create event');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelCreateEvent = () => {
+    setIsCreatingEvent(false);
+    setFormData({
+      name: '',
+      description: '',
+      time_start: '',
+      time_end: '',
+      display_order: 0,
+      parent_event_id: ''
+    });
+  };
+
   useEffect(() => {
     loadTimeline();
   }, [loadTimeline]);
@@ -219,6 +276,62 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       timeRange
     };
   }, [events]);
+
+  // Click-to-create event functionality
+  const calculateTimeFromMousePosition = useCallback((e: React.MouseEvent, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const relativeX = e.clientX - rect.left;
+    const elementWidth = rect.width;
+    
+    // Account for zoom and pan transformations
+    const adjustedX = (relativeX / zoomLevel) - (panOffset / zoomLevel);
+    const percentageX = Math.max(0, Math.min(100, (adjustedX / (elementWidth / zoomLevel)) * 100));
+    
+    // Convert percentage to time value
+    const timeValue = timelineData.minTime + (percentageX / 100) * timelineData.timeRange;
+    return Math.max(timelineData.minTime, Math.min(timelineData.maxTime, Math.round(timeValue)));
+  }, [zoomLevel, panOffset, timelineData]);
+
+  const handleTimelineDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (isDragging) return;
+    
+    const timelineElement = e.currentTarget as HTMLElement;
+    const clickTime = calculateTimeFromMousePosition(e, timelineElement);
+    
+    // Create event with 5-unit duration by default
+    const startTime = clickTime;
+    const endTime = clickTime + 5;
+    
+    setCreateEventPosition({ timeStart: startTime, timeEnd: endTime });
+    setFormData({
+      name: '',
+      description: '',
+      time_start: startTime.toString(),
+      time_end: endTime.toString(),
+      display_order: 0,
+      parent_event_id: ''
+    });
+    setIsCreatingEvent(true);
+    e.preventDefault();
+    e.stopPropagation();
+  }, [isDragging, calculateTimeFromMousePosition]);
+
+  // Collapse/expand functionality
+  const toggleParentCollapse = (parentEventId: string) => {
+    setCollapsedParents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(parentEventId)) {
+        newSet.delete(parentEventId);
+      } else {
+        newSet.add(parentEventId);
+      }
+      return newSet;
+    });
+  };
+
+  const isParentCollapsed = (parentEventId: string) => {
+    return collapsedParents.has(parentEventId);
+  };
 
   const getEventPosition = (event: Event) => {
     if (!event.time_start) return { left: 0, width: 0, visible: false };
@@ -301,12 +414,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
             className="gantt-timeline-header" 
             style={{ 
               transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
-              cursor: isDragging ? 'grabbing' : 'grab'
+              cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab')
             }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onDoubleClick={handleTimelineDoubleClick}
+            title="Double-click to create event at time position"
           >
             <div className="timeline-ruler">
               {Array.from({ length: Math.ceil(timelineData.timeRange / 5) + 1 }, (_, i) => {
@@ -326,7 +441,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           {rootEvents.map(event => (
             <div key={event.id} className="gantt-row-group">
               {renderGanttRow(event, 0)}
-              {eventsByParent.has(event.id) && (
+              {eventsByParent.has(event.id) && !isParentCollapsed(event.id) && (
                 <div className="child-rows">
                   {eventsByParent.get(event.id)!.map(childEvent => 
                     renderGanttRow(childEvent, 1, true)
@@ -344,13 +459,32 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const position = getEventPosition(event);
     const duration = getEventDuration(event);
     const hasTime = event.time_start != null;
+    const eventsByParent = getEventsByParent();
+    const hasChildren = eventsByParent.has(event.id);
+    const isCollapsed = isParentCollapsed(event.id);
 
     return (
       <div key={event.id} className={`gantt-row ${isChild ? 'child-row' : ''} level-${level}`}>
         <div className="gantt-event-label">
           <div className="event-label-content">
             <div className="event-label-header">
-              <span className="event-name">{event.name}</span>
+              <div className="event-name-group">
+                {hasChildren && (
+                  <button
+                    className="collapse-btn"
+                    onClick={() => toggleParentCollapse(event.id)}
+                    title={isCollapsed ? 'Expand child events' : 'Collapse child events'}
+                  >
+                    {isCollapsed ? '▶' : '▼'}
+                  </button>
+                )}
+                <span className="event-name">{event.name}</span>
+                {hasChildren && (
+                  <span className="child-count">
+                    ({eventsByParent.get(event.id)!.length})
+                  </span>
+                )}
+              </div>
               <div className="event-actions">
                 <button 
                   className="event-action-btn info"
@@ -396,12 +530,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           className="gantt-timeline" 
           style={{ 
             transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
-            cursor: isDragging ? 'grabbing' : 'grab'
+            cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab')
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onDoubleClick={handleTimelineDoubleClick}
+          title="Double-click to create event at time position"
         >
           {position.visible && (
             <div 
@@ -734,6 +870,96 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Event Modal */}
+        {isCreatingEvent && (
+          <div className="event-details-overlay">
+            <div className="event-details-modal">
+              <div className="event-details-header">
+                <h3>Create Event at T{createEventPosition.timeStart}</h3>
+                <button 
+                  className="modal-close"
+                  onClick={cancelCreateEvent}
+                >
+                  &times;
+                </button>
+              </div>
+              
+              <div className="event-details-body">
+                <div className="event-edit-form">
+                  <div className="form-group">
+                    <label>Event Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Enter event name"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                      placeholder="Optional description"
+                    />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Start Time</label>
+                      <input
+                        type="number"
+                        value={formData.time_start}
+                        onChange={(e) => setFormData(prev => ({ ...prev, time_start: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>End Time</label>
+                      <input
+                        type="number"
+                        value={formData.time_end}
+                        onChange={(e) => setFormData(prev => ({ ...prev, time_end: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  {events.length > 0 && (
+                    <div className="form-group">
+                      <label>Parent Event</label>
+                      <select
+                        value={formData.parent_event_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, parent_event_id: e.target.value }))}
+                      >
+                        <option value="">No parent event</option>
+                        {events.map(event => (
+                          <option key={event.id} value={event.id}>
+                            {event.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="form-actions">
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={cancelCreateEvent}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={handleCreateEventSubmit}
+                      disabled={loading}
+                    >
+                      {loading ? 'Creating...' : 'Create Event'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

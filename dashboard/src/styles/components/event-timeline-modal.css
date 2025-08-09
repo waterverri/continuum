@@ -861,6 +861,42 @@
   background: var(--color-danger-light);
 }
 
+/* Parent-Child Collapse/Expand */
+.event-name-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex: 1;
+  margin-right: var(--spacing-sm);
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xxs);
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.collapse-btn:hover {
+  background: var(--color-background-lighter);
+  color: var(--color-text-primary);
+}
+
+.child-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .timeline-modal__header {
