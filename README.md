@@ -64,6 +64,8 @@ This is Continuum. It's not just a place to store your notes. It's an engine tha
 * **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents or entire document groups using {{placeholder}} syntax.
 * **Advanced Group Selection:** Choose specific document types within groups or use intelligent auto-selection for composite documents.
 * **Tagging System:** Comprehensive document organization with color-coded tags, real-time filtering, and intuitive tag management interface.
+* **Interactive Events & Timeline System:** Professional Gantt chart with pan/zoom, click-to-create events, hierarchical organization, and document integration.
+* **Advanced Timeline Features:** Industry-standard project management interface with real-time interaction, parent-child event collapsing, and precise time positioning.
 * **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document and group references.
 * **Real-time Resolution:** View how composite documents resolve into final assembled content with group-based substitutions.
 * **Secure API:** Backend API protected with JWT authentication and Row Level Security.
@@ -126,22 +128,32 @@ Prerequisites for development:
 - **Visual group indicators** showing document relationships and type preferences
 - **Intelligent component selection** with choice between documents and groups
 - **Comprehensive tagging system** with color-coded tags, intuitive management interface, and real-time filtering
+- **Interactive events & timeline system** with professional Gantt chart, pan/zoom controls, and hierarchical organization
+- **Advanced timeline features** including click-to-create events, parent-child collapsing, and real-time manipulation
 - **Responsive design** optimized for desktop, tablet, and mobile devices
 - **Real-time content resolution** for composite documents with group substitutions
 - **Unified component architecture** with modular, performant filtering components
 
+**Professional Timeline Interface:**
+- **Full-screen Gantt chart** with industry-standard project management capabilities  
+- **Interactive controls** with 0.25x-5x zoom range and smooth drag-based panning
+- **Click-to-create events** with double-click functionality and precise time positioning
+- **Hierarchical organization** with parent-child event collapsing and visual indicators
+- **Document integration** with view/edit/delete operations accessible from timeline
+- **Professional UI design** with glassmorphism effects and responsive controls
+
 **Testing Infrastructure:**
-- **Frontend testing** with Vitest + React Testing Library (focused unit tests)
+- **Frontend testing** with Vitest + React Testing Library (103+ focused unit tests)
 - **Backend testing** with Jest + Supertest (API and service tests)
-- **Quality-focused approach** prioritizing unit tests for core business logic
+- **Quality-focused approach** prioritizing unit tests for core business logic  
+- **Interactive feature validation** covering timeline interactions and event management
 - **Clean test architecture** with streamlined mock infrastructure
 - **Production validation** strategy for complex integration scenarios
 
-### 🚀 Next Phase: Events & Advanced Features
-- Timeline-based event management
-- Document-event relationships  
-- Project member management
+### 🚀 Next Phase: Advanced Collaboration Features
+- Project member management with role-based access control
 - Preset engine for dynamic context generation
+- Advanced collaboration tools and real-time editing
 
 ## Testing
 
