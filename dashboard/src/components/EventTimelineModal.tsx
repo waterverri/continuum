@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { getEventTimeline, getEvent, updateEvent, deleteEvent } from '../api';
-import type { Event } from '../api';
+import type { Event, Document, EventDocument } from '../api';
 
 interface EventTimelineModalProps {
   projectId: string;
   onClose: () => void;
   onEventClick?: (event: Event) => void;
+  onDocumentView?: (document: Document) => void;
+  onDocumentEdit?: (document: Document) => void;
+  onDocumentDelete?: (documentId: string) => void;
 }
 
 interface TimelineData {
@@ -25,14 +28,17 @@ interface EventFormData {
   parent_event_id: string;
 }
 
-export function EventTimelineModal({ projectId, onClose }: EventTimelineModalProps) {
+export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocumentEdit, onDocumentDelete }: EventTimelineModalProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0 });
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [eventDocuments, setEventDocuments] = useState<any[]>([]);
+  const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [formData, setFormData] = useState<EventFormData>({
@@ -67,7 +73,7 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
     try {
       const token = await getAccessToken();
       const eventDetails = await getEvent(projectId, event.id, token);
-      setEventDocuments(eventDetails.documents || []);
+      setEventDocuments(eventDetails.documents as (EventDocument & {documents: Document})[] || []);
       setSelectedEvent(event);
       setShowEventDetails(true);
     } catch (err) {
@@ -128,6 +134,61 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
     setEditingEvent(event);
   };
 
+  // Pan functionality
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, panOffset });
+    e.preventDefault();
+  }, [panOffset]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - dragStart.x;
+    const panSensitivity = 1 / zoomLevel; // More sensitive when zoomed in
+    const newPanOffset = dragStart.panOffset - (deltaX * panSensitivity);
+    
+    // Constrain pan to reasonable bounds
+    const maxPan = Math.max(0, (zoomLevel - 1) * 50);
+    const constrainedPan = Math.max(-maxPan, Math.min(maxPan, newPanOffset));
+    
+    setPanOffset(constrainedPan);
+  }, [isDragging, dragStart, zoomLevel]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Enhanced zoom functionality
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(5, prev + 0.5));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => {
+      const newZoom = Math.max(0.25, prev - 0.5);
+      // Reset pan when zooming out significantly
+      if (newZoom <= 1) {
+        setPanOffset(0);
+      }
+      return newZoom;
+    });
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(1);
+    setPanOffset(0);
+  };
+
+  const handleZoomToFit = () => {
+    // Calculate optimal zoom to fit all events
+    const eventsWithTime = events.filter(e => e.time_start != null);
+    if (eventsWithTime.length === 0) return;
+    
+    setZoomLevel(1);
+    setPanOffset(0);
+  };
+
   useEffect(() => {
     loadTimeline();
   }, [loadTimeline]);
@@ -186,7 +247,7 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
     });
 
     // Sort events within each parent group
-    for (const [_, eventList] of parentMap) {
+    for (const [, eventList] of parentMap) {
       eventList.sort((a, b) => {
         // Sort by time first, then by display order
         const aTime = a.time_start || 0;
@@ -236,7 +297,17 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
           <div className="gantt-labels">
             <div className="gantt-label">Events</div>
           </div>
-          <div className="gantt-timeline-header" style={{ transform: `scaleX(${zoomLevel})` }}>
+          <div 
+            className="gantt-timeline-header" 
+            style={{ 
+              transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
+              cursor: isDragging ? 'grabbing' : 'grab'
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             <div className="timeline-ruler">
               {Array.from({ length: Math.ceil(timelineData.timeRange / 5) + 1 }, (_, i) => {
                 const timeValue = timelineData.minTime + (i * 5);
@@ -321,7 +392,17 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
           </div>
         </div>
         
-        <div className="gantt-timeline" style={{ transform: `scaleX(${zoomLevel})` }}>
+        <div 
+          className="gantt-timeline" 
+          style={{ 
+            transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
+            cursor: isDragging ? 'grabbing' : 'grab'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           {position.visible && (
             <div 
               className={`gantt-bar ${event.time_end ? 'has-duration' : 'instant'}`}
@@ -459,24 +540,45 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
             </div>
             
             {viewMode === 'gantt' && (
-              <div className="zoom-controls">
-                <label>Zoom:</label>
-                <button 
-                  className="zoom-btn"
-                  onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
-                  disabled={zoomLevel <= 0.5}
-                >
-                  −
-                </button>
-                <span className="zoom-level">{Math.round(zoomLevel * 100)}%</span>
-                <button 
-                  className="zoom-btn"
-                  onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.25))}
-                  disabled={zoomLevel >= 3}
-                >
-                  +
-                </button>
-              </div>
+              <>
+                <div className="zoom-controls">
+                  <label>Zoom:</label>
+                  <button 
+                    className="zoom-btn"
+                    onClick={handleZoomOut}
+                    disabled={zoomLevel <= 0.25}
+                    title="Zoom out"
+                  >
+                    −
+                  </button>
+                  <span className="zoom-level">{Math.round(zoomLevel * 100)}%</span>
+                  <button 
+                    className="zoom-btn"
+                    onClick={handleZoomIn}
+                    disabled={zoomLevel >= 5}
+                    title="Zoom in"
+                  >
+                    +
+                  </button>
+                  <button 
+                    className="zoom-btn"
+                    onClick={handleZoomReset}
+                    title="Reset zoom"
+                  >
+                    ⌂
+                  </button>
+                  <button 
+                    className="zoom-btn"
+                    onClick={handleZoomToFit}
+                    title="Fit to view"
+                  >
+                    ⛶
+                  </button>
+                </div>
+                <div className="pan-controls">
+                  <label>Pan: {panOffset.toFixed(0)}px</label>
+                </div>
+              </>
             )}
           </div>
           
@@ -596,10 +698,35 @@ export function EventTimelineModal({ projectId, onClose }: EventTimelineModalPro
                         <p className="no-documents">No documents associated with this event.</p>
                       ) : (
                         <div className="documents-list">
-                          {eventDocuments.map((docAssoc: any) => (
+                          {eventDocuments.map((docAssoc) => (
                             <div key={docAssoc.document_id} className="document-item">
-                              <span className="document-title">{docAssoc.documents.title}</span>
-                              <span className="document-type">{docAssoc.documents.document_type || 'Document'}</span>
+                              <div className="document-info">
+                                <span className="document-title">{docAssoc.documents.title}</span>
+                                <span className="document-type">{docAssoc.documents.document_type || 'Document'}</span>
+                              </div>
+                              <div className="document-actions">
+                                <button
+                                  className="document-action-btn view"
+                                  onClick={() => onDocumentView?.(docAssoc.documents)}
+                                  title="View document"
+                                >
+                                  👁️
+                                </button>
+                                <button
+                                  className="document-action-btn edit"
+                                  onClick={() => onDocumentEdit?.(docAssoc.documents)}
+                                  title="Edit document"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  className="document-action-btn delete"
+                                  onClick={() => onDocumentDelete?.(docAssoc.document_id)}
+                                  title="Delete document"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>

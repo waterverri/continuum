@@ -477,6 +477,17 @@ export default function ProjectDetailPage() {
                   events={state.events}
                   onEventsChange={loadEvents}
                   onTimelineClick={() => state.openModal('showEventTimeline')}
+                  onDocumentView={(document) => {
+                    state.setSelectedDocument(document);
+                    state.setIsEditing(false);
+                    state.setResolvedContent(null);
+                  }}
+                  onDocumentEdit={(document) => {
+                    state.startEdit(document);
+                  }}
+                  onDocumentDelete={(documentId) => {
+                    operations.handleDeleteDocument(documentId);
+                  }}
                 />
               )}
             </div>
@@ -637,6 +648,17 @@ export default function ProjectDetailPage() {
         <EventTimelineModal
           projectId={projectId}
           onClose={() => state.closeModal('showEventTimeline')}
+          onDocumentView={(document) => {
+            state.setSelectedDocument(document);
+            state.setIsEditing(false);
+            state.setResolvedContent(null);
+          }}
+          onDocumentEdit={(document) => {
+            state.startEdit(document);
+          }}
+          onDocumentDelete={(documentId) => {
+            operations.handleDeleteDocument(documentId);
+          }}
         />
       )}
 

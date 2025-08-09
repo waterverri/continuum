@@ -235,6 +235,42 @@
   font-size: var(--font-size-sm);
 }
 
+/* Document Actions in Event Details */
+.document-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  flex: 1;
+}
+
+.document-actions {
+  display: flex;
+  gap: var(--spacing-xxs);
+}
+
+.document-action-btn {
+  background: none;
+  border: none;
+  padding: var(--spacing-xxs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.document-action-btn:hover {
+  background: var(--color-background-lighter);
+}
+
+.document-action-btn.delete:hover {
+  background: var(--color-danger-light);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .event-card__actions {

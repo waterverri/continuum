@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { createEvent, updateEvent, deleteEvent, getEvent } from '../api';
-import type { Event } from '../api';
+import type { Event, Document, EventDocument } from '../api';
 
 interface EventsWidgetProps {
   projectId: string;
   events: Event[];
   onEventsChange: () => void;
   onTimelineClick?: () => void;
+  onDocumentView?: (document: Document) => void;
+  onDocumentEdit?: (document: Document) => void;
+  onDocumentDelete?: (documentId: string) => void;
 }
 
 interface EventFormData {
@@ -19,13 +22,13 @@ interface EventFormData {
   parent_event_id: string;
 }
 
-export function EventsWidget({ projectId, events, onEventsChange, onTimelineClick }: EventsWidgetProps) {
+export function EventsWidget({ projectId, events, onEventsChange, onTimelineClick, onDocumentView, onDocumentEdit, onDocumentDelete }: EventsWidgetProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [eventDocuments, setEventDocuments] = useState<any[]>([]);
+  const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
@@ -94,7 +97,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     try {
       const token = await getAccessToken();
       const eventDetails = await getEvent(projectId, event.id, token);
-      setEventDocuments(eventDetails.documents || []);
+      setEventDocuments(eventDetails.documents as (EventDocument & {documents: Document})[] || []);
       setSelectedEvent(event);
       setShowEventDetails(true);
     } catch (err) {
@@ -371,10 +374,35 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                   <p className="no-documents">No documents associated with this event.</p>
                 ) : (
                   <div className="documents-list">
-                    {eventDocuments.map((docAssoc: any) => (
+                    {eventDocuments.map((docAssoc) => (
                       <div key={docAssoc.document_id} className="document-item">
-                        <span className="document-title">{docAssoc.documents.title}</span>
-                        <span className="document-type">{docAssoc.documents.document_type || 'Document'}</span>
+                        <div className="document-info">
+                          <span className="document-title">{docAssoc.documents.title}</span>
+                          <span className="document-type">{docAssoc.documents.document_type || 'Document'}</span>
+                        </div>
+                        <div className="document-actions">
+                          <button
+                            className="document-action-btn view"
+                            onClick={() => onDocumentView?.(docAssoc.documents)}
+                            title="View document"
+                          >
+                            👁️
+                          </button>
+                          <button
+                            className="document-action-btn edit"
+                            onClick={() => onDocumentEdit?.(docAssoc.documents)}
+                            title="Edit document"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className="document-action-btn delete"
+                            onClick={() => onDocumentDelete?.(docAssoc.document_id)}
+                            title="Delete document"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
