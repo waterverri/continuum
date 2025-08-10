@@ -648,6 +648,7 @@ export default function ProjectDetailPage() {
         <EventTimelineModal
           projectId={projectId}
           onClose={() => state.closeModal('showEventTimeline')}
+          onCloseAllModals={state.closeAllModals}
           onDocumentView={(document) => {
             state.setSelectedDocument(document);
             state.setIsEditing(false);

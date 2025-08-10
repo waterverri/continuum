@@ -10,6 +10,7 @@ interface EventTimelineModalProps {
   onDocumentView?: (document: Document) => void;
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
+  onCloseAllModals?: () => void;
 }
 
 interface TimelineData {
@@ -28,7 +29,7 @@ interface EventFormData {
   parent_event_id: string;
 }
 
-export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocumentEdit, onDocumentDelete }: EventTimelineModalProps) {
+export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocumentEdit, onDocumentDelete, onCloseAllModals }: EventTimelineModalProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,17 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0 });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+  const [touchState, setTouchState] = useState({
+    isTouching: false,
+    isPointerDown: false,
+    initialDistance: 0,
+    initialZoom: 1,
+    initialPan: 0,
+    touchStartTime: 0,
+    singleTouchStart: { x: 0, y: 0 },
+    lastTapTime: 0,
+    lastTapPosition: { x: 0, y: 0 }
+  });
   const [createEventPosition, setCreateEventPosition] = useState({ timeStart: 0, timeEnd: 0 });
   const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -163,6 +175,59 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setIsDragging(false);
   }, []);
 
+  // Enhanced wheel/trackpad functionality
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Handle pinch-to-zoom on trackpads (deltaY with ctrlKey)
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      
+      // Adjust sensitivity based on device - Mac trackpads send different delta values
+      const isMacLike = navigator.platform.includes('Mac');
+      const zoomSensitivity = isMacLike ? 0.01 : 0.001;
+      const deltaZoom = -e.deltaY * zoomSensitivity;
+      
+      setZoomLevel(prev => {
+        const newZoom = Math.max(0.25, Math.min(5, prev + deltaZoom));
+        // Reset pan when zooming out significantly
+        if (newZoom <= 1 && prev > 1) {
+          setPanOffset(0);
+        }
+        return newZoom;
+      });
+    } 
+    // Handle horizontal scrolling for panning (common on trackpads)
+    else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault();
+      
+      // Adjust pan sensitivity based on zoom level and device
+      const isMacLike = navigator.platform.includes('Mac');
+      const baseSensitivity = isMacLike ? 0.5 : 1;
+      const panSensitivity = baseSensitivity / Math.max(zoomLevel, 0.25);
+      const deltaPan = e.deltaX * panSensitivity;
+      
+      setPanOffset(prev => {
+        const maxPan = Math.max(0, (zoomLevel - 1) * 50);
+        return Math.max(-maxPan, Math.min(maxPan, prev - deltaPan));
+      });
+    }
+    // Handle vertical scrolling for zooming when shift is held (alternative zoom method)
+    else if (e.shiftKey && Math.abs(e.deltaY) > 0) {
+      e.preventDefault();
+      
+      const zoomSensitivity = 0.002;
+      const deltaZoom = -e.deltaY * zoomSensitivity;
+      
+      setZoomLevel(prev => {
+        const newZoom = Math.max(0.25, Math.min(5, prev + deltaZoom));
+        if (newZoom <= 1 && prev > 1) {
+          setPanOffset(0);
+        }
+        return newZoom;
+      });
+    }
+  }, [zoomLevel]);
+
+
   // Enhanced zoom functionality
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(5, prev + 0.5));
@@ -189,8 +254,25 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const eventsWithTime = events.filter(e => e.time_start != null);
     if (eventsWithTime.length === 0) return;
     
+    // Reset zoom first
     setZoomLevel(1);
     setPanOffset(0);
+    
+    // Focus on the data range rather than the full padded range
+    setTimeout(() => {
+      const startTimes = eventsWithTime.map(e => e.time_start!);
+      const endTimes = eventsWithTime.map(e => e.time_end || e.time_start!);
+      const dataMinTime = Math.min(...startTimes);
+      const dataMaxTime = Math.max(...endTimes);
+      
+      // Calculate center offset to focus on data range
+      const dataCenterTime = (dataMinTime + dataMaxTime) / 2;
+      const timelineCenterTime = (timelineData.minTime + timelineData.maxTime) / 2;
+      const offsetRatio = (timelineCenterTime - dataCenterTime) / timelineData.timeRange;
+      const pixelOffset = offsetRatio * window.innerWidth * 0.5; // Approximate timeline width
+      
+      setPanOffset(pixelOffset);
+    }, 50); // Small delay to let zoom reset first
   };
 
 
@@ -265,9 +347,15 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const startTimes = eventsWithTime.map(e => e.time_start!);
     const endTimes = eventsWithTime.map(e => e.time_end || e.time_start!);
     
-    const minTime = Math.min(...startTimes);
-    const maxTime = Math.max(...endTimes);
-    const timeRange = Math.max(maxTime - minTime, 10); // Minimum range for visibility
+    const dataMinTime = Math.min(...startTimes);
+    const dataMaxTime = Math.max(...endTimes);
+    const dataRange = Math.max(dataMaxTime - dataMinTime, 10);
+    
+    // Add padding (25% on each side) to allow creating events outside the existing range
+    const padding = Math.max(dataRange * 0.25, 20); // At least 20 time units padding
+    const minTime = dataMinTime - padding;
+    const maxTime = dataMaxTime + padding;
+    const timeRange = maxTime - minTime;
 
     return {
       events,
@@ -315,6 +403,135 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     e.preventDefault();
     e.stopPropagation();
   }, [isDragging, calculateTimeFromMousePosition]);
+
+  // Touch event handlers for mobile support
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const currentTime = Date.now();
+    
+    if (e.touches.length === 1) {
+      // Single touch - potential pan or create event
+      setTouchState(prev => ({
+        ...prev,
+        isTouching: true,
+        touchStartTime: currentTime,
+        singleTouchStart: {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY
+        }
+      }));
+    } else if (e.touches.length === 2) {
+      // Two finger touch - pinch to zoom
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches);
+      setTouchState(prev => ({
+        ...prev,
+        isTouching: true,
+        initialDistance: distance,
+        initialZoom: zoomLevel,
+        initialPan: panOffset
+      }));
+    }
+  }, [zoomLevel, panOffset]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchState.isTouching) return;
+
+    if (e.touches.length === 2) {
+      // Two finger pinch/zoom
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / touchState.initialDistance;
+      const newZoom = Math.max(0.25, Math.min(5, touchState.initialZoom * scale));
+      
+      setZoomLevel(newZoom);
+      
+      // Reset pan when zooming out significantly
+      if (newZoom <= 1 && touchState.initialZoom > 1) {
+        setPanOffset(0);
+      }
+    } else if (e.touches.length === 1 && !isCreatingEvent) {
+      // Single finger pan
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - touchState.singleTouchStart.x;
+      
+      // Only start panning if moved more than a threshold (to distinguish from taps)
+      if (Math.abs(deltaX) > 10) {
+        const panSensitivity = 1 / zoomLevel;
+        const deltaPan = -deltaX * panSensitivity;
+        const maxPan = Math.max(0, (zoomLevel - 1) * 50);
+        const newPan = Math.max(-maxPan, Math.min(maxPan, touchState.initialPan + deltaPan));
+        
+        setPanOffset(newPan);
+      }
+    }
+  }, [touchState, isCreatingEvent, zoomLevel]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const currentTime = Date.now();
+    const touchDuration = currentTime - touchState.touchStartTime;
+    const wasQuickTap = touchDuration < 300;
+    const wasPan = Math.abs(e.changedTouches[0]?.clientX - touchState.singleTouchStart.x) > 10;
+    
+    // Handle double-tap to create event (if no remaining touches and wasn't a pan)
+    if (e.touches.length === 0 && wasQuickTap && !wasPan && !isCreatingEvent) {
+      const tapInterval = currentTime - touchState.lastTapTime;
+      const tapDistance = Math.sqrt(
+        Math.pow(e.changedTouches[0]?.clientX - touchState.lastTapPosition.x, 2) +
+        Math.pow(e.changedTouches[0]?.clientY - touchState.lastTapPosition.y, 2)
+      );
+      
+      // Double-tap detected (within 500ms and 50px)
+      if (tapInterval < 500 && tapDistance < 50) {
+        const timelineElement = e.currentTarget as HTMLElement;
+        const touch = e.changedTouches[0];
+        const fakeMouseEvent = {
+          clientX: touch.clientX,
+          currentTarget: timelineElement,
+          preventDefault: () => {},
+          stopPropagation: () => {}
+        } as any;
+        
+        handleTimelineDoubleClick(fakeMouseEvent);
+        
+        // Reset double-tap tracking
+        setTouchState(prev => ({
+          ...prev,
+          lastTapTime: 0,
+          lastTapPosition: { x: 0, y: 0 }
+        }));
+      } else {
+        // First tap - remember for potential double-tap
+        setTouchState(prev => ({
+          ...prev,
+          lastTapTime: currentTime,
+          lastTapPosition: {
+            x: e.changedTouches[0]?.clientX || 0,
+            y: e.changedTouches[0]?.clientY || 0
+          }
+        }));
+      }
+    }
+    
+    setTouchState(prev => ({
+      ...prev,
+      isTouching: false,
+      isPointerDown: false,
+      initialDistance: 0,
+      initialZoom: 1,
+      initialPan: 0,
+      touchStartTime: 0,
+      singleTouchStart: { x: 0, y: 0 }
+    }));
+  }, [touchState, isCreatingEvent, handleTimelineDoubleClick]);
 
   // Collapse/expand functionality
   const toggleParentCollapse = (parentEventId: string) => {
@@ -414,14 +631,19 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
             className="gantt-timeline-header" 
             style={{ 
               transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
-              cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab')
+              cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
+              touchAction: 'none' // Prevent default touch scrolling
             }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onDoubleClick={handleTimelineDoubleClick}
-            title="Double-click to create event at time position"
+            onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            title="Double-click/tap to create event. Pinch to zoom, drag to pan"
           >
             <div className="timeline-ruler">
               {Array.from({ length: Math.ceil(timelineData.timeRange / 5) + 1 }, (_, i) => {
@@ -530,14 +752,19 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           className="gantt-timeline" 
           style={{ 
             transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
-            cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab')
+            cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
+            touchAction: 'none' // Prevent default touch scrolling
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onDoubleClick={handleTimelineDoubleClick}
-          title="Double-click to create event at time position"
+          onWheel={handleWheel}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          title="Double-click/tap to create event. Pinch to zoom, drag to pan"
         >
           {position.visible && (
             <div 
@@ -712,7 +939,9 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                   </button>
                 </div>
                 <div className="pan-controls">
-                  <label>Pan: {panOffset.toFixed(0)}px</label>
+                  <label title="Current pan position. Drag timeline to pan, pinch to zoom, or double-tap to create events">
+                    {panOffset === 0 ? 'Centered' : `Pan: ${panOffset > 0 ? '+' : ''}${panOffset.toFixed(0)}px`}
+                  </label>
                 </div>
               </>
             )}
@@ -843,14 +1072,20 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                               <div className="document-actions">
                                 <button
                                   className="document-action-btn view"
-                                  onClick={() => onDocumentView?.(docAssoc.documents)}
+                                  onClick={() => {
+                                    onCloseAllModals?.();
+                                    onDocumentView?.(docAssoc.documents);
+                                  }}
                                   title="View document"
                                 >
                                   👁️
                                 </button>
                                 <button
                                   className="document-action-btn edit"
-                                  onClick={() => onDocumentEdit?.(docAssoc.documents)}
+                                  onClick={() => {
+                                    onCloseAllModals?.();
+                                    onDocumentEdit?.(docAssoc.documents);
+                                  }}
                                   title="Edit document"
                                 >
                                   ✎

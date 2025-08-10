@@ -119,8 +119,12 @@
 .zoom-level {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  min-width: 40px;
+  min-width: 50px;
   text-align: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .pan-controls {
@@ -137,6 +141,12 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   margin: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 80px;
+  text-align: center;
 }
 
 .modal-close {
@@ -666,6 +676,10 @@
   color: var(--color-text-primary);
 }
 
+.event-details-header .modal-close {
+  color: var(--color-text-primary);
+}
+
 .event-details-body {
   flex: 1;
   padding: var(--spacing-xl);
@@ -897,6 +911,39 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Touch-friendly interactions */
+.gantt-timeline-header,
+.gantt-timeline {
+  /* Enable GPU acceleration for smooth touch interactions */
+  will-change: transform;
+  /* Disable text selection during touch interactions */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Better touch targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .event-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+    width: auto;
+    height: auto;
+  }
+  
+  .zoom-btn {
+    min-width: 44px;
+    min-height: 44px;
+    width: auto;
+    height: auto;
+  }
+  
+  .gantt-bar {
+    min-height: 36px;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .timeline-modal__header {
@@ -908,16 +955,20 @@
 
   .timeline-modal__controls {
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .gantt-labels,
   .gantt-event-label {
-    width: 250px;
-    min-width: 250px;
+    width: 200px;
+    min-width: 200px;
   }
 
+  /* Keep zoom controls visible on mobile for manual zoom */
   .zoom-controls {
-    display: none;
+    order: 1;
+    flex: 1;
+    min-width: 200px;
   }
 
   .list-header,

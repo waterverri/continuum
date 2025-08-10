@@ -3,7 +3,9 @@
   /* Colors */
   --color-primary: #007bff;
   --color-primary-hover: #0056b3;
+  --color-primary-dark: #0056b3;
   --color-primary-light: #f8f9ff;
+  --color-primary-bg: #f8f9ff;
   
   --color-secondary: #6c757d;
   --color-secondary-hover: #545b62;
@@ -27,6 +29,15 @@
   
   --color-error-bg: #f8d7da;
   --color-error-text: #721c24;
+  
+  --color-danger-light: #f8d7da;
+  
+  /* Font properties */
+  --font-family-base: system-ui, -apple-system, sans-serif;
+  --font-weight-bold: 700;
+  
+  /* Spacing additions */
+  --spacing-xxs: 0.125rem;
   
   /* Shadows */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);

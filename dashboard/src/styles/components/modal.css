@@ -37,6 +37,7 @@
   margin: 0;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
 }
 
 .modal-close {
@@ -52,6 +53,7 @@
   align-items: center;
   justify-content: center;
   transition: var(--transition-fast);
+  color: var(--color-text-primary);
 }
 
 .modal-close:hover {
