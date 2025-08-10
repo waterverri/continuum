@@ -15,6 +15,8 @@ import { DerivativeModal } from '../components/DerivativeModal';
 import { ComponentTypeSelectorModal } from '../components/ComponentTypeSelectorModal';
 import { GroupPickerModal } from '../components/GroupPickerModal';
 import { PresetPickerModal } from '../components/PresetPickerModal';
+import { PresetEditModal } from '../components/PresetEditModal';
+import { PresetDashboardModal } from '../components/PresetDashboardModal';
 import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
 import { TagManager } from '../components/TagManager';
 import { TagSelector } from '../components/TagSelector';
@@ -494,46 +496,78 @@ export default function ProjectDetailPage() {
           </div>
           
           {/* Presets Widget */}
-          <div className="widget">
-            <div className="widget__header">
-              <h4>Published Presets ({state.presets.length})</h4>
-              <button 
-                className="btn btn--sm btn--secondary"
-                onClick={() => state.openModal('showPresetPicker')}
-              >
-                + Create
-              </button>
+          <div className="presets-widget">
+            <div className="presets-widget__header">
+              <h4>📡 Presets ({state.presets.length})</h4>
+              <div className="presets-widget__actions">
+                <button 
+                  className="btn btn--xs btn--secondary"
+                  onClick={() => state.openModal('showPresetPicker')}
+                >
+                  ＋
+                </button>
+              </div>
             </div>
             
-            <div className="widget__content">
+            <div className="presets-widget__content">
               {state.presets.length === 0 ? (
-                <div className="empty-state">
-                  <p>No presets created yet.</p>
-                  <p>Create a preset to publish a document as an external API endpoint.</p>
+                <div className="empty-state empty-state--compact">
+                  <p>No presets yet</p>
+                  <p>Create presets to publish documents as external API endpoints.</p>
                 </div>
               ) : (
-                <div className="presets-list">
+                <div className="preset-cards">
                   {state.presets.map((preset) => (
                     <div key={preset.id} className="preset-card">
-                      <div className="preset-card__header">
-                        <h5>{preset.name}</h5>
-                        <button 
-                          className="btn btn--xs btn--danger"
-                          onClick={() => operations.handleDeletePreset(preset.id)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <div className="preset-card__meta">
-                        {preset.document?.title || 'Unknown'}
-                      </div>
-                      <div className="preset-card__actions">
-                        <button 
-                          className="btn btn--xs"
-                          onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
-                        >
-                          Copy URL
-                        </button>
+                      <div className="preset-card__main">
+                        <div className="preset-card__header">
+                          <h5 className="preset-card__name">{preset.name}</h5>
+                          <div className="preset-card__actions">
+                            <button
+                              className="preset-card__action"
+                              onClick={() => {
+                                state.setEditingPreset(preset);
+                                state.openModal('showPresetEdit');
+                              }}
+                              title="Edit preset"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              className="preset-card__action preset-card__action--danger"
+                              onClick={() => operations.handleDeletePreset(preset.id)}
+                              title="Delete preset"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="preset-card__meta">
+                          <span className="preset-card__document">
+                            📄 {preset.document?.title || 'Unknown Document'}
+                          </span>
+                        </div>
+                        
+                        <div className="preset-card__actions-row">
+                          <button 
+                            className="btn btn--xs btn--primary"
+                            onClick={() => {
+                              state.setEditingPreset(preset);
+                              state.openModal('showPresetDashboard');
+                            }}
+                            title="Manage preset overrides"
+                          >
+                            🎛️ Dashboard
+                          </button>
+                          <button 
+                            className="btn btn--xs btn--ghost"
+                            onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
+                            title="Copy API URL to clipboard"
+                          >
+                            📋 Copy URL
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -610,6 +644,40 @@ export default function ProjectDetailPage() {
           documents={state.documents}
           onSelect={handleCreatePreset}
           onCancel={() => state.closeModal('showPresetPicker')}
+        />
+      )}
+
+      {/* Preset Edit Modal */}
+      {state.modals.showPresetEdit && state.editingPreset && (
+        <PresetEditModal
+          preset={state.editingPreset}
+          documents={state.documents}
+          onSave={async (presetId, name, documentId) => {
+            await operations.handleUpdatePreset(presetId, name, documentId);
+            state.setEditingPreset(null);
+            state.closeModal('showPresetEdit');
+          }}
+          onCancel={() => {
+            state.setEditingPreset(null);
+            state.closeModal('showPresetEdit');
+          }}
+        />
+      )}
+
+      {/* Preset Dashboard Modal */}
+      {state.modals.showPresetDashboard && state.editingPreset && (
+        <PresetDashboardModal
+          preset={state.editingPreset}
+          documents={state.documents}
+          onSave={async (presetId, overrides) => {
+            await operations.handleUpdatePresetOverrides(presetId, overrides);
+            state.setEditingPreset(null);
+            state.closeModal('showPresetDashboard');
+          }}
+          onCancel={() => {
+            state.setEditingPreset(null);
+            state.closeModal('showPresetDashboard');
+          }}
         />
       )}
 

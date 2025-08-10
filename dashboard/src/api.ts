@@ -24,7 +24,10 @@ export interface Preset {
   id: string;
   project_id: string;
   name: string;
-  rules: { document_id: string };
+  rules: { 
+    document_id: string;
+    component_overrides?: Record<string, string>;
+  };
   created_at: string;
   document?: Document;
 }
@@ -67,19 +70,29 @@ export interface EventHierarchy {
   created_at: string;
 }
 
-export const getPresetContext = async (presetId: string, accessToken: string) => {
-    // Example of a future API call
+export interface PresetContext {
+    preset_id: string;
+    preset_name: string;
+    base_document_id: string;
+    base_document_title: string;
+    content: string;
+    applied_overrides: Record<string, string> | null;
+}
+
+export const getPresetContext = async (presetId: string, accessToken: string): Promise<PresetContext> => {
     const response = await fetch(`${API_URL}/api/presets/${presetId}/context`, {
+        method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
         },
     });
 
     if (!response.ok) {
-        throw new Error('Failed to fetch preset context');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get preset context');
     }
 
-    return await response.text();
+    return await response.json();
 };
 
 // Document API functions
@@ -193,6 +206,42 @@ export const createPreset = async (projectId: string, name: string, documentId: 
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to create preset');
+    }
+
+    return await response.json();
+};
+
+export const updatePreset = async (presetId: string, name: string, documentId?: string, accessToken?: string): Promise<Preset> => {
+    const response = await fetch(`${API_URL}/api/presets/${presetId}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, documentId }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update preset');
+    }
+
+    return await response.json();
+};
+
+export const updatePresetOverrides = async (presetId: string, overrides: Record<string, string>, accessToken?: string): Promise<Preset> => {
+    const response = await fetch(`${API_URL}/api/presets/${presetId}/overrides`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ overrides }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update preset overrides');
     }
 
     return await response.json();

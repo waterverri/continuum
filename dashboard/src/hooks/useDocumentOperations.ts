@@ -7,6 +7,8 @@ import {
   getDocument,
   getPresets,
   createPreset,
+  updatePreset,
+  updatePresetOverrides,
   deletePreset,
   getTags,
   getDocumentTags,
@@ -179,6 +181,30 @@ export function useDocumentOperations({
     }
   }, [projectId, presets, getAccessToken, setPresets, setError]);
 
+  const handleUpdatePreset = useCallback(async (presetId: string, name: string, documentId?: string) => {
+    try {
+      const token = await getAccessToken();
+      const updatedPreset = await updatePreset(presetId, name, documentId, token);
+      setPresets(presets.map(preset => preset.id === presetId ? updatedPreset : preset));
+      return updatedPreset;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update preset');
+      throw err;
+    }
+  }, [presets, getAccessToken, setPresets, setError]);
+
+  const handleUpdatePresetOverrides = useCallback(async (presetId: string, overrides: Record<string, string>) => {
+    try {
+      const token = await getAccessToken();
+      const updatedPreset = await updatePresetOverrides(presetId, overrides, token);
+      setPresets(presets.map(preset => preset.id === presetId ? updatedPreset : preset));
+      return updatedPreset;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update preset overrides');
+      throw err;
+    }
+  }, [presets, getAccessToken, setPresets, setError]);
+
   const handleDeletePreset = useCallback(async (presetId: string) => {
     if (!confirm('Are you sure you want to delete this preset?')) return;
     
@@ -241,6 +267,8 @@ export function useDocumentOperations({
     handleDeleteDocument,
     handleResolveDocument,
     handleCreatePreset,
+    handleUpdatePreset,
+    handleUpdatePresetOverrides,
     handleDeletePreset,
     handleCreateDerivative,
   };

@@ -291,6 +291,12 @@
 .preset-card__actions {
   display: flex;
   gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.preset-card__url {
+  display: flex;
+  justify-content: flex-end;
 }
 
 

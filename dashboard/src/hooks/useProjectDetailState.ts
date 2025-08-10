@@ -45,6 +45,8 @@ export function useProjectDetailState() {
     showDocumentPicker: false,
     showKeyInput: false,
     showPresetPicker: false,
+    showPresetEdit: false,
+    showPresetDashboard: false,
     showDerivativeModal: false,
     showComponentTypeSelector: false,
     showGroupPicker: false,
@@ -66,6 +68,7 @@ export function useProjectDetailState() {
   const [tagSelectorDocumentId, setTagSelectorDocumentId] = useState<string | null>(null);
   const [eventSelectorDocument, setEventSelectorDocument] = useState<Document | null>(null);
   const [evolutionDocument, setEvolutionDocument] = useState<Document | null>(null);
+  const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
 
   // Reset form function
   const resetForm = useCallback(() => {
@@ -93,6 +96,8 @@ export function useProjectDetailState() {
       showDocumentPicker: false,
       showKeyInput: false,
       showPresetPicker: false,
+      showPresetEdit: false,
+      showPresetDashboard: false,
       showDerivativeModal: false,
       showComponentTypeSelector: false,
       showGroupPicker: false,
@@ -180,6 +185,8 @@ export function useProjectDetailState() {
     setEventSelectorDocument,
     evolutionDocument,
     setEvolutionDocument,
+    editingPreset,
+    setEditingPreset,
 
     // Actions
     resetForm,
