@@ -77,8 +77,6 @@ apiRouter.use('/events', eventRouter);
 app.use('/api', apiRouter);
 
 // --- Public External API for LLM Systems ---
-// Import document resolution service
-import { resolveCompositeDocument } from './services/documentService';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // GET /preset/:projectId/:presetName - Public endpoint for external LLM systems
@@ -126,23 +124,79 @@ app.get('/preset/:projectId/:presetName', async (req: Request, res: Response) =>
       return res.status(404).send('Document not found');
     }
 
-    // Resolve the document content (handling composite documents)
+    // Resolve the document content with preset overrides
     let finalContent: string;
     if (document.is_composite) {
-      // For composite documents, we need the service key for resolution
-      const { content, error } = await resolveCompositeDocument(
-        document,
-        preset.project_id,
-        supabaseServiceKey, // Using service key for server-side resolution
-        new Set()
+      // Recursive function to resolve composite documents with overrides
+      const resolveWithOverrides = async (
+        docContent: string, 
+        docComponents: Record<string, string> = {},
+        overrides: Record<string, string> = {},
+        visited: Set<string> = new Set()
+      ): Promise<string> => {
+        let resolvedContent = docContent;
+        
+        // Find all component references in the content
+        const componentRegex = /{{([^}]+)}}/g;
+        const matches = [...docContent.matchAll(componentRegex)];
+        
+        for (const match of matches) {
+          const componentKey = match[1];
+          if (!componentKey) continue;
+          
+          // Check if this component has an override
+          let targetDocId = overrides[componentKey] || docComponents[componentKey];
+          
+          if (!targetDocId) continue;
+          
+          // Prevent infinite recursion
+          if (visited.has(targetDocId)) {
+            console.warn(`Circular reference detected for document ${targetDocId}`);
+            continue;
+          }
+          
+          // Get the component document
+          const { data: componentDoc, error: componentError } = await supabase
+            .from('documents')
+            .select('id, content, is_composite, components')
+            .eq('id', targetDocId)
+            .eq('project_id', preset.project_id)
+            .single();
+            
+          if (componentError || !componentDoc) {
+            console.warn(`Component document ${targetDocId} not found`);
+            continue;
+          }
+          
+          let componentContent = componentDoc.content || '';
+          
+          // If the component is also composite, recursively resolve it
+          if (componentDoc.is_composite && componentDoc.components) {
+            const newVisited = new Set(visited);
+            newVisited.add(targetDocId);
+            componentContent = await resolveWithOverrides(
+              componentContent,
+              componentDoc.components,
+              overrides, // Pass through the same overrides for nested resolution
+              newVisited
+            );
+          }
+          
+          // Replace the component reference with the resolved content
+          resolvedContent = resolvedContent.replace(match[0], componentContent);
+        }
+        
+        return resolvedContent;
+      };
+
+      // Apply overrides and resolve the document
+      const overrides = preset.rules.component_overrides || {};
+      
+      finalContent = await resolveWithOverrides(
+        document.content || '',
+        document.components || {},
+        overrides
       );
-      
-      if (error) {
-        console.error(`Error resolving composite document ${documentId}:`, error);
-        return res.status(500).send('Error resolving document content');
-      }
-      
-      finalContent = content;
     } else {
       finalContent = document.content || '';
     }
