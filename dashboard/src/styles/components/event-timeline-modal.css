@@ -894,10 +894,12 @@
   justify-content: center;
   width: 24px;
   height: 24px;
+  color: var(--color-text-secondary);
 }
 
 .event-action-btn:hover {
   background: var(--color-background-lighter);
+  color: var(--color-text-primary);
 }
 
 .event-action-btn.delete:hover {

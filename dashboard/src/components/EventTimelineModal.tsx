@@ -171,12 +171,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setFormData({
       name: event.name,
       description: event.description || '',
-      time_start: event.time_start?.toString() || '',
-      time_end: event.time_end?.toString() || '',
+      time_start: event.time_start ? timeToDate(event.time_start).toISOString().split('T')[0] : '',
+      time_end: event.time_end ? timeToDate(event.time_end).toISOString().split('T')[0] : '',
       display_order: event.display_order,
       parent_event_id: event.parent_event_id || ''
     });
     setEditingEvent(event);
+    setSelectedEvent(event); // Ensure the event is selected
+    setShowEventDetails(true); // Ensure the modal is open
   };
 
   // Pan functionality
@@ -1164,17 +1166,17 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                     </div>
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Start Time</label>
+                        <label>Start Date</label>
                         <input
-                          type="number"
+                          type="date"
                           value={formData.time_start}
                           onChange={(e) => setFormData(prev => ({ ...prev, time_start: e.target.value }))}
                         />
                       </div>
                       <div className="form-group">
-                        <label>End Time</label>
+                        <label>End Date</label>
                         <input
-                          type="number"
+                          type="date"
                           value={formData.time_end}
                           onChange={(e) => setFormData(prev => ({ ...prev, time_end: e.target.value }))}
                         />
