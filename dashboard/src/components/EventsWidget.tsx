@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { createEvent, updateEvent, deleteEvent, getEvent } from '../api';
+import { getProject } from '../accessors/projectAccessor';
 import type { Event, Document, EventDocument } from '../api';
 
 interface EventsWidgetProps {
@@ -31,7 +32,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
-  const [baseDate] = useState(new Date());
+  const [baseDate, setBaseDate] = useState(new Date());
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
     description: '',
@@ -45,6 +46,22 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || '';
   };
+
+  const loadProjectBaseDate = useCallback(async () => {
+    try {
+      const project = await getProject(projectId);
+      if (project.base_date) {
+        setBaseDate(new Date(project.base_date));
+      }
+    } catch (err) {
+      console.error('Failed to load project base date:', err);
+      // Continue with default date if loading fails
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    loadProjectBaseDate();
+  }, [loadProjectBaseDate]);
 
   const timeToDate = (timeValue: number): Date => {
     const date = new Date(baseDate);

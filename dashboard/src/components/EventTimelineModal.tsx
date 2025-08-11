@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { getEventTimeline, getEvent, updateEvent, deleteEvent } from '../api';
+import { getProject, updateProjectBaseDate } from '../accessors/projectAccessor';
 import type { Event, Document, EventDocument } from '../api';
 
 interface EventTimelineModalProps {
@@ -353,9 +354,32 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     });
   };
 
+  const loadProjectBaseDate = useCallback(async () => {
+    try {
+      const project = await getProject(projectId);
+      if (project.base_date) {
+        setBaseDate(new Date(project.base_date));
+      }
+    } catch (err) {
+      console.error('Failed to load project base date:', err);
+      // Continue with default date if loading fails
+    }
+  }, [projectId]);
+
+  const handleBaseDateChange = async (newDate: Date) => {
+    try {
+      const dateString = newDate.toISOString().split('T')[0];
+      await updateProjectBaseDate(projectId, dateString);
+      setBaseDate(newDate);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update base date');
+    }
+  };
+
   useEffect(() => {
+    loadProjectBaseDate();
     loadTimeline();
-  }, [loadTimeline]);
+  }, [loadProjectBaseDate, loadTimeline]);
 
   const timelineData: TimelineData = useMemo(() => {
     const eventsWithTime = events.filter(e => e.time_start != null);
@@ -1324,9 +1348,12 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                   </button>
                   <button 
                     className="btn btn--primary"
-                    onClick={() => setShowBaseDateModal(false)}
+                    onClick={async () => {
+                      await handleBaseDateChange(baseDate);
+                      setShowBaseDateModal(false);
+                    }}
                   >
-                    Apply
+                    Save
                   </button>
                 </div>
               </div>

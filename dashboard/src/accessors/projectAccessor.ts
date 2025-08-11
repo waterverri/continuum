@@ -46,6 +46,37 @@ export const createProject = async (name: string) => {
   return selected.data;
 };
 
+export const getProject = async (projectId: string) => {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching project from Supabase:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateProjectBaseDate = async (projectId: string, baseDate: string) => {
+  const { data, error } = await supabase
+    .from('projects')
+    .update({ base_date: baseDate })
+    .eq('id', projectId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating project base date:", error);
+    throw error;
+  }
+
+  return data;
+};
+
 export const deleteProject = async (projectId: string) => {
   // RLS policies will check if the user has the 'owner' role
   // before allowing the deletion.
