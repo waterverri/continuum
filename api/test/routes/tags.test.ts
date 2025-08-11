@@ -20,12 +20,13 @@ describe('Tags API Routes', () => {
       expect(response.body.message).toContain('Authorization header');
     });
 
-    it('should return 500 when Supabase is unreachable with invalid JWT token', async () => {
+    it('should return 401 with invalid JWT token', async () => {
       const response = await request(continuumApi)
         .get(`/api/tags/${mockProjectId}`)
         .set('Authorization', 'Bearer invalid-token');
       
-      expect(response.status).toBe(500); // Auth middleware fails to connect to Supabase
+      expect(response.status).toBe(401); // Invalid token
+      expect(response.body.message).toContain('Invalid');
     });
 
     it('should handle valid request format', async () => {
@@ -33,9 +34,9 @@ describe('Tags API Routes', () => {
         .get(`/api/tags/${mockProjectId}`)
         .set('Authorization', `Bearer ${mockToken}`);
       
-      // Since we don't have a real database connection in tests, 
-      // the auth middleware will fail when trying to reach Supabase
-      expect(response.status).toBe(500); // Auth middleware fails to connect to Supabase
+      // Auth passes, but Supabase query fails due to mocked client
+      // This validates the route structure and authentication
+      expect(response.status).toBe(200);
     });
   });
 

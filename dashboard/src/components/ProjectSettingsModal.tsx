@@ -76,31 +76,21 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
   const loadMembers = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('project_members')
-        .select(`
-          *,
-          profiles (
-            id,
-            email,
-            full_name
-          )
-        `)
-        .eq('project_id', project.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      const token = await getAccessToken();
       
-      // Sort members with owners first, then by created date
-      const sortedMembers = (data as ProjectMember[]).sort((a, b) => {
-        // Owners first
-        if (a.role === 'owner' && b.role !== 'owner') return -1;
-        if (b.role === 'owner' && a.role !== 'owner') return 1;
-        // Then by creation date
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/members`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
-      
-      setMembers(sortedMembers);
+
+      if (!response.ok) {
+        throw new Error('Failed to load project members');
+      }
+
+      const data = await response.json();
+      setMembers(data.members as ProjectMember[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load project members');
     }
@@ -108,15 +98,21 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
   const loadInvitations = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('project_invitations')
-        .select('*')
-        .eq('project_id', project.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+      const token = await getAccessToken();
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/invitations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) throw error;
-      setInvitations(data as ProjectInvitation[]);
+      if (!response.ok) {
+        throw new Error('Failed to load invitations');
+      }
+
+      const data = await response.json();
+      setInvitations(data.invitations as ProjectInvitation[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load invitations');
     }
@@ -169,12 +165,19 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('project_members')
-        .delete()
-        .eq('id', memberId);
+      const token = await getAccessToken();
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/members/${memberId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to remove member');
+      }
 
       await loadMembers();
     } catch (err) {
@@ -196,24 +199,22 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
     try {
       setLoading(true);
+      const token = await getAccessToken();
       
-      // Update current owner to collaborator
-      const { error: downgradeError } = await supabase
-        .from('project_members')
-        .update({ role: 'collaborator' })
-        .eq('project_id', project.id)
-        .eq('user_id', currentUserId);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/transfer-ownership`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newOwnerId: transferTarget
+        })
+      });
 
-      if (downgradeError) throw downgradeError;
-
-      // Update target member to owner
-      const { error: upgradeError } = await supabase
-        .from('project_members')
-        .update({ role: 'owner' })
-        .eq('project_id', project.id)
-        .eq('user_id', transferTarget);
-
-      if (upgradeError) throw upgradeError;
+      if (!response.ok) {
+        throw new Error('Failed to transfer ownership');
+      }
 
       await loadMembers();
       setTransferTarget('');
@@ -233,21 +234,25 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('project_invitations')
-        .insert({
-          project_id: project.id,
-          created_by: currentUserId,
-          max_uses: newInvitationUses,
-          used_count: 0,
-          is_active: true
+      const token = await getAccessToken();
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/invitations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          maxUses: newInvitationUses
         })
-        .select()
-        .single();
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to create invitation');
+      }
 
-      const inviteLink = `${window.location.origin}/invite/${data.id}`;
+      const data = await response.json();
+      const inviteLink = `${window.location.origin}/invite/${data.invitation.id}`;
       setGeneratedInviteLink(inviteLink);
       
       await loadInvitations();
@@ -266,12 +271,19 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('project_invitations')
-        .update({ is_active: false })
-        .eq('id', invitationId);
+      const token = await getAccessToken();
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/invitations/${invitationId}/deactivate`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to deactivate invitation');
+      }
 
       await loadInvitations();
     } catch (err) {

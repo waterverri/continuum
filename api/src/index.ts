@@ -67,12 +67,14 @@ import documentRouter from './routes/documents';
 import presetRouter from './routes/presets';
 import tagRouter from './routes/tags';
 import eventRouter from './routes/events';
+import { projectManagementRouter } from './routes/projectManagement';
 
 // Mount route handlers
 apiRouter.use('/documents', documentRouter);
 apiRouter.use('/presets', presetRouter);
 apiRouter.use('/tags', tagRouter);
 apiRouter.use('/events', eventRouter);
+apiRouter.use('/project-management', projectManagementRouter);
 
 app.use('/api', apiRouter);
 
@@ -212,7 +214,7 @@ app.get('/preset/:projectId/:presetName', async (req: Request, res: Response) =>
 
 
 // --- Local Development Server ---
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
       console.log(`API server listening on port ${port}`);
