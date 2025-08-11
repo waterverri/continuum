@@ -89,7 +89,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     });
   };
 
-  const resetForm = () => {
+  const resetFormData = () => {
+    console.log('🧹 resetFormData called - clearing form fields only');
     setFormData({
       name: '',
       description: '',
@@ -99,6 +100,12 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       parent_event_id: ''
     });
     setEditingEvent(null);
+  };
+
+  const resetForm = () => {
+    console.log('🧹 resetForm called - clearing form AND closing');
+    resetFormData();
+    console.log('🔄 resetForm setting isCreating to false');
     setIsCreating(false);
   };
 
@@ -142,7 +149,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       
       console.log('🔄 Calling onEventsChange...');
       onEventsChange();
-      console.log('🧹 Resetting form...');
+      console.log('🧹 Closing form after successful creation...');
       resetForm();
       console.log('✅ Event creation completed successfully!');
     } catch (err) {
@@ -226,8 +233,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
               setIsCreating(newIsCreating);
               setError(null);
               if (!isCreating) {
-                console.log('🧹 Resetting form since we are opening create mode');
-                resetForm();
+                console.log('🧹 Clearing form data since we are opening create mode');
+                resetFormData();
               }
               console.log('✅ Plus button onClick completed');
             }}
@@ -255,7 +262,9 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
 
       {/* Create/Edit Form */}
       {isCreating && (
-        <form onSubmit={handleSubmit} className="event-form--compact">
+        <div style={{ background: 'red', padding: '10px', margin: '10px', border: '2px solid yellow' }}>
+          <h3 style={{ color: 'white' }}>🚨 FORM IS RENDERED! isCreating = {isCreating.toString()}</h3>
+          <form onSubmit={handleSubmit} className="event-form--compact">
           <div className="event-form__group">
             <input
               type="text"
@@ -332,6 +341,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
             </button>
           </div>
         </form>
+        </div>
       )}
 
       {/* Events List */}
