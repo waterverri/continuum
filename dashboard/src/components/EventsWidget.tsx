@@ -31,6 +31,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
+  const [baseDate] = useState(new Date());
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
     description: '',
@@ -43,6 +44,28 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const getAccessToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || '';
+  };
+
+  const timeToDate = (timeValue: number): Date => {
+    const date = new Date(baseDate);
+    date.setDate(date.getDate() + timeValue);
+    return date;
+  };
+
+  const dateToTime = (date: Date): number => {
+    const diffTime = date.getTime() - baseDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const formatDateDisplay = (timeValue?: number): string => {
+    if (!timeValue && timeValue !== 0) return 'Not set';
+    const date = timeToDate(timeValue);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   const resetForm = () => {
@@ -73,8 +96,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: formData.time_start ? parseInt(formData.time_start) : undefined,
-        time_end: formData.time_end ? parseInt(formData.time_end) : undefined,
+        time_start: formData.time_start ? dateToTime(new Date(formData.time_start)) : undefined,
+        time_end: formData.time_end ? dateToTime(new Date(formData.time_end)) : undefined,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
@@ -110,8 +133,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     setFormData({
       name: event.name,
       description: event.description || '',
-      time_start: event.time_start?.toString() || '',
-      time_end: event.time_end?.toString() || '',
+      time_start: event.time_start ? timeToDate(event.time_start).toISOString().split('T')[0] : '',
+      time_end: event.time_end ? timeToDate(event.time_end).toISOString().split('T')[0] : '',
       display_order: event.display_order,
       parent_event_id: event.parent_event_id || ''
     });
@@ -137,10 +160,6 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     }
   };
 
-  const formatTimeDisplay = (timeValue?: number) => {
-    if (!timeValue) return 'Not set';
-    return `T${timeValue}`;
-  };
 
   const getEventDuration = (event: Event) => {
     if (!event.time_start || !event.time_end) return null;
@@ -208,18 +227,18 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           
           <div className="event-form__row">
             <input
-              type="number"
+              type="date"
               value={formData.time_start}
               onChange={(e) => setFormData(prev => ({ ...prev, time_start: e.target.value }))}
-              placeholder="Start time"
+              placeholder="Start date"
               className="event-form__input event-form__input--small"
               disabled={loading}
             />
             <input
-              type="number"
+              type="date"
               value={formData.time_end}
               onChange={(e) => setFormData(prev => ({ ...prev, time_end: e.target.value }))}
-              placeholder="End time"
+              placeholder="End date"
               className="event-form__input event-form__input--small"
               disabled={loading}
             />
@@ -319,10 +338,10 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                   )}
                   
                   <div className="event-card__meta">
-                    {formatTimeDisplay(event.time_start) && (
+                    {(event.time_start != null) && (
                       <span className="event-card__time">
-                        {formatTimeDisplay(event.time_start)}
-                        {event.time_end && ` - ${formatTimeDisplay(event.time_end)}`}
+                        {formatDateDisplay(event.time_start)}
+                        {event.time_end && ` - ${formatDateDisplay(event.time_end)}`}
                       </span>
                     )}
                     {event.parent_event_id && (
@@ -361,10 +380,10 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                   <p className="event-description">{selectedEvent.description}</p>
                 )}
                 <div className="event-timing">
-                  <span><strong>Start:</strong> {formatTimeDisplay(selectedEvent.time_start)}</span>
-                  <span><strong>End:</strong> {formatTimeDisplay(selectedEvent.time_end)}</span>
+                  <span><strong>Start:</strong> {formatDateDisplay(selectedEvent.time_start)}</span>
+                  <span><strong>End:</strong> {formatDateDisplay(selectedEvent.time_end)}</span>
                   {getEventDuration(selectedEvent) && (
-                    <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} units</span>
+                    <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} days</span>
                   )}
                 </div>
               </div>
