@@ -4,8 +4,10 @@ import { supabase } from './supabaseClient';
 import Auth from './Auth';
 import ProjectNavigationPage from './pages/ProjectNavigationPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import { InvitationPage } from './pages/InvitationPage';
 import type { Session } from '@supabase/supabase-js';
 import './App.css';
+import './styles/InvitationPage.css';
 
 // Context for project page actions
 const ProjectActionsContext = createContext<{
@@ -67,6 +69,18 @@ function App() {
             <Route 
               path="/projects/:projectId" 
               element={!session ? <Navigate to="/" /> : <ProjectDetailPage />} 
+            />
+            <Route 
+              path="/invite/:invitationId" 
+              element={<InvitationPage />} 
+            />
+            <Route 
+              path="/login" 
+              element={<Auth />} 
+            />
+            <Route 
+              path="/register" 
+              element={<Auth />} 
             />
           </Routes>
         </main>

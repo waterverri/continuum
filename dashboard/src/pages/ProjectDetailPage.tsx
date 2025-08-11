@@ -26,6 +26,7 @@ import { EventsWidget } from '../components/EventsWidget';
 import { EventTimelineModal } from '../components/EventTimelineModal';
 import { EventFilter } from '../components/EventFilter';
 import { DocumentEvolution } from '../components/DocumentEvolution';
+import { ProjectSettingsModal } from '../components/ProjectSettingsModal';
 import '../styles/ProjectDetailPage.css';
 
 
@@ -59,6 +60,23 @@ export default function ProjectDetailPage() {
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
   const [rightSidebarMobileOpen, setRightSidebarMobileOpen] = useState(false);
+  
+  // Project settings modal
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [currentProject, setCurrentProject] = useState<any>(null);
+
+  // Load project data
+  const loadProject = async () => {
+    if (!projectId) return;
+    
+    try {
+      const { getProject } = await import('../accessors/projectAccessor');
+      const project = await getProject(projectId);
+      setCurrentProject(project);
+    } catch (error) {
+      console.error('Failed to load project:', error);
+    }
+  };
 
   // Load events
   const loadEvents = async () => {
@@ -83,6 +101,7 @@ export default function ProjectDetailPage() {
     operations.loadPresets();
     operations.loadTags();
     loadEvents();
+    loadProject();
   }, []);
 
   const getPresetUrl = (presetName: string) => {
@@ -419,6 +438,13 @@ export default function ProjectDetailPage() {
         <div className="right-sidebar__header">
           <h3>Widgets</h3>
           <div className="right-sidebar__header-actions">
+            <button 
+              className="btn btn--xs btn--secondary"
+              onClick={() => setShowProjectSettings(true)}
+              title="Project Settings"
+            >
+              ⚙️
+            </button>
             <button 
               className="right-sidebar__collapse-toggle"
               onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
@@ -758,6 +784,15 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Project Settings Modal */}
+      {showProjectSettings && currentProject && (
+        <ProjectSettingsModal
+          project={currentProject}
+          onClose={() => setShowProjectSettings(false)}
+          onProjectUpdate={loadProject}
+        />
       )}
     </div>
   );
