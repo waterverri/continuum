@@ -525,6 +525,23 @@ export default function ProjectDetailPage() {
                         <div className="preset-card__header">
                           <h5 className="preset-card__name">{preset.name}</h5>
                           <div className="preset-card__actions">
+                            <button 
+                              className="preset-card__action"
+                              onClick={() => {
+                                state.setEditingPreset(preset);
+                                state.openModal('showPresetDashboard');
+                              }}
+                              title="Manage preset overrides"
+                            >
+                              🎛️
+                            </button>
+                            <button 
+                              className="preset-card__action"
+                              onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
+                              title="Copy API URL to clipboard"
+                            >
+                              📋
+                            </button>
                             <button
                               className="preset-card__action"
                               onClick={() => {
@@ -549,26 +566,6 @@ export default function ProjectDetailPage() {
                           <span className="preset-card__document">
                             📄 {preset.document?.title || 'Unknown Document'}
                           </span>
-                        </div>
-                        
-                        <div className="preset-card__actions-row">
-                          <button 
-                            className="preset-card__action"
-                            onClick={() => {
-                              state.setEditingPreset(preset);
-                              state.openModal('showPresetDashboard');
-                            }}
-                            title="Manage preset overrides"
-                          >
-                            🎛️
-                          </button>
-                          <button 
-                            className="preset-card__action"
-                            onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
-                            title="Copy API URL to clipboard"
-                          >
-                            📋
-                          </button>
                         </div>
                       </div>
                     </div>

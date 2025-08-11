@@ -120,15 +120,7 @@
   gap: var(--spacing-xs);
 }
 
-/* Card Actions Row */
-.preset-card__actions-row {
-  border-top: 1px solid var(--color-border-lighter);
-  padding-top: var(--spacing-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-}
+/* Card Actions Row - Removed, actions now in header */
 
 /* Empty State */
 .presets-widget .empty-state--compact {

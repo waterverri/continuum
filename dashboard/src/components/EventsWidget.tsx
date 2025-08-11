@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { createEvent, updateEvent, deleteEvent, getEvent } from '../api';
 import type { Event, Document, EventDocument } from '../api';
@@ -338,7 +339,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       </div>
 
       {/* Event Details Modal */}
-      {showEventDetails && selectedEvent && (
+      {showEventDetails && selectedEvent && createPortal(
         <div className="event-details-overlay">
           <div className="event-details-modal">
             <div className="event-details-header">
@@ -418,7 +419,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.getElementById('modal-portal')!
       )}
     </div>
   );

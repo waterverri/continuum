@@ -430,7 +430,7 @@
   height: 60px;
   min-height: 60px;
   transform-origin: left center;
-  overflow: visible;
+  overflow: hidden;
   user-select: none;
 }
 
