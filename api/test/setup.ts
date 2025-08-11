@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { jest } from '@jest/globals';
 
 // Mock environment variables
@@ -45,19 +46,41 @@ mockFetch.mockImplementation((url: string | URL | Request, options?: RequestInit
   } as Response);
 });
 
+// Create a simple mock function that always returns success
+const mockQuery = () => Promise.resolve({ data: mockData, error: null });
+
 // Mock Supabase client
-export const mockSupabaseClient = {
+export const mockSupabaseClient: any = {
   auth: {
-    getUser: jest.fn(),
+    getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+    admin: {
+      getUserById: jest.fn().mockResolvedValue({
+        data: { user: { id: 'mock-user-id', email: 'test@example.com' } },
+        error: null
+      })
+    }
   },
-  from: jest.fn().mockReturnThis(),
-  select: jest.fn().mockReturnThis(),
-  insert: jest.fn().mockReturnThis(),
-  update: jest.fn().mockReturnThis(),
-  delete: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  order: jest.fn().mockReturnThis(),
-  single: jest.fn().mockReturnThis()
+  from: jest.fn(() => mockSupabaseClient),
+  select: jest.fn(() => mockSupabaseClient),
+  insert: jest.fn(() => mockSupabaseClient),
+  update: jest.fn(() => mockSupabaseClient),
+  delete: jest.fn(() => mockSupabaseClient),
+  eq: jest.fn(() => mockSupabaseClient),
+  neq: jest.fn(() => mockSupabaseClient),
+  in: jest.fn(() => mockSupabaseClient),
+  order: jest.fn(() => mockSupabaseClient),
+  single: jest.fn(mockQuery),
+  then: jest.fn((callback: any) => callback({ data: mockData, error: null })),
+  // Make queries return arrays by default
+  mockReturnValue: () => Promise.resolve({ data: [mockData], error: null })
+};
+
+// Default mock data
+const mockData = {
+  id: 'mock-id',
+  name: 'Mock Tag',
+  color: '#007bff',
+  project_id: 'test-project-id'
 };
 
 // Mock the Supabase client module
