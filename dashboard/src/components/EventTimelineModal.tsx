@@ -94,6 +94,12 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
 
   // Removed formatDateTimeDisplay - using formatDateDisplay instead
 
+  const dateToTime = useCallback((date: Date): number => {
+    const diffTime = date.getTime() - baseDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  }, [baseDate]);
+
   const loadTimeline = useCallback(async () => {
     try {
       setLoading(true);
@@ -128,8 +134,8 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: formData.time_start ? dateToTime(new Date(formData.time_start)) : undefined,
-        time_end: formData.time_end ? dateToTime(new Date(formData.time_end)) : undefined,
+        time_start: (formData.time_start && formData.time_start.trim()) ? dateToTime(new Date(formData.time_start)) : undefined,
+        time_end: (formData.time_end && formData.time_end.trim()) ? dateToTime(new Date(formData.time_end)) : undefined,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
@@ -295,13 +301,6 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     }, 50); // Small delay to let zoom reset first
   };
 
-
-  const dateToTime = useCallback((date: Date): number => {
-    const diffTime = date.getTime() - baseDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  }, [baseDate]);
-
   const handleCreateEventSubmit = async () => {
     if (!formData.name.trim()) {
       setError('Event name is required');
@@ -315,8 +314,8 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: formData.time_start ? dateToTime(new Date(formData.time_start)) : undefined,
-        time_end: formData.time_end ? dateToTime(new Date(formData.time_end)) : undefined,
+        time_start: (formData.time_start && formData.time_start.trim()) ? dateToTime(new Date(formData.time_start)) : undefined,
+        time_end: (formData.time_end && formData.time_end.trim()) ? dateToTime(new Date(formData.time_end)) : undefined,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };

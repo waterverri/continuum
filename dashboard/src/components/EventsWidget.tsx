@@ -113,8 +113,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: formData.time_start ? dateToTime(new Date(formData.time_start)) : undefined,
-        time_end: formData.time_end ? dateToTime(new Date(formData.time_end)) : undefined,
+        time_start: (formData.time_start && formData.time_start.trim()) ? dateToTime(new Date(formData.time_start)) : undefined,
+        time_end: (formData.time_end && formData.time_end.trim()) ? dateToTime(new Date(formData.time_end)) : undefined,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
