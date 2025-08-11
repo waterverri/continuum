@@ -36,8 +36,9 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState(0);
+  const [viewport, setViewport] = useState({ minTime: 0, maxTime: 100 }); // Current visible time range
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0, viewport: { minTime: 0, maxTime: 100 } });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
   const [touchState, setTouchState] = useState({
     isTouching: false,
@@ -153,9 +154,9 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isCreatingEvent) return; // Don't pan when creating events
     setIsDragging(true);
-    setDragStart({ x: e.clientX, panOffset });
+    setDragStart({ x: e.clientX, panOffset, viewport: { ...viewport } });
     e.preventDefault();
-  }, [panOffset, isCreatingEvent]);
+  }, [panOffset, isCreatingEvent, viewport]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || isCreatingEvent) return;
@@ -171,8 +172,20 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   }, [isDragging, dragStart, zoomLevel, isCreatingEvent]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      // Re-render viewport based on final pan position
+      const viewportRange = timelineData.timeRange / zoomLevel;
+      const newViewport = {
+        minTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange,
+        maxTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange + viewportRange
+      };
+      setViewport(newViewport);
+      
+      // Reset pan offset since we're now rendering at the new position
+      setPanOffset(0);
+    }
     setIsDragging(false);
-  }, []);
+  }, [isDragging, panOffset, timelineData, zoomLevel]);
 
   // Enhanced wheel/trackpad functionality
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -361,20 +374,30 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     };
   }, [events]);
 
+  // Initialize viewport when timeline data changes
+  useEffect(() => {
+    if (timelineData.timeRange > 0) {
+      const viewportRange = timelineData.timeRange / zoomLevel;
+      setViewport({
+        minTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange,
+        maxTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange + viewportRange
+      });
+    }
+  }, [timelineData, zoomLevel, panOffset]);
+
   // Click-to-create event functionality
   const calculateTimeFromMousePosition = useCallback((e: React.MouseEvent, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
     const relativeX = e.clientX - rect.left;
     const elementWidth = rect.width;
+    const percentageX = Math.max(0, Math.min(100, (relativeX / elementWidth) * 100));
     
-    // Account for zoom and pan transformations
-    const adjustedX = (relativeX / zoomLevel) - (panOffset / zoomLevel);
-    const percentageX = Math.max(0, Math.min(100, (adjustedX / (elementWidth / zoomLevel)) * 100));
+    // Convert percentage to time value using current viewport
+    const viewportRange = viewport.maxTime - viewport.minTime;
+    const timeValue = viewport.minTime + (percentageX / 100) * viewportRange;
     
-    // Convert percentage to time value
-    const timeValue = timelineData.minTime + (percentageX / 100) * timelineData.timeRange;
-    return Math.max(timelineData.minTime, Math.min(timelineData.maxTime, Math.round(timeValue)));
-  }, [zoomLevel, panOffset, timelineData]);
+    return Math.round(timeValue);
+  }, [viewport]);
 
   const handleTimelineDoubleClick = useCallback((e: React.MouseEvent) => {
     if (isDragging) return;
@@ -548,15 +571,26 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const getEventPosition = (event: Event) => {
     if (!event.time_start) return { left: 0, width: 0, visible: false };
     
-    const { minTime, timeRange } = timelineData;
-    const start = ((event.time_start - minTime) / timeRange) * 100;
-    const end = event.time_end ? ((event.time_end - minTime) / timeRange) * 100 : start + 1;
-    const width = Math.max(end - start, 1); // Minimum 1% width for visibility
+    const viewportRange = viewport.maxTime - viewport.minTime;
+    if (viewportRange <= 0) return { left: 0, width: 0, visible: false };
+    
+    // Calculate position relative to current viewport
+    const startPercent = ((event.time_start - viewport.minTime) / viewportRange) * 100;
+    const endTime = event.time_end || (event.time_start + 1); // Default 1 unit width for instant events
+    const endPercent = ((endTime - viewport.minTime) / viewportRange) * 100;
+    
+    // During dragging, apply transform offset for smooth panning
+    const transformOffset = isDragging ? (panOffset / 10) : 0; // Convert px to percentage
+    const finalLeft = startPercent + transformOffset;
+    const finalWidth = Math.max(0.5, endPercent - startPercent);
+    
+    // Check if event is visible (including some margin for smooth transitions)
+    const visible = finalLeft < 110 && (finalLeft + finalWidth) > -10 && finalWidth > 0;
     
     return {
-      left: Math.max(0, start),
-      width: Math.min(width, 100 - start),
-      visible: true
+      left: finalLeft,
+      width: finalWidth,
+      visible
     };
   };
 
@@ -625,7 +659,6 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           <div 
             className="gantt-timeline-header" 
             style={{ 
-              transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
               cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
               touchAction: 'none' // Prevent default touch scrolling
             }}
@@ -641,15 +674,30 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
             title="Double-click/tap to create event. Pinch to zoom, drag to pan"
           >
             <div className="timeline-ruler">
-              {Array.from({ length: Math.ceil(timelineData.timeRange / 5) + 1 }, (_, i) => {
-                const timeValue = timelineData.minTime + (i * 5);
-                const position = (i * 5 / timelineData.timeRange) * 100;
-                return (
-                  <div key={i} className="ruler-tick" style={{ left: `${position}%` }}>
-                    <span className="ruler-label">T{timeValue}</span>
-                  </div>
-                );
-              })}
+              {(() => {
+                const viewportRange = viewport.maxTime - viewport.minTime;
+                const tickInterval = 5;
+                const startTick = Math.floor(viewport.minTime / tickInterval) * tickInterval;
+                const endTick = Math.ceil(viewport.maxTime / tickInterval) * tickInterval;
+                const ticks = [];
+                
+                for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
+                  const position = ((timeValue - viewport.minTime) / viewportRange) * 100;
+                  const transformOffset = isDragging ? (panOffset / 10) : 0;
+                  const finalPosition = position + transformOffset;
+                  
+                  // Only show ticks that are visible
+                  if (finalPosition > -10 && finalPosition < 110) {
+                    ticks.push(
+                      <div key={timeValue} className="ruler-tick" style={{ left: `${finalPosition}%` }}>
+                        <span className="ruler-label">T{timeValue}</span>
+                      </div>
+                    );
+                  }
+                }
+                
+                return ticks;
+              })()}
             </div>
           </div>
         </div>
@@ -746,7 +794,6 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
         <div 
           className="gantt-timeline" 
           style={{ 
-            transform: `scaleX(${zoomLevel}) translateX(${panOffset}px)`,
             cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
             touchAction: 'none' // Prevent default touch scrolling
           }}

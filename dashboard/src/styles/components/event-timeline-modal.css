@@ -380,6 +380,8 @@
   padding: var(--spacing-md) var(--spacing-xl);
   border-right: 2px solid var(--color-border);
   background: inherit;
+  position: relative;
+  z-index: 10;
 }
 
 .event-label-content {
