@@ -38,6 +38,8 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const [panOffset, setPanOffset] = useState(0);
   const [viewport, setViewport] = useState({ minTime: 0, maxTime: 100 }); // Current visible time range
   const [viewportManuallySet, setViewportManuallySet] = useState(false); // Track if user has panned
+  const [baseDate, setBaseDate] = useState(new Date()); // Date that corresponds to T0
+  const [showBaseDateModal, setShowBaseDateModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0, viewport: { minTime: 0, maxTime: 100 } });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
@@ -71,6 +73,25 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || '';
   };
+
+  // Date conversion utilities
+  const timeToDate = useCallback((timeValue: number): Date => {
+    const date = new Date(baseDate);
+    date.setDate(date.getDate() + timeValue);
+    return date;
+  }, [baseDate]);
+
+  const formatDateDisplay = useCallback((timeValue?: number): string => {
+    if (!timeValue && timeValue !== 0) return 'Not set';
+    const date = timeToDate(timeValue);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }, [timeToDate]);
+
+  // Removed formatDateTimeDisplay - using formatDateDisplay instead
 
   const loadTimeline = useCallback(async () => {
     try {
@@ -632,10 +653,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     return parentMap;
   };
 
-  const formatTimeDisplay = (timeValue?: number) => {
-    if (!timeValue) return 'Not set';
-    return `T${timeValue}`;
-  };
+  // formatTimeDisplay is now formatDateDisplay defined above
 
   const getEventDuration = (event: Event) => {
     if (!event.time_start || !event.time_end) return null;
@@ -704,7 +722,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                   if (finalPosition > -10 && finalPosition < 110) {
                     ticks.push(
                       <div key={timeValue} className="ruler-tick" style={{ left: `${finalPosition}%` }}>
-                        <span className="ruler-label">T{timeValue}</span>
+                        <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
                       </div>
                     );
                   }
@@ -794,12 +812,12 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
             <div className="event-meta">
               {hasTime && (
                 <span className="event-time">
-                  {formatTimeDisplay(event.time_start)}
-                  {event.time_end && ` - ${formatTimeDisplay(event.time_end)}`}
+                  {formatDateDisplay(event.time_start)}
+                  {event.time_end && ` - ${formatDateDisplay(event.time_end)}`}
                 </span>
               )}
               {duration && duration > 0 && (
-                <span className="event-duration">({duration} units)</span>
+                <span className="event-duration">({duration} days)</span>
               )}
             </div>
           </div>
@@ -833,7 +851,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                 borderColor: getEventColor(event.id)
               }}
               onClick={() => loadEventDetails(event)}
-              title={`${event.name}: ${formatTimeDisplay(event.time_start)}${event.time_end ? ` - ${formatTimeDisplay(event.time_end)}` : ''}`}
+              title={`${event.name}: ${formatDateDisplay(event.time_start)}${event.time_end ? ` - ${formatDateDisplay(event.time_end)}` : ''}`}
             >
               <div className="gantt-bar-content">
                 {position.width > 10 && (
@@ -893,16 +911,16 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                 </div>
                 <div className="list-column time-column">
                   <span className={hasTime ? 'has-time' : 'no-time'}>
-                    {formatTimeDisplay(event.time_start)}
+                    {formatDateDisplay(event.time_start)}
                   </span>
                 </div>
                 <div className="list-column time-column">
                   <span className={event.time_end ? 'has-time' : 'no-time'}>
-                    {formatTimeDisplay(event.time_end)}
+                    {formatDateDisplay(event.time_end)}
                   </span>
                 </div>
                 <div className="list-column duration-column">
-                  <span>{duration ? `${duration} units` : '-'}</span>
+                  <span>{duration ? `${duration} days` : '-'}</span>
                 </div>
                 <div className="list-column order-column">
                   <span>{event.display_order}</span>
@@ -944,6 +962,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           </div>
           
           <div className="timeline-modal__controls">
+            <button 
+              className="btn btn--secondary"
+              onClick={() => setShowBaseDateModal(true)}
+              title="Set base date (T0 = ?)"
+            >
+              📅 Base Date
+            </button>
+            
             <div className="view-mode-toggle">
               <button 
                 className={`toggle-btn ${viewMode === 'gantt' ? 'active' : ''}`}
@@ -1106,10 +1132,10 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                         <p className="event-description">{selectedEvent.description}</p>
                       )}
                       <div className="event-timing">
-                        <span><strong>Start:</strong> {formatTimeDisplay(selectedEvent.time_start)}</span>
-                        <span><strong>End:</strong> {formatTimeDisplay(selectedEvent.time_end)}</span>
+                        <span><strong>Start:</strong> {formatDateDisplay(selectedEvent.time_start)}</span>
+                        <span><strong>End:</strong> {formatDateDisplay(selectedEvent.time_end)}</span>
                         {getEventDuration(selectedEvent) && (
-                          <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} units</span>
+                          <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} days</span>
                         )}
                       </div>
                     </div>
@@ -1251,6 +1277,51 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                       {loading ? 'Creating...' : 'Create Event'}
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Base Date Modal */}
+        {showBaseDateModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Set Base Date</h3>
+                <button className="modal-close" onClick={() => setShowBaseDateModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Base Date (T0)</label>
+                  <p className="help-text">This date corresponds to T0. All timeline values will be calculated relative to this date.</p>
+                  <input
+                    type="date"
+                    value={baseDate.toISOString().split('T')[0]}
+                    onChange={(e) => setBaseDate(new Date(e.target.value))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Preview</label>
+                  <div className="date-preview">
+                    <p>T0 = {baseDate.toLocaleDateString()}</p>
+                    <p>T5 = {timeToDate(5).toLocaleDateString()}</p>
+                    <p>T10 = {timeToDate(10).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button 
+                    className="btn btn--secondary"
+                    onClick={() => setShowBaseDateModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="btn btn--primary"
+                    onClick={() => setShowBaseDateModal(false)}
+                  >
+                    Apply
+                  </button>
                 </div>
               </div>
             </div>
