@@ -383,14 +383,22 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                         <div className="document-actions">
                           <button
                             className="document-action-btn view"
-                            onClick={() => onDocumentView?.(docAssoc.documents)}
+                            onClick={() => {
+                              setShowEventDetails(false);
+                              setSelectedEvent(null);
+                              onDocumentView?.(docAssoc.documents);
+                            }}
                             title="View document"
                           >
                             👁️
                           </button>
                           <button
                             className="document-action-btn edit"
-                            onClick={() => onDocumentEdit?.(docAssoc.documents)}
+                            onClick={() => {
+                              setShowEventDetails(false);
+                              setSelectedEvent(null);
+                              onDocumentEdit?.(docAssoc.documents);
+                            }}
                             title="Edit document"
                           >
                             ✎

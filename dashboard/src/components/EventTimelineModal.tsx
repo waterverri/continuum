@@ -164,9 +164,8 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const panSensitivity = 1 / zoomLevel; // More sensitive when zoomed in
     const newPanOffset = dragStart.panOffset - (deltaX * panSensitivity);
     
-    // Constrain pan to reasonable bounds
-    const maxPan = Math.max(0, (zoomLevel - 1) * 50);
-    const constrainedPan = Math.max(-maxPan, Math.min(maxPan, newPanOffset));
+    // No pan constraints - allow unlimited panning
+    const constrainedPan = newPanOffset;
     
     setPanOffset(constrainedPan);
   }, [isDragging, dragStart, zoomLevel, isCreatingEvent]);
@@ -205,10 +204,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const panSensitivity = baseSensitivity / Math.max(zoomLevel, 0.25);
       const deltaPan = e.deltaX * panSensitivity;
       
-      setPanOffset(prev => {
-        const maxPan = Math.max(0, (zoomLevel - 1) * 50);
-        return Math.max(-maxPan, Math.min(maxPan, prev - deltaPan));
-      });
+      setPanOffset(prev => prev - deltaPan);
     }
     // Handle vertical scrolling for zooming when shift is held (alternative zoom method)
     else if (e.shiftKey && Math.abs(e.deltaY) > 0) {
@@ -467,8 +463,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       if (Math.abs(deltaX) > 10) {
         const panSensitivity = 1 / zoomLevel;
         const deltaPan = -deltaX * panSensitivity;
-        const maxPan = Math.max(0, (zoomLevel - 1) * 50);
-        const newPan = Math.max(-maxPan, Math.min(maxPan, touchState.initialPan + deltaPan));
+        const newPan = touchState.initialPan + deltaPan;
         
         setPanOffset(newPan);
       }

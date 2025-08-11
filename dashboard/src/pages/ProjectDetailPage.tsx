@@ -553,7 +553,7 @@ export default function ProjectDetailPage() {
                         
                         <div className="preset-card__actions-row">
                           <button 
-                            className="btn btn--xs btn--primary"
+                            className="btn btn--xs btn--secondary"
                             onClick={() => {
                               state.setEditingPreset(preset);
                               state.openModal('showPresetDashboard');
@@ -563,7 +563,7 @@ export default function ProjectDetailPage() {
                             🎛️ Dashboard
                           </button>
                           <button 
-                            className="btn btn--xs btn--ghost"
+                            className="btn btn--xs btn--secondary"
                             onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
                             title="Copy API URL to clipboard"
                           >
