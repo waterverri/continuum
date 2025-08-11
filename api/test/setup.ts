@@ -46,10 +46,26 @@ mockFetch.mockImplementation((url: string | URL | Request, options?: RequestInit
   } as Response);
 });
 
-// Create a simple mock function that always returns success
-const mockQuery = () => Promise.resolve({ data: mockData, error: null });
+// Create a simple mock function that returns arrays by default
+const mockQuery = () => Promise.resolve({ data: mockArrayData, error: null });
+const mockSingleQuery = () => Promise.resolve({ data: mockData, error: null });
 
-// Mock Supabase client
+// Mock Supabase client with proper array/object handling
+const createMockQueryBuilder = () => ({
+  from: jest.fn(() => createMockQueryBuilder()),
+  select: jest.fn(() => createMockQueryBuilder()),
+  insert: jest.fn(() => createMockQueryBuilder()),
+  update: jest.fn(() => createMockQueryBuilder()),
+  delete: jest.fn(() => createMockQueryBuilder()),
+  eq: jest.fn(() => createMockQueryBuilder()),
+  neq: jest.fn(() => createMockQueryBuilder()),
+  in: jest.fn(() => createMockQueryBuilder()),
+  or: jest.fn(() => createMockQueryBuilder()),
+  order: jest.fn(() => createMockQueryBuilder()),
+  single: jest.fn(mockSingleQuery),
+  then: jest.fn((callback: any) => callback({ data: mockArrayData, error: null }))
+});
+
 export const mockSupabaseClient: any = {
   auth: {
     getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
@@ -60,19 +76,7 @@ export const mockSupabaseClient: any = {
       })
     }
   },
-  from: jest.fn(() => mockSupabaseClient),
-  select: jest.fn(() => mockSupabaseClient),
-  insert: jest.fn(() => mockSupabaseClient),
-  update: jest.fn(() => mockSupabaseClient),
-  delete: jest.fn(() => mockSupabaseClient),
-  eq: jest.fn(() => mockSupabaseClient),
-  neq: jest.fn(() => mockSupabaseClient),
-  in: jest.fn(() => mockSupabaseClient),
-  order: jest.fn(() => mockSupabaseClient),
-  single: jest.fn(mockQuery),
-  then: jest.fn((callback: any) => callback({ data: mockData, error: null })),
-  // Make queries return arrays by default
-  mockReturnValue: () => Promise.resolve({ data: [mockData], error: null })
+  ...createMockQueryBuilder()
 };
 
 // Default mock data
@@ -82,6 +86,9 @@ const mockData = {
   color: '#007bff',
   project_id: 'test-project-id'
 };
+
+// Mock array data for queries that expect arrays
+const mockArrayData = [mockData];
 
 // Mock the Supabase client module
 jest.mock('@supabase/supabase-js', () => ({

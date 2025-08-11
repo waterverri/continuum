@@ -158,7 +158,7 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
+  const handleRemoveMember = async (memberUserId: string) => {
     if (!confirm('Are you sure you want to remove this member from the project?')) {
       return;
     }
@@ -167,7 +167,7 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
       setLoading(true);
       const token = await getAccessToken();
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/members/${memberId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/${project.id}/members/${memberUserId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -393,7 +393,7 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
                       {isOwner && member.role === 'collaborator' && (
                         <button
                           className="btn btn--danger btn--sm"
-                          onClick={() => handleRemoveMember(member.id)}
+                          onClick={() => handleRemoveMember(member.user_id)}
                           disabled={loading}
                         >
                           Remove

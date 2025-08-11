@@ -27,14 +27,11 @@ router.get('/:projectId/members', authenticateUser, async (req: RequestWithUser,
     const { data: members, error: membersError } = await supabaseAdmin
       .from('project_members')
       .select(`
-        id,
         project_id,
         user_id,
-        role,
-        created_at
+        role
       `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
+      .eq('project_id', projectId);
 
     if (membersError) throw membersError;
 
@@ -45,7 +42,11 @@ router.get('/:projectId/members', authenticateUser, async (req: RequestWithUser,
           const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
           
           return {
-            ...member,
+            id: `${member.project_id}-${member.user_id}`, // Create composite ID
+            project_id: member.project_id,
+            user_id: member.user_id,
+            role: member.role,
+            created_at: new Date().toISOString(), // Fallback since we don't have created_at
             profiles: {
               id: member.user_id,
               email: user?.email || 'unknown@example.com',
@@ -55,7 +56,11 @@ router.get('/:projectId/members', authenticateUser, async (req: RequestWithUser,
         } catch (err) {
           console.error(`Failed to get user details for ${member.user_id}:`, err);
           return {
-            ...member,
+            id: `${member.project_id}-${member.user_id}`, // Create composite ID
+            project_id: member.project_id,
+            user_id: member.user_id,
+            role: member.role,
+            created_at: new Date().toISOString(), // Fallback since we don't have created_at
             profiles: {
               id: member.user_id,
               email: 'unknown@example.com',
@@ -70,7 +75,8 @@ router.get('/:projectId/members', authenticateUser, async (req: RequestWithUser,
     const sortedMembers = membersWithDetails.sort((a, b) => {
       if (a.role === 'owner' && b.role !== 'owner') return -1;
       if (b.role === 'owner' && a.role !== 'owner') return 1;
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      // Since we don't have created_at, just maintain the order
+      return 0;
     });
 
     res.json({ members: sortedMembers });
@@ -81,9 +87,9 @@ router.get('/:projectId/members', authenticateUser, async (req: RequestWithUser,
 });
 
 // Remove project member (owners only)
-router.delete('/:projectId/members/:memberId', authenticateUser, async (req: RequestWithUser, res) => {
+router.delete('/:projectId/members/:userId', authenticateUser, async (req: RequestWithUser, res) => {
   try {
-    const { projectId, memberId } = req.params;
+    const { projectId, userId: memberUserId } = req.params;
     const userId = req.user?.id;
 
     // Verify user is project owner
@@ -102,7 +108,7 @@ router.delete('/:projectId/members/:memberId', authenticateUser, async (req: Req
     const { data: memberToRemove, error: memberError } = await supabaseAdmin
       .from('project_members')
       .select('user_id, role')
-      .eq('id', memberId)
+      .eq('user_id', memberUserId)
       .eq('project_id', projectId)
       .single();
 
@@ -124,7 +130,8 @@ router.delete('/:projectId/members/:memberId', authenticateUser, async (req: Req
     const { error: removeError } = await supabaseAdmin
       .from('project_members')
       .delete()
-      .eq('id', memberId);
+      .eq('user_id', memberUserId)
+      .eq('project_id', projectId);
 
     if (removeError) throw removeError;
 
