@@ -129,6 +129,12 @@
   gap: var(--spacing-sm);
 }
 
+.preset-card__actions-row .btn {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+
 /* Empty State */
 .presets-widget .empty-state--compact {
   text-align: center;

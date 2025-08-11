@@ -480,11 +480,13 @@ export default function ProjectDetailPage() {
                   onEventsChange={loadEvents}
                   onTimelineClick={() => state.openModal('showEventTimeline')}
                   onDocumentView={(document) => {
+                    state.closeAllModals(); // Close all modals first
                     state.setSelectedDocument(document);
                     state.setIsEditing(false);
                     state.setResolvedContent(null);
                   }}
                   onDocumentEdit={(document) => {
+                    state.closeAllModals(); // Close all modals first
                     state.startEdit(document);
                   }}
                   onDocumentDelete={(documentId) => {
@@ -718,11 +720,13 @@ export default function ProjectDetailPage() {
           onClose={() => state.closeModal('showEventTimeline')}
           onCloseAllModals={state.closeAllModals}
           onDocumentView={(document) => {
+            state.closeAllModals(); // Close all modals first
             state.setSelectedDocument(document);
             state.setIsEditing(false);
             state.setResolvedContent(null);
           }}
           onDocumentEdit={(document) => {
+            state.closeAllModals(); // Close all modals first
             state.startEdit(document);
           }}
           onDocumentDelete={(documentId) => {

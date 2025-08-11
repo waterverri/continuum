@@ -187,7 +187,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const deltaZoom = -e.deltaY * zoomSensitivity;
       
       setZoomLevel(prev => {
-        const newZoom = Math.max(0.25, Math.min(5, prev + deltaZoom));
+        const newZoom = Math.max(0.1, prev + deltaZoom);
         // Reset pan when zooming out significantly
         if (newZoom <= 1 && prev > 1) {
           setPanOffset(0);
@@ -218,7 +218,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const deltaZoom = -e.deltaY * zoomSensitivity;
       
       setZoomLevel(prev => {
-        const newZoom = Math.max(0.25, Math.min(5, prev + deltaZoom));
+        const newZoom = Math.max(0.1, prev + deltaZoom);
         if (newZoom <= 1 && prev > 1) {
           setPanOffset(0);
         }
@@ -235,7 +235,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
 
   const handleZoomOut = () => {
     setZoomLevel(prev => {
-      const newZoom = Math.max(0.25, prev - 0.5);
+      const newZoom = Math.max(0.1, prev - 0.5);
       // Reset pan when zooming out significantly
       if (newZoom <= 1) {
         setPanOffset(0);
@@ -450,7 +450,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       e.preventDefault();
       const currentDistance = getTouchDistance(e.touches);
       const scale = currentDistance / touchState.initialDistance;
-      const newZoom = Math.max(0.25, Math.min(5, touchState.initialZoom * scale));
+      const newZoom = Math.max(0.1, touchState.initialZoom * scale);
       
       setZoomLevel(newZoom);
       
