@@ -63,9 +63,6 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     loadProjectBaseDate();
   }, [loadProjectBaseDate]);
 
-  useEffect(() => {
-    console.log('🎨 isCreating state changed to:', isCreating);
-  }, [isCreating]);
 
   const timeToDate = (timeValue: number): Date => {
     const date = new Date(baseDate);
@@ -90,7 +87,6 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   };
 
   const resetFormData = () => {
-    console.log('🧹 resetFormData called - clearing form fields only');
     setFormData({
       name: '',
       description: '',
@@ -103,28 +99,21 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   };
 
   const resetForm = () => {
-    console.log('🧹 resetForm called - clearing form AND closing');
     resetFormData();
-    console.log('🔄 resetForm setting isCreating to false');
     setIsCreating(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🎯 EventsWidget handleSubmit called');
-    console.log('📝 Form data:', formData);
     
     if (!formData.name.trim()) {
-      console.log('❌ Event name validation failed');
       setError('Event name is required');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('🔄 Getting access token...');
       const token = await getAccessToken();
-      console.log('✅ Got token:', token ? 'YES' : 'NO');
       
       const eventData = {
         name: formData.name.trim(),
@@ -134,26 +123,16 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
-      
-      console.log('📤 Sending event data:', eventData);
-      console.log('🎪 Project ID:', projectId);
 
       if (editingEvent) {
-        console.log('✏️ Updating existing event:', editingEvent.id);
         await updateEvent(projectId, editingEvent.id, eventData, token);
       } else {
-        console.log('🆕 Creating new event');
-        const result = await createEvent(projectId, eventData, token);
-        console.log('✅ Create event result:', result);
+        await createEvent(projectId, eventData, token);
       }
       
-      console.log('🔄 Calling onEventsChange...');
       onEventsChange();
-      console.log('🧹 Closing form after successful creation...');
       resetForm();
-      console.log('✅ Event creation completed successfully!');
     } catch (err) {
-      console.error('❌ Event creation failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to save event');
     } finally {
       setLoading(false);
@@ -227,16 +206,11 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           <button 
             className="btn btn--xs btn--secondary"
             onClick={() => {
-              console.log('➕ Plus button clicked! Current isCreating:', isCreating);
-              const newIsCreating = !isCreating;
-              console.log('🔄 Setting isCreating to:', newIsCreating);
-              setIsCreating(newIsCreating);
+              setIsCreating(!isCreating);
               setError(null);
               if (!isCreating) {
-                console.log('🧹 Clearing form data since we are opening create mode');
                 resetFormData();
               }
-              console.log('✅ Plus button onClick completed');
             }}
             disabled={loading}
           >
@@ -262,9 +236,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
 
       {/* Create/Edit Form */}
       {isCreating && (
-        <div style={{ background: 'red', padding: '10px', margin: '10px', border: '2px solid yellow' }}>
-          <h3 style={{ color: 'white' }}>🚨 FORM IS RENDERED! isCreating = {isCreating.toString()}</h3>
-          <form onSubmit={handleSubmit} className="event-form--compact">
+        <form onSubmit={handleSubmit} className="event-form--compact">
           <div className="event-form__group">
             <input
               type="text"
@@ -341,7 +313,6 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
             </button>
           </div>
         </form>
-        </div>
       )}
 
       {/* Events List */}

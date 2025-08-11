@@ -214,7 +214,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const deltaZoom = -e.deltaY * zoomSensitivity;
       
       setZoomLevel(prev => {
-        const newZoom = Math.max(0.1, prev + deltaZoom);
+        const newZoom = Math.max(0.001, prev + deltaZoom); // Minimal floor to prevent divide-by-zero
         // Reset pan when zooming out significantly
         if (newZoom <= 1 && prev > 1) {
           setPanOffset(0);
@@ -243,7 +243,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const deltaZoom = -e.deltaY * zoomSensitivity;
       
       setZoomLevel(prev => {
-        const newZoom = Math.max(0.1, prev + deltaZoom);
+        const newZoom = Math.max(0.001, prev + deltaZoom); // Minimal floor to prevent divide-by-zero
         if (newZoom <= 1 && prev > 1) {
           setPanOffset(0);
           setViewportManuallySet(false); // Allow viewport to be recalculated
@@ -256,14 +256,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
 
   // Enhanced zoom functionality
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(5, prev + 0.5));
+    setZoomLevel(prev => prev * 1.5); // Proportional zoom in
   };
 
   const handleZoomOut = () => {
     setZoomLevel(prev => {
-      const newZoom = Math.max(0.1, prev - 0.5);
+      const newZoom = prev / 1.5; // Proportional zoom out
       // Reset pan when zooming out significantly
-      if (newZoom <= 1) {
+      if (newZoom <= 1 && prev > 1) {
         setPanOffset(0);
       }
       return newZoom;
@@ -532,7 +532,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       e.preventDefault();
       const currentDistance = getTouchDistance(e.touches);
       const scale = currentDistance / touchState.initialDistance;
-      const newZoom = Math.max(0.1, touchState.initialZoom * scale);
+      const newZoom = Math.max(0.001, touchState.initialZoom * scale); // Minimal floor to prevent divide-by-zero
       
       setZoomLevel(newZoom);
       
@@ -737,7 +737,24 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
             <div className="timeline-ruler">
               {(() => {
                 const viewportRange = viewport.maxTime - viewport.minTime;
-                const tickInterval = 5;
+                
+                // Formulaic tick interval calculation
+                // Target: ~10-20 ticks visible at any zoom level for optimal readability
+                const targetTickCount = 15;
+                const rawInterval = viewportRange / targetTickCount;
+                
+                // Round to nice intervals using powers of 10 and common factors (1, 2, 5)
+                const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
+                const normalized = rawInterval / magnitude; // Now between 1 and 10
+                
+                let niceInterval;
+                if (normalized <= 1) niceInterval = 1;
+                else if (normalized <= 2) niceInterval = 2;
+                else if (normalized <= 5) niceInterval = 5;
+                else niceInterval = 10;
+                
+                const tickInterval = niceInterval * magnitude;
+                
                 const startTick = Math.floor(viewport.minTime / tickInterval) * tickInterval;
                 const endTick = Math.ceil(viewport.maxTime / tickInterval) * tickInterval;
                 const ticks = [];
@@ -1021,16 +1038,14 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                   <button 
                     className="zoom-btn"
                     onClick={handleZoomOut}
-                    disabled={zoomLevel <= 0.25}
                     title="Zoom out"
                   >
                     −
                   </button>
-                  <span className="zoom-level">{Math.round(zoomLevel * 100)}%</span>
+                  <span className="zoom-level">{zoomLevel >= 100 ? `${Math.round(zoomLevel)}x` : `${Math.round(zoomLevel * 100)}%`}</span>
                   <button 
                     className="zoom-btn"
                     onClick={handleZoomIn}
-                    disabled={zoomLevel >= 5}
                     title="Zoom in"
                   >
                     +
