@@ -63,6 +63,10 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     loadProjectBaseDate();
   }, [loadProjectBaseDate]);
 
+  useEffect(() => {
+    console.log('🎨 isCreating state changed to:', isCreating);
+  }, [isCreating]);
+
   const timeToDate = (timeValue: number): Date => {
     const date = new Date(baseDate);
     date.setDate(date.getDate() + timeValue);
@@ -100,15 +104,20 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🎯 EventsWidget handleSubmit called');
+    console.log('📝 Form data:', formData);
     
     if (!formData.name.trim()) {
+      console.log('❌ Event name validation failed');
       setError('Event name is required');
       return;
     }
 
     try {
       setLoading(true);
+      console.log('🔄 Getting access token...');
       const token = await getAccessToken();
+      console.log('✅ Got token:', token ? 'YES' : 'NO');
       
       const eventData = {
         name: formData.name.trim(),
@@ -118,16 +127,26 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
+      
+      console.log('📤 Sending event data:', eventData);
+      console.log('🎪 Project ID:', projectId);
 
       if (editingEvent) {
+        console.log('✏️ Updating existing event:', editingEvent.id);
         await updateEvent(projectId, editingEvent.id, eventData, token);
       } else {
-        await createEvent(projectId, eventData, token);
+        console.log('🆕 Creating new event');
+        const result = await createEvent(projectId, eventData, token);
+        console.log('✅ Create event result:', result);
       }
       
+      console.log('🔄 Calling onEventsChange...');
       onEventsChange();
+      console.log('🧹 Resetting form...');
       resetForm();
+      console.log('✅ Event creation completed successfully!');
     } catch (err) {
+      console.error('❌ Event creation failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to save event');
     } finally {
       setLoading(false);
@@ -201,9 +220,16 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           <button 
             className="btn btn--xs btn--secondary"
             onClick={() => {
-              setIsCreating(!isCreating);
+              console.log('➕ Plus button clicked! Current isCreating:', isCreating);
+              const newIsCreating = !isCreating;
+              console.log('🔄 Setting isCreating to:', newIsCreating);
+              setIsCreating(newIsCreating);
               setError(null);
-              if (!isCreating) resetForm();
+              if (!isCreating) {
+                console.log('🧹 Resetting form since we are opening create mode');
+                resetForm();
+              }
+              console.log('✅ Plus button onClick completed');
             }}
             disabled={loading}
           >
