@@ -41,7 +41,7 @@ router.get('/:projectId', async (req: RequestWithUser, res) => {
       if (documentId) {
         const { data: document } = await supabase
           .from('documents')
-          .select('id, title, is_composite')
+          .select('id, title, is_composite, content, components, document_type')
           .eq('id', documentId)
           .single();
         
@@ -75,7 +75,7 @@ router.post('/:projectId', async (req: RequestWithUser, res) => {
     // Verify the document exists and belongs to this project
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('id, title, is_composite')
+      .select('id, title, is_composite, content, components, document_type')
       .eq('id', documentId)
       .eq('project_id', projectId)
       .single();
@@ -142,7 +142,7 @@ router.put('/:presetId', async (req: RequestWithUser, res) => {
     if (documentId) {
       const { data: document, error: docError } = await supabase
         .from('documents')
-        .select('id, title, is_composite')
+        .select('id, title, is_composite, content, components, document_type')
         .eq('id', documentId)
         .eq('project_id', existingPreset.project_id)
         .single();
@@ -176,7 +176,7 @@ router.put('/:presetId', async (req: RequestWithUser, res) => {
     if (documentId_final) {
       const { data: docData } = await supabase
         .from('documents')
-        .select('id, title, is_composite')
+        .select('id, title, is_composite, content, components, document_type')
         .eq('id', documentId_final)
         .single();
       document = docData;
