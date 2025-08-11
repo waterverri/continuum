@@ -87,11 +87,20 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
           )
         `)
         .eq('project_id', project.id)
-        .order('role', { ascending: false })
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMembers(data as ProjectMember[]);
+      
+      // Sort members with owners first, then by created date
+      const sortedMembers = (data as ProjectMember[]).sort((a, b) => {
+        // Owners first
+        if (a.role === 'owner' && b.role !== 'owner') return -1;
+        if (b.role === 'owner' && a.role !== 'owner') return 1;
+        // Then by creation date
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+      
+      setMembers(sortedMembers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load project members');
     }
