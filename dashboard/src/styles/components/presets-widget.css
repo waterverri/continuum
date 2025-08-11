@@ -126,13 +126,8 @@
   padding-top: var(--spacing-md);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.preset-card__actions-row .btn {
-  flex: 1;
-  min-width: 0;
   justify-content: center;
+  gap: var(--spacing-sm);
 }
 
 /* Empty State */

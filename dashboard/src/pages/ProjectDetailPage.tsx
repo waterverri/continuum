@@ -553,21 +553,21 @@ export default function ProjectDetailPage() {
                         
                         <div className="preset-card__actions-row">
                           <button 
-                            className="btn btn--xs btn--secondary"
+                            className="preset-card__action"
                             onClick={() => {
                               state.setEditingPreset(preset);
                               state.openModal('showPresetDashboard');
                             }}
                             title="Manage preset overrides"
                           >
-                            🎛️ Dashboard
+                            🎛️
                           </button>
                           <button 
-                            className="btn btn--xs btn--secondary"
+                            className="preset-card__action"
                             onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
                             title="Copy API URL to clipboard"
                           >
-                            📋 Copy URL
+                            📋
                           </button>
                         </div>
                       </div>
@@ -673,6 +673,7 @@ export default function ProjectDetailPage() {
           documents={state.documents}
           onSave={async (presetId, overrides) => {
             await operations.handleUpdatePresetOverrides(presetId, overrides);
+            await operations.loadPresets(); // Reload presets to get full document data
             state.setEditingPreset(null);
             state.closeModal('showPresetDashboard');
           }}

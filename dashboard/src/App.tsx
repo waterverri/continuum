@@ -103,6 +103,13 @@ const AppHeader = ({ session }: { session: Session | null }) => {
             <Link to="/" className="app-header__back-link">
               ← Back to All Projects
             </Link>
+            <button 
+              className="app-header__icon-button"
+              onClick={onCreateDocument}
+              title="Create document"
+            >
+              +
+            </button>
           </>
         )}
       </div>
@@ -113,21 +120,13 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       
       <div className="app-header__right">
         {isProjectDetailPage && (
-          <>
-            <button 
-              className="app-header__sidebar-toggle"
-              onClick={onToggleRightSidebar}
-              title="Toggle widgets sidebar"
-            >
-              ⚙️
-            </button>
-            <button 
-              className="btn btn--primary"
-              onClick={onCreateDocument}
-            >
-              + Create Document
-            </button>
-          </>
+          <button 
+            className="app-header__sidebar-toggle"
+            onClick={onToggleRightSidebar}
+            title="Toggle widgets sidebar"
+          >
+            ⚙️
+          </button>
         )}
         <span>Logged in as: {session.user.email}</span>
         <button onClick={handleSignOut}>Sign out</button>
