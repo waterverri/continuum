@@ -273,6 +273,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const handleZoomReset = () => {
     setZoomLevel(1);
     setPanOffset(0);
+    setViewportManuallySet(false); // Allow viewport to be recalculated
   };
 
   const handleZoomToFit = () => {
@@ -280,25 +281,36 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const eventsWithTime = events.filter(e => e.time_start != null);
     if (eventsWithTime.length === 0) return;
     
-    // Reset zoom first
-    setZoomLevel(1);
-    setPanOffset(0);
+    // Get event data range
+    const startTimes = eventsWithTime.map(e => e.time_start!);
+    const endTimes = eventsWithTime.map(e => e.time_end || e.time_start!);
+    const dataMinTime = Math.min(...startTimes);
+    const dataMaxTime = Math.max(...endTimes);
     
-    // Focus on the data range rather than the full padded range
+    const dataRange = Math.max(1, dataMaxTime - dataMinTime); // Prevent division by zero
+    const paddedRange = dataRange * 1.4; // Add 40% padding for better visibility
+    
+    // Calculate zoom to fit events with padding
+    const optimalZoom = timelineData.timeRange / paddedRange;
+    setZoomLevel(Math.max(0.001, optimalZoom)); // No upper limit
+    
+    // Reset pan and viewport manually set flag
+    setPanOffset(0);
+    setViewportManuallySet(false);
+    
+    // Set viewport to show the fitted range
+    const dataCenter = (dataMinTime + dataMaxTime) / 2;
+    const newMinTime = dataCenter - paddedRange / 2;
+    const newMaxTime = dataCenter + paddedRange / 2;
+    
+    // Update viewport directly
     setTimeout(() => {
-      const startTimes = eventsWithTime.map(e => e.time_start!);
-      const endTimes = eventsWithTime.map(e => e.time_end || e.time_start!);
-      const dataMinTime = Math.min(...startTimes);
-      const dataMaxTime = Math.max(...endTimes);
-      
-      // Calculate center offset to focus on data range
-      const dataCenterTime = (dataMinTime + dataMaxTime) / 2;
-      const timelineCenterTime = (timelineData.minTime + timelineData.maxTime) / 2;
-      const offsetRatio = (timelineCenterTime - dataCenterTime) / timelineData.timeRange;
-      const pixelOffset = offsetRatio * window.innerWidth * 0.5; // Approximate timeline width
-      
-      setPanOffset(pixelOffset);
-    }, 50); // Small delay to let zoom reset first
+      setViewport({
+        minTime: newMinTime,
+        maxTime: newMaxTime
+      });
+      setViewportManuallySet(false); // Keep it as auto-managed
+    }, 10);
   };
 
   const handleCreateEventSubmit = async () => {
@@ -437,16 +449,30 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setIsDragging(false);
   }, [isDragging, panOffset, viewport]);
 
-  // Initialize viewport when timeline data changes (only if not manually set by user)
+  // Update viewport when zoom changes (always) or when timeline data changes (if not manually panned)
   useEffect(() => {
-    if (timelineData.timeRange > 0 && !isDragging && !viewportManuallySet) {
+    if (timelineData.timeRange > 0 && !isDragging) {
       const viewportRange = timelineData.timeRange / zoomLevel;
-      setViewport({
-        minTime: timelineData.minTime,
-        maxTime: timelineData.minTime + viewportRange
-      });
+      
+      if (!viewportManuallySet) {
+        // First time or reset - center the viewport
+        setViewport({
+          minTime: timelineData.minTime,
+          maxTime: timelineData.minTime + viewportRange
+        });
+      } else {
+        // User has panned - maintain current center while adjusting for zoom
+        const currentCenter = (viewport.minTime + viewport.maxTime) / 2;
+        const newMinTime = currentCenter - viewportRange / 2;
+        const newMaxTime = currentCenter + viewportRange / 2;
+        
+        setViewport({
+          minTime: newMinTime,
+          maxTime: newMaxTime
+        });
+      }
     }
-  }, [timelineData, zoomLevel, isDragging, viewportManuallySet]);
+  }, [timelineData, zoomLevel, isDragging, viewportManuallySet, viewport.minTime, viewport.maxTime]);
 
   // Click-to-create event functionality
   const calculateTimeFromMousePosition = useCallback((e: React.MouseEvent, element: HTMLElement) => {
@@ -1185,7 +1211,16 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                     </div>
 
                     <div className="event-documents">
-                      <h4>Associated Documents ({eventDocuments.length})</h4>
+                      <div className="documents-header">
+                        <h4>Associated Documents ({eventDocuments.length})</h4>
+                        <button
+                          className="event-edit-btn"
+                          onClick={() => startEditEvent(selectedEvent)}
+                          title="Edit this event"
+                        >
+                          ✎ Edit Event
+                        </button>
+                      </div>
                       {eventDocuments.length === 0 ? (
                         <p className="no-documents">No documents associated with this event.</p>
                       ) : (
