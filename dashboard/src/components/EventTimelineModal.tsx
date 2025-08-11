@@ -37,6 +37,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState(0);
   const [viewport, setViewport] = useState({ minTime: 0, maxTime: 100 }); // Current visible time range
+  const [viewportManuallySet, setViewportManuallySet] = useState(false); // Track if user has panned
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, panOffset: 0, viewport: { minTime: 0, maxTime: 100 } });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
@@ -189,6 +190,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
         // Reset pan when zooming out significantly
         if (newZoom <= 1 && prev > 1) {
           setPanOffset(0);
+          setViewportManuallySet(false); // Allow viewport to be recalculated
         }
         return newZoom;
       });
@@ -216,6 +218,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
         const newZoom = Math.max(0.1, prev + deltaZoom);
         if (newZoom <= 1 && prev > 1) {
           setPanOffset(0);
+          setViewportManuallySet(false); // Allow viewport to be recalculated
         }
         return newZoom;
       });
@@ -376,6 +379,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       };
       
       setViewport(newViewport);
+      setViewportManuallySet(true); // Mark viewport as manually set
       
       // Reset pan offset since we're now rendering at the new position
       setPanOffset(0);
@@ -383,16 +387,16 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setIsDragging(false);
   }, [isDragging, panOffset, viewport]);
 
-  // Initialize viewport when timeline data changes (not during dragging)
+  // Initialize viewport when timeline data changes (only if not manually set by user)
   useEffect(() => {
-    if (timelineData.timeRange > 0 && !isDragging) {
+    if (timelineData.timeRange > 0 && !isDragging && !viewportManuallySet) {
       const viewportRange = timelineData.timeRange / zoomLevel;
       setViewport({
         minTime: timelineData.minTime,
         maxTime: timelineData.minTime + viewportRange
       });
     }
-  }, [timelineData, zoomLevel, isDragging]);
+  }, [timelineData, zoomLevel, isDragging, viewportManuallySet]);
 
   // Click-to-create event functionality
   const calculateTimeFromMousePosition = useCallback((e: React.MouseEvent, element: HTMLElement) => {
