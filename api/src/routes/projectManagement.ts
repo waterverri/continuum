@@ -323,4 +323,112 @@ router.patch('/:projectId/invitations/:invitationId/deactivate', authenticateUse
   }
 });
 
+// Get invitation details (public endpoint - no auth required)
+router.get('/invitations/:invitationId', async (req, res) => {
+  try {
+    const { invitationId } = req.params;
+
+    // Get invitation with project details
+    const { data: invitation, error: invitationError } = await supabaseAdmin
+      .from('project_invitations')
+      .select(`
+        id,
+        project_id,
+        max_uses,
+        used_count,
+        is_active,
+        projects (
+          id,
+          title,
+          description
+        )
+      `)
+      .eq('id', invitationId)
+      .eq('is_active', true)
+      .single();
+
+    if (invitationError || !invitation) {
+      return res.status(404).json({ error: 'Invitation not found or has been deactivated' });
+    }
+
+    if (invitation.used_count >= invitation.max_uses) {
+      return res.status(410).json({ error: 'This invitation has reached its maximum usage limit' });
+    }
+
+    res.json({ invitation });
+  } catch (error) {
+    console.error('Error fetching invitation:', error);
+    res.status(500).json({ error: 'Failed to fetch invitation' });
+  }
+});
+
+// Accept invitation (authenticated endpoint)
+router.post('/invitations/:invitationId/accept', authenticateUser, async (req: RequestWithUser, res) => {
+  try {
+    const { invitationId } = req.params;
+    const userId = req.user?.id;
+
+    // Get and validate invitation
+    const { data: invitation, error: invitationError } = await supabaseAdmin
+      .from('project_invitations')
+      .select('id, project_id, max_uses, used_count, is_active')
+      .eq('id', invitationId)
+      .eq('is_active', true)
+      .single();
+
+    if (invitationError || !invitation) {
+      return res.status(404).json({ error: 'Invitation not found or has been deactivated' });
+    }
+
+    if (invitation.used_count >= invitation.max_uses) {
+      return res.status(410).json({ error: 'This invitation has reached its maximum usage limit' });
+    }
+
+    // Check if user is already a member
+    const { data: existingMember, error: memberCheckError } = await supabaseAdmin
+      .from('project_members')
+      .select('user_id')
+      .eq('project_id', invitation.project_id)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (memberCheckError) throw memberCheckError;
+
+    if (existingMember) {
+      return res.status(409).json({ error: 'You are already a member of this project' });
+    }
+
+    // Add user as project member
+    const { error: memberError } = await supabaseAdmin
+      .from('project_members')
+      .insert({
+        project_id: invitation.project_id,
+        user_id: userId,
+        role: 'collaborator'
+      });
+
+    if (memberError) throw memberError;
+
+    // Increment invitation usage count
+    const { error: updateError } = await supabaseAdmin
+      .from('project_invitations')
+      .update({
+        used_count: invitation.used_count + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', invitation.id);
+
+    if (updateError) throw updateError;
+
+    res.json({ 
+      success: true, 
+      project_id: invitation.project_id,
+      message: 'Successfully joined the project'
+    });
+  } catch (error) {
+    console.error('Error accepting invitation:', error);
+    res.status(500).json({ error: 'Failed to accept invitation' });
+  }
+});
+
 export { router as projectManagementRouter };

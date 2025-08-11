@@ -50,35 +50,20 @@ export function InvitationPage() {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('project_invitations')
-          .select(`
-            *,
-            projects (
-              id,
-              title,
-              description
-            )
-          `)
-          .eq('id', invitationId)
-          .eq('is_active', true)
-          .single();
-
-        if (error) throw error;
-
-        if (!data) {
-          setError('Invitation not found or has been deactivated');
-          setLoading(false);
-          return;
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/invitations/${invitationId}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Invitation not found or has been deactivated');
+          } else if (response.status === 410) {
+            throw new Error('This invitation has reached its maximum usage limit');
+          } else {
+            throw new Error('Failed to load invitation');
+          }
         }
 
-        if (data.used_count >= data.max_uses) {
-          setError('This invitation has reached its maximum usage limit');
-          setLoading(false);
-          return;
-        }
-
-        setInvitation(data);
+        const data = await response.json();
+        setInvitation(data.invitation);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load invitation');
       } finally {
@@ -94,50 +79,41 @@ export function InvitationPage() {
 
     try {
       setLoading(true);
-
-      // Check if user is already a member
-      const { data: existingMember, error: memberCheckError } = await supabase
-        .from('project_members')
-        .select('id')
-        .eq('project_id', invitation.project_id)
-        .eq('user_id', currentUser.id)
-        .maybeSingle();
-
-      if (memberCheckError) throw memberCheckError;
-
-      if (existingMember) {
-        setError('You are already a member of this project');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError('Authentication required. Please log in.');
         setLoading(false);
         return;
       }
 
-      // Add user as project member
-      const { error: memberError } = await supabase
-        .from('project_members')
-        .insert({
-          project_id: invitation.project_id,
-          user_id: currentUser.id,
-          role: 'collaborator'
-        });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/invitations/${invitation.id}/accept`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (memberError) throw memberError;
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Invitation not found or has been deactivated');
+        } else if (response.status === 409) {
+          throw new Error('You are already a member of this project');
+        } else if (response.status === 410) {
+          throw new Error('This invitation has reached its maximum usage limit');
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to join project');
+        }
+      }
 
-      // Increment invitation usage count
-      const { error: updateError } = await supabase
-        .from('project_invitations')
-        .update({
-          used_count: invitation.used_count + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', invitation.id);
-
-      if (updateError) throw updateError;
-
+      const data = await response.json();
       setSuccess(true);
       
       // Redirect to project after a short delay
       setTimeout(() => {
-        navigate(`/projects/${invitation.project_id}`);
+        navigate(`/projects/${data.project_id}`);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join project');
