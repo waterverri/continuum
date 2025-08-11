@@ -171,21 +171,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setPanOffset(constrainedPan);
   }, [isDragging, dragStart, zoomLevel, isCreatingEvent]);
 
-  const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      // Re-render viewport based on final pan position
-      const viewportRange = timelineData.timeRange / zoomLevel;
-      const newViewport = {
-        minTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange,
-        maxTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange + viewportRange
-      };
-      setViewport(newViewport);
-      
-      // Reset pan offset since we're now rendering at the new position
-      setPanOffset(0);
-    }
-    setIsDragging(false);
-  }, [isDragging, panOffset, timelineData, zoomLevel]);
+  // handleMouseUp will be defined after timelineData
 
   // Enhanced wheel/trackpad functionality
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -373,6 +359,23 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       timeRange
     };
   }, [events]);
+
+  // Mouse up handler - defined after timelineData
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      // Re-render viewport based on final pan position
+      const viewportRange = timelineData.timeRange / zoomLevel;
+      const newViewport = {
+        minTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange,
+        maxTime: timelineData.minTime + (panOffset / 1000) * timelineData.timeRange + viewportRange
+      };
+      setViewport(newViewport);
+      
+      // Reset pan offset since we're now rendering at the new position
+      setPanOffset(0);
+    }
+    setIsDragging(false);
+  }, [isDragging, panOffset, timelineData, zoomLevel]);
 
   // Initialize viewport when timeline data changes
   useEffect(() => {
