@@ -87,8 +87,7 @@ app.get('/api/public/invitations/:invitationId', async (req: Request, res: Respo
         is_active,
         projects (
           id,
-          title,
-          description
+          name
         )
       `)
       .eq('id', invitationId)

@@ -18,8 +18,7 @@ interface InvitationData {
   is_active: boolean;
   projects: {
     id: string;
-    title: string;
-    description: string;
+    name: string;
   };
 }
 
@@ -168,7 +167,7 @@ export function InvitationPage() {
         <div className="invitation-container success">
           <div className="success-icon">✅</div>
           <h2>Welcome to the Project!</h2>
-          <p>You have successfully joined "{invitation?.projects.title}"</p>
+          <p>You have successfully joined "{invitation?.projects.name}"</p>
           <p>Redirecting you to the project...</p>
         </div>
       </div>
@@ -183,8 +182,7 @@ export function InvitationPage() {
           <h2>Project Invitation</h2>
           {invitation && (
             <div className="project-info">
-              <h3>{invitation.projects.title}</h3>
-              <p>{invitation.projects.description}</p>
+              <h3>{invitation.projects.name}</h3>
             </div>
           )}
           <p>You need to be signed in to accept this invitation.</p>
@@ -208,8 +206,7 @@ export function InvitationPage() {
         <h2>Project Invitation</h2>
         {invitation && (
           <div className="project-info">
-            <h3>{invitation.projects.title}</h3>
-            <p>{invitation.projects.description}</p>
+            <h3>{invitation.projects.name}</h3>
             <div className="invitation-details">
               <p>
                 <strong>Invitation Usage:</strong> {invitation.used_count} / {invitation.max_uses}
