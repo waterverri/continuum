@@ -191,20 +191,24 @@ export default function ProjectDetailPage() {
     console.debug('ProjectDetailPage: selectDocumentForComponent called', {
       documentId,
       componentKeyToAdd: state.componentKeyToAdd,
+      isCreating: state.isCreating,
       selectedDocument: state.selectedDocument ? { 
         id: state.selectedDocument.id, 
         title: state.selectedDocument.title,
         components: state.selectedDocument.components 
-      } : null
+      } : null,
+      formDataComponents: state.formData.components
     });
     
-    if (state.componentKeyToAdd && state.selectedDocument) {
+    if (state.componentKeyToAdd) {
+      // Use formData.components for both creation and editing modes
+      const currentComponents = state.isCreating ? state.formData.components : state.selectedDocument?.components || {};
       const updatedComponents = {
-        ...state.selectedDocument.components,
+        ...currentComponents,
         [state.componentKeyToAdd]: documentId
       };
       console.debug('ProjectDetailPage: Updating components', {
-        previousComponents: state.selectedDocument.components,
+        previousComponents: currentComponents,
         updatedComponents,
         componentKey: state.componentKeyToAdd
       });
@@ -214,22 +218,38 @@ export default function ProjectDetailPage() {
       state.setComponentKeyToAdd(null);
       console.debug('ProjectDetailPage: Selection completed, modal closed');
     } else {
-      console.debug('ProjectDetailPage: Selection failed - missing componentKeyToAdd or selectedDocument', {
-        hasComponentKey: !!state.componentKeyToAdd,
-        hasSelectedDocument: !!state.selectedDocument
+      console.debug('ProjectDetailPage: Selection failed - missing componentKeyToAdd', {
+        hasComponentKey: !!state.componentKeyToAdd
       });
     }
   };
 
   const selectGroupForComponent = (groupId: string) => {
-    if (state.componentKeyToAdd && state.selectedDocument) {
+    console.debug('ProjectDetailPage: selectGroupForComponent called', {
+      groupId,
+      componentKeyToAdd: state.componentKeyToAdd,
+      isCreating: state.isCreating
+    });
+    
+    if (state.componentKeyToAdd) {
+      // Use formData.components for both creation and editing modes
+      const currentComponents = state.isCreating ? state.formData.components : state.selectedDocument?.components || {};
       const updatedComponents = {
-        ...state.selectedDocument.components,
+        ...currentComponents,
         [state.componentKeyToAdd]: `group:${groupId}`
       };
+      console.debug('ProjectDetailPage: Updating components with group', {
+        previousComponents: currentComponents,
+        updatedComponents,
+        componentKey: state.componentKeyToAdd
+      });
+      
       state.setFormData(prev => ({ ...prev, components: updatedComponents }));
       state.closeModal('showGroupPicker');
       state.setComponentKeyToAdd(null);
+      console.debug('ProjectDetailPage: Group selection completed, modal closed');
+    } else {
+      console.debug('ProjectDetailPage: Group selection failed - missing componentKeyToAdd');
     }
   };
 
@@ -240,14 +260,29 @@ export default function ProjectDetailPage() {
   };
 
   const switchGroupType = (componentKey: string, groupId: string, preferredType?: string) => {
+    console.debug('ProjectDetailPage: switchGroupType called', {
+      componentKey,
+      groupId,
+      preferredType,
+      isCreating: state.isCreating
+    });
+    
+    // Use formData.components for both creation and editing modes
+    const currentComponents = state.isCreating ? state.formData.components : state.selectedDocument?.components || {};
     const updatedComponents = {
-      ...state.selectedDocument?.components,
+      ...currentComponents,
       [componentKey]: preferredType ? `group:${groupId}:${preferredType}` : `group:${groupId}`
     };
+    console.debug('ProjectDetailPage: Switching group type', {
+      previousComponents: currentComponents,
+      updatedComponents
+    });
+    
     state.setFormData(prev => ({ ...prev, components: updatedComponents }));
     state.closeModal('showGroupSwitcher');
     state.setSwitcherComponentKey(null);
     state.setSwitcherGroupId(null);
+    console.debug('ProjectDetailPage: Group type switch completed');
   };
 
   const openTagSelector = (documentId: string) => {
@@ -646,7 +681,7 @@ export default function ProjectDetailPage() {
       {/* Document Picker Modal */}
       {state.modals.showDocumentPicker && (
         <DocumentPickerModal
-          documents={state.documents.filter(doc => doc.id !== state.selectedDocument?.id)}
+          documents={state.isCreating ? state.documents : state.documents.filter(doc => doc.id !== state.selectedDocument?.id)}
           componentKey={state.componentKeyToAdd}
           onSelect={selectDocumentForComponent}
           onCancel={() => state.closeModal('showDocumentPicker')}
