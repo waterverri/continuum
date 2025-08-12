@@ -50,7 +50,7 @@ export function InvitationPage() {
       }
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/invitations/${invitationId}`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/public/invitations/${invitationId}`);
         
         if (!response.ok) {
           if (response.status === 404) {

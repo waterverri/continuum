@@ -323,45 +323,6 @@ router.patch('/:projectId/invitations/:invitationId/deactivate', authenticateUse
   }
 });
 
-// Get invitation details (public endpoint - no auth required)
-router.get('/invitations/:invitationId', async (req, res) => {
-  try {
-    const { invitationId } = req.params;
-
-    // Get invitation with project details
-    const { data: invitation, error: invitationError } = await supabaseAdmin
-      .from('project_invitations')
-      .select(`
-        id,
-        project_id,
-        max_uses,
-        used_count,
-        is_active,
-        projects (
-          id,
-          title,
-          description
-        )
-      `)
-      .eq('id', invitationId)
-      .eq('is_active', true)
-      .single();
-
-    if (invitationError || !invitation) {
-      return res.status(404).json({ error: 'Invitation not found or has been deactivated' });
-    }
-
-    if (invitation.used_count >= invitation.max_uses) {
-      return res.status(410).json({ error: 'This invitation has reached its maximum usage limit' });
-    }
-
-    res.json({ invitation });
-  } catch (error) {
-    console.error('Error fetching invitation:', error);
-    res.status(500).json({ error: 'Failed to fetch invitation' });
-  }
-});
-
 // Accept invitation (authenticated endpoint)
 router.post('/invitations/:invitationId/accept', authenticateUser, async (req: RequestWithUser, res) => {
   try {

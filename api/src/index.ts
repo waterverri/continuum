@@ -78,6 +78,57 @@ apiRouter.use('/project-management', projectManagementRouter);
 
 app.use('/api', apiRouter);
 
+// --- Public Invitation Lookup API ---
+// This endpoint needs to be public (no JWT required) so users can view invitations before authenticating
+app.get('/api/public/invitations/:invitationId', async (req: Request, res: Response) => {
+  try {
+    const { invitationId } = req.params;
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing for public invitation API');
+      return res.status(500).json({ error: 'Service configuration error' });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get invitation with project details
+    const { data: invitation, error: invitationError } = await supabaseAdmin
+      .from('project_invitations')
+      .select(`
+        id,
+        project_id,
+        max_uses,
+        used_count,
+        is_active,
+        projects (
+          id,
+          title,
+          description
+        )
+      `)
+      .eq('id', invitationId)
+      .eq('is_active', true)
+      .single();
+
+    if (invitationError || !invitation) {
+      return res.status(404).json({ error: 'Invitation not found or has been deactivated' });
+    }
+
+    if (invitation.used_count >= invitation.max_uses) {
+      return res.status(410).json({ error: 'This invitation has reached its maximum usage limit' });
+    }
+
+    res.json({ invitation });
+  } catch (error) {
+    console.error('Error fetching public invitation:', error);
+    res.status(500).json({ error: 'Failed to fetch invitation' });
+  }
+});
+
 // --- Public External API for LLM Systems ---
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
