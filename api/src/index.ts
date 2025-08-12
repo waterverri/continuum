@@ -57,28 +57,8 @@ app.use(cors());
 app.use(express.json());
 
 
-// --- API Routes ---
-// This router is protected by JWT validation and ready for future platformized features.
-const apiRouter = express.Router();
-apiRouter.use(validateSupabaseJwt);
-
-// Import route handlers
-import documentRouter from './routes/documents';
-import presetRouter from './routes/presets';
-import tagRouter from './routes/tags';
-import eventRouter from './routes/events';
-import { projectManagementRouter } from './routes/projectManagement';
-
-// Mount route handlers
-apiRouter.use('/documents', documentRouter);
-apiRouter.use('/presets', presetRouter);
-apiRouter.use('/tags', tagRouter);
-apiRouter.use('/events', eventRouter);
-apiRouter.use('/project-management', projectManagementRouter);
-
-app.use('/api', apiRouter);
-
 // --- Public Invitation Lookup API ---
+// IMPORTANT: This must come BEFORE the protected API router to avoid JWT middleware
 // This endpoint needs to be public (no JWT required) so users can view invitations before authenticating
 app.get('/api/public/invitations/:invitationId', async (req: Request, res: Response) => {
   try {
@@ -128,6 +108,27 @@ app.get('/api/public/invitations/:invitationId', async (req: Request, res: Respo
     res.status(500).json({ error: 'Failed to fetch invitation' });
   }
 });
+
+// --- API Routes ---
+// This router is protected by JWT validation and ready for future platformized features.
+const apiRouter = express.Router();
+apiRouter.use(validateSupabaseJwt);
+
+// Import route handlers
+import documentRouter from './routes/documents';
+import presetRouter from './routes/presets';
+import tagRouter from './routes/tags';
+import eventRouter from './routes/events';
+import { projectManagementRouter } from './routes/projectManagement';
+
+// Mount route handlers
+apiRouter.use('/documents', documentRouter);
+apiRouter.use('/presets', presetRouter);
+apiRouter.use('/tags', tagRouter);
+apiRouter.use('/events', eventRouter);
+apiRouter.use('/project-management', projectManagementRouter);
+
+app.use('/api', apiRouter);
 
 // --- Public External API for LLM Systems ---
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
