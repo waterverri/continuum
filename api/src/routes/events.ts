@@ -212,8 +212,8 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
       return res.status(400).json({ error: 'Event name is required' });
     }
 
-    if (time_start != null && (typeof time_start !== 'number' || time_start < 0)) {
-      return res.status(400).json({ error: 'time_start must be a non-negative number' });
+    if (time_start != null && typeof time_start !== 'number') {
+      return res.status(400).json({ error: 'time_start must be a number' });
     }
 
     if (time_end != null && (typeof time_end !== 'number' || time_end < 0)) {
@@ -289,8 +289,8 @@ router.put('/:projectId/:eventId', async (req: RequestWithUser, res: Response) =
       return res.status(400).json({ error: 'Event name cannot be empty' });
     }
 
-    if (time_start !== undefined && time_start != null && (typeof time_start !== 'number' || time_start < 0)) {
-      return res.status(400).json({ error: 'time_start must be a non-negative number' });
+    if (time_start !== undefined && time_start != null && typeof time_start !== 'number') {
+      return res.status(400).json({ error: 'time_start must be a number' });
     }
 
     if (time_end !== undefined && time_end != null && (typeof time_end !== 'number' || time_end < 0)) {

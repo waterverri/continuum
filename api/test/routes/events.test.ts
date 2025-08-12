@@ -324,16 +324,16 @@ describe('Events API Routes', () => {
         expect([200, 400, 500]).toContain(response.status); // Auth passes, various validation responses
       });
 
-      it('should handle invalid time values', async () => {
+      it('should allow negative time values', async () => {
         const response = await request(continuumApi)
           .post(`/api/events/${mockProjectId}`)
           .set('Authorization', `Bearer ${mockToken}`)
           .send({
             name: 'Test Event',
-            time_start: -100 // negative time
+            time_start: -100 // negative time now allowed
           });
         
-        expect([200, 400, 500]).toContain(response.status); // Auth passes, various validation responses
+        expect([200, 201, 500]).toContain(response.status); // Auth passes, creation succeeds or business logic fails
       });
     });
 
