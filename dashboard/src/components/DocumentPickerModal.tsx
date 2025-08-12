@@ -14,7 +14,12 @@ export function DocumentPickerModal({ documents, componentKey, onSelect, onCance
   const documentFilter = useDocumentFilter(documents);
 
   const handleDocumentSelect = (document: Document) => {
+    console.debug('DocumentPickerModal: handleDocumentSelect called', {
+      document: { id: document.id, title: document.title },
+      componentKey
+    });
     onSelect(document.id);
+    console.debug('DocumentPickerModal: onSelect callback executed');
   };
 
   return (

@@ -171,23 +171,53 @@ export default function ProjectDetailPage() {
   };
 
   const selectComponentType = (type: 'document' | 'group') => {
+    console.debug('ProjectDetailPage: selectComponentType called', {
+      type,
+      componentKeyToAdd: state.componentKeyToAdd,
+      availableDocuments: state.documents.length
+    });
+    
     state.closeModal('showComponentTypeSelector');
     if (type === 'document') {
+      console.debug('ProjectDetailPage: Opening document picker modal');
       state.openModal('showDocumentPicker');
     } else {
+      console.debug('ProjectDetailPage: Opening group picker modal');
       state.openModal('showGroupPicker');
     }
   };
 
   const selectDocumentForComponent = (documentId: string) => {
+    console.debug('ProjectDetailPage: selectDocumentForComponent called', {
+      documentId,
+      componentKeyToAdd: state.componentKeyToAdd,
+      selectedDocument: state.selectedDocument ? { 
+        id: state.selectedDocument.id, 
+        title: state.selectedDocument.title,
+        components: state.selectedDocument.components 
+      } : null
+    });
+    
     if (state.componentKeyToAdd && state.selectedDocument) {
       const updatedComponents = {
         ...state.selectedDocument.components,
         [state.componentKeyToAdd]: documentId
       };
+      console.debug('ProjectDetailPage: Updating components', {
+        previousComponents: state.selectedDocument.components,
+        updatedComponents,
+        componentKey: state.componentKeyToAdd
+      });
+      
       state.setFormData(prev => ({ ...prev, components: updatedComponents }));
       state.closeModal('showDocumentPicker');
       state.setComponentKeyToAdd(null);
+      console.debug('ProjectDetailPage: Selection completed, modal closed');
+    } else {
+      console.debug('ProjectDetailPage: Selection failed - missing componentKeyToAdd or selectedDocument', {
+        hasComponentKey: !!state.componentKeyToAdd,
+        hasSelectedDocument: !!state.selectedDocument
+      });
     }
   };
 

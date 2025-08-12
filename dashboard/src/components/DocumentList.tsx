@@ -50,8 +50,17 @@ function DocumentListItem({
   }, [showDropdown]);
   
   const handleClick = () => {
+    console.debug('DocumentListItem: handleClick called', {
+      documentId: document.id,
+      documentTitle: document.title,
+      variant,
+      hasOnClick: !!onClick
+    });
     if (onClick) {
       onClick(document);
+      console.debug('DocumentListItem: onClick callback executed');
+    } else {
+      console.debug('DocumentListItem: No onClick handler provided');
     }
   };
   
