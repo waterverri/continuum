@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
+import { updateProjectBaseDate } from '../accessors/projectAccessor';
 
 interface Project {
   id: string;
@@ -132,23 +133,7 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
 
     try {
       setLoading(true);
-      const token = await getAccessToken();
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/projects/${project.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          base_date: baseDate
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update base date');
-      }
-
+      await updateProjectBaseDate(project.id, baseDate);
       onProjectUpdate();
       setError(null);
     } catch (err) {
