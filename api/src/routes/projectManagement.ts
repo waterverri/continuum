@@ -190,7 +190,7 @@ router.post('/:projectId/transfer-ownership', authenticateUser, async (req: Requ
       // First, downgrade current owner
       await supabaseAdmin
         .from('project_members')
-        .update({ role: 'collaborator' })
+        .update({ role: 'editor' })
         .eq('project_id', projectId)
         .eq('user_id', userId);
 
@@ -365,7 +365,7 @@ router.post('/invitations/:invitationId/accept', authenticateUser, async (req: R
       .insert({
         project_id: invitation.project_id,
         user_id: userId,
-        role: 'collaborator'
+        role: 'editor'
       });
 
     if (memberError) throw memberError;

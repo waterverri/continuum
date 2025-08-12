@@ -14,7 +14,7 @@ interface ProjectMember {
   id: string;
   project_id: string;
   user_id: string;
-  role: 'owner' | 'collaborator';
+  role: 'owner' | 'editor' | 'viewer';
   created_at: string;
   profiles: {
     id: string;
@@ -310,7 +310,7 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
   };
 
   const isOwner = members.find(m => m.user_id === currentUserId)?.role === 'owner';
-  const collaboratorMembers = members.filter(m => m.role === 'collaborator');
+  const collaboratorMembers = members.filter(m => m.role === 'editor');
 
   return createPortal(
     <div className="modal-overlay">
@@ -390,7 +390,7 @@ export function ProjectSettingsModal({ project, onClose, onProjectUpdate }: Proj
                       <div className="member-email">{member.profiles.email}</div>
                     </div>
                     <div className="member-actions">
-                      {isOwner && member.role === 'collaborator' && (
+                      {isOwner && member.role === 'editor' && (
                         <button
                           className="btn btn--danger btn--sm"
                           onClick={() => handleRemoveMember(member.user_id)}
