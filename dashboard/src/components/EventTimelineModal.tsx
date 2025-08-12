@@ -504,15 +504,15 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setFormData({
       name: '',
       description: '',
-      time_start: startTime.toString(),
-      time_end: endTime.toString(),
+      time_start: timeToDate(startTime).toISOString().split('T')[0],
+      time_end: timeToDate(endTime).toISOString().split('T')[0],
       display_order: 0,
       parent_event_id: ''
     });
     setIsCreatingEvent(true);
     e.preventDefault();
     e.stopPropagation();
-  }, [isDragging, calculateTimeFromMousePosition]);
+  }, [isDragging, calculateTimeFromMousePosition, timeToDate]);
 
   // Touch event handlers for mobile support
   const getTouchDistance = (touches: React.TouchList) => {
