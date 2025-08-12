@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
+// Utility function to safely construct API URLs
+const buildApiUrl = (path: string): string => {
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+  const cleanBase = baseUrl.replace(/\/$/, ''); // Remove trailing slash
+  const cleanPath = path.replace(/^\//, ''); // Remove leading slash
+  return `${cleanBase}/${cleanPath}`;
+};
+
 interface InvitationData {
   id: string;
   project_id: string;
@@ -50,7 +58,7 @@ export function InvitationPage() {
       }
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/public/invitations/${invitationId}`);
+        const response = await fetch(buildApiUrl(`/api/public/invitations/${invitationId}`));
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -87,7 +95,7 @@ export function InvitationPage() {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/project-management/invitations/${invitation.id}/accept`, {
+      const response = await fetch(buildApiUrl(`/api/project-management/invitations/${invitation.id}/accept`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
