@@ -57,23 +57,15 @@ app.use(cors());
 app.use(express.json());
 
 
+// Import the existing supabaseAdmin client
+import { supabaseAdmin } from './db/supabaseClient';
+
 // --- Public Invitation Lookup API ---
 // IMPORTANT: This must come BEFORE the protected API router to avoid JWT middleware
 // This endpoint needs to be public (no JWT required) so users can view invitations before authenticating
 app.get('/api/public/invitations/:invitationId', async (req: Request, res: Response) => {
   try {
     const { invitationId } = req.params;
-
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Supabase configuration missing for public invitation API');
-      return res.status(500).json({ error: 'Service configuration error' });
-    }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get invitation with project details
     const { data: invitation, error: invitationError } = await supabaseAdmin
