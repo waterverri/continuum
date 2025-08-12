@@ -64,9 +64,18 @@ import { supabaseAdmin } from './db/supabaseClient';
 // IMPORTANT: This must come BEFORE the protected API router to avoid JWT middleware
 // This endpoint needs to be public (no JWT required) so users can view invitations before authenticating
 app.get('/api/public/invitations/:invitationId', async (req: Request, res: Response) => {
+  const { invitationId } = req.params;
+  console.log(`[INVITATION_LOOKUP] Starting lookup for invitation ID: ${invitationId}`);
+  
   try {
-    const { invitationId } = req.params;
+    // Check environment configuration
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+    console.log(`[INVITATION_LOOKUP] Environment check - SUPABASE_URL: ${supabaseUrl ? 'SET' : 'MISSING'}`);
+    console.log(`[INVITATION_LOOKUP] Environment check - SUPABASE_SERVICE_KEY: ${supabaseServiceKey ? 'SET' : 'MISSING'}`);
 
+    console.log(`[INVITATION_LOOKUP] Executing database query for invitation: ${invitationId}`);
+    
     // Get invitation with project details
     const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('project_invitations')
@@ -86,17 +95,27 @@ app.get('/api/public/invitations/:invitationId', async (req: Request, res: Respo
       .eq('is_active', true)
       .single();
 
+    console.log(`[INVITATION_LOOKUP] Database response - Error: ${invitationError ? JSON.stringify(invitationError) : 'NONE'}`);
+    console.log(`[INVITATION_LOOKUP] Database response - Data: ${invitation ? 'FOUND' : 'NULL'}`);
+    
+    if (invitation) {
+      console.log(`[INVITATION_LOOKUP] Invitation details - ID: ${invitation.id}, Project: ${invitation.project_id}, Active: ${invitation.is_active}, Uses: ${invitation.used_count}/${invitation.max_uses}`);
+    }
+
     if (invitationError || !invitation) {
+      console.log(`[INVITATION_LOOKUP] Returning 404 - Invitation not found or deactivated`);
       return res.status(404).json({ error: 'Invitation not found or has been deactivated' });
     }
 
     if (invitation.used_count >= invitation.max_uses) {
+      console.log(`[INVITATION_LOOKUP] Returning 410 - Usage limit reached`);
       return res.status(410).json({ error: 'This invitation has reached its maximum usage limit' });
     }
 
+    console.log(`[INVITATION_LOOKUP] Success - Returning invitation data`);
     res.json({ invitation });
   } catch (error) {
-    console.error('Error fetching public invitation:', error);
+    console.error(`[INVITATION_LOOKUP] Unexpected error:`, error);
     res.status(500).json({ error: 'Failed to fetch invitation' });
   }
 });
