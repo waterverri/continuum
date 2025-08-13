@@ -1,8 +1,11 @@
 import express from 'express';
 import { RequestWithUser } from '../index';
 import { createClient } from '@supabase/supabase-js';
+import puppeteer, { Browser, Page } from 'puppeteer';
+import MarkdownIt from 'markdown-it';
 
 const router = express.Router();
+const md = new MarkdownIt();
 
 // Create Supabase client for server-side operations
 const getSupabaseClient = (userToken: string) => {
@@ -396,6 +399,268 @@ router.get('/:presetId/context', async (req: RequestWithUser, res) => {
   } catch (error) {
     console.error('Error in GET /presets/:presetId/context:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/presets/:presetId/pdf - Generate PDF from preset content (private, requires auth)
+router.get('/:presetId/pdf', async (req: RequestWithUser, res) => {
+  let browser: Browser | null = null;
+  
+  try {
+    const { presetId } = req.params;
+    const supabase = getSupabaseClient(req.token!);
+
+    // Get the preset with document info - reuse the same logic as context endpoint
+    const { data: preset, error: presetError } = await supabase
+      .from('presets')
+      .select('id, name, rules, project_id')
+      .eq('id', presetId)
+      .single();
+
+    if (presetError || !preset) {
+      return res.status(404).json({ error: 'Preset not found' });
+    }
+
+    const documentId = preset.rules?.document_id;
+    if (!documentId) {
+      return res.status(400).json({ error: 'Preset has no associated document' });
+    }
+
+    // Get the base document
+    const { data: document, error: docError } = await supabase
+      .from('documents')
+      .select('id, title, content, is_composite, components')
+      .eq('id', documentId)
+      .eq('project_id', preset.project_id)
+      .single();
+
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Preset document not found' });
+    }
+
+    // Recursive function to resolve composite documents with overrides
+    // (Same logic as context endpoint)
+    const resolveWithOverrides = async (
+      docContent: string, 
+      docComponents: Record<string, string> = {},
+      overrides: Record<string, string> = {},
+      visited: Set<string> = new Set()
+    ): Promise<string> => {
+      let resolvedContent = docContent;
+      
+      // Find all component references in the content
+      const componentRegex = /{{([^}]+)}}/g;
+      const matches = [...docContent.matchAll(componentRegex)];
+      
+      for (const match of matches) {
+        const componentKey = match[1];
+        if (!componentKey) continue;
+        
+        // Check if this component has an override
+        let targetDocId = overrides[componentKey] || docComponents[componentKey];
+        
+        if (!targetDocId) continue;
+        
+        // Prevent infinite recursion
+        if (visited.has(targetDocId)) {
+          console.warn(`Circular reference detected for document ${targetDocId}`);
+          continue;
+        }
+        
+        // Get the component document
+        const { data: componentDoc, error: componentError } = await supabase
+          .from('documents')
+          .select('id, content, is_composite, components')
+          .eq('id', targetDocId)
+          .eq('project_id', preset.project_id)
+          .single();
+          
+        if (componentError || !componentDoc) {
+          console.warn(`Component document ${targetDocId} not found`);
+          continue;
+        }
+        
+        let componentContent = componentDoc.content || '';
+        
+        // If the component is also composite, recursively resolve it
+        if (componentDoc.is_composite && componentDoc.components) {
+          const newVisited = new Set(visited);
+          newVisited.add(targetDocId);
+          componentContent = await resolveWithOverrides(
+            componentContent,
+            componentDoc.components,
+            overrides,
+            newVisited
+          );
+        }
+        
+        // Replace the component reference with the resolved content
+        resolvedContent = resolvedContent.replace(match[0], componentContent);
+      }
+      
+      return resolvedContent;
+    };
+
+    // Apply overrides and resolve the document
+    const overrides = preset.rules.component_overrides || {};
+    let resolvedContent = document.content || '';
+    
+    if (document.is_composite && document.components) {
+      resolvedContent = await resolveWithOverrides(
+        document.content || '',
+        document.components,
+        overrides
+      );
+    }
+
+    // Convert markdown to HTML
+    const htmlContent = md.render(resolvedContent);
+    
+    // Create full HTML document with styling
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${preset.name} - ${document.title}</title>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            color: #333;
+          }
+          h1, h2, h3, h4, h5, h6 {
+            color: #2c3e50;
+            margin-top: 24px;
+            margin-bottom: 16px;
+          }
+          h1 { font-size: 2.2em; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+          h2 { font-size: 1.8em; border-bottom: 1px solid #ecf0f1; padding-bottom: 8px; }
+          h3 { font-size: 1.4em; }
+          p { margin-bottom: 16px; }
+          blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 20px;
+            margin: 20px 0;
+            font-style: italic;
+            background: #f8f9fa;
+            padding: 15px 20px;
+          }
+          pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+          }
+          code {
+            background: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+          }
+          ul, ol { margin-bottom: 16px; }
+          li { margin-bottom: 8px; }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+          }
+          th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+          }
+          .metadata {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 30px;
+          }
+          @page {
+            margin: 1in;
+            size: A4;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${preset.name}</h1>
+          <div class="metadata">
+            <p><strong>Document:</strong> ${document.title}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
+            ${Object.keys(overrides).length > 0 ? `<p><strong>Applied Overrides:</strong> ${Object.keys(overrides).join(', ')}</p>` : ''}
+          </div>
+        </div>
+        ${htmlContent}
+      </body>
+      </html>
+    `;
+
+    // Launch puppeteer and generate PDF
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
+    
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20mm',
+        right: '15mm',
+        bottom: '20mm',
+        left: '15mm'
+      }
+    });
+
+    await browser.close();
+    browser = null;
+
+    // Set appropriate headers for PDF response
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${preset.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    res.send(pdfBuffer);
+
+  } catch (error) {
+    console.error('Error in GET /presets/:presetId/pdf:', error);
+    
+    // Make sure to close browser if it was opened
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
+    }
+    
+    res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
 
