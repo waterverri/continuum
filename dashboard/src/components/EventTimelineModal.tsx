@@ -325,11 +325,25 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       setLoading(true);
       const token = await getAccessToken();
       
+      const startDateObj = formData.time_start ? new Date(formData.time_start) : null;
+      const endDateObj = formData.time_end ? new Date(formData.time_end) : null;
+      const timeStartConverted = startDateObj ? dateToTime(startDateObj) : undefined;
+      const timeEndConverted = endDateObj ? dateToTime(endDateObj) : undefined;
+      
+      console.log('🐛 Event creation debug:', {
+        formData,
+        baseDate: baseDate.toISOString(),
+        startDateObj: startDateObj?.toISOString(),
+        endDateObj: endDateObj?.toISOString(),
+        timeStartConverted,
+        timeEndConverted
+      });
+      
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: (formData.time_start && formData.time_start.trim()) ? dateToTime(new Date(formData.time_start)) : undefined,
-        time_end: (formData.time_end && formData.time_end.trim()) ? dateToTime(new Date(formData.time_end)) : undefined,
+        time_start: timeStartConverted,
+        time_end: timeEndConverted,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
@@ -370,8 +384,13 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const loadProjectBaseDate = useCallback(async () => {
     try {
       const project = await getProject(projectId);
+      console.log('🐛 Project base date loaded:', project.base_date);
       if (project.base_date) {
-        setBaseDate(new Date(project.base_date));
+        const newBaseDate = new Date(project.base_date);
+        console.log('🐛 Setting base date to:', newBaseDate.toISOString());
+        setBaseDate(newBaseDate);
+      } else {
+        console.log('🐛 No base date set, using current date');
       }
     } catch (err) {
       console.error('Failed to load project base date:', err);
@@ -496,6 +515,13 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const timelineElement = e.currentTarget as HTMLElement;
     const clickTime = calculateTimeFromMousePosition(e, timelineElement);
     
+    console.log('🐛 Timeline click debug:', {
+      clickTime,
+      baseDate: baseDate.toISOString(),
+      startDate: timeToDate(clickTime).toISOString(),
+      endDate: timeToDate(clickTime + 5).toISOString()
+    });
+    
     // Create event with 5-unit duration by default
     const startTime = clickTime;
     const endTime = clickTime + 5;
@@ -512,7 +538,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     setIsCreatingEvent(true);
     e.preventDefault();
     e.stopPropagation();
-  }, [isDragging, calculateTimeFromMousePosition, timeToDate]);
+  }, [isDragging, calculateTimeFromMousePosition, timeToDate, baseDate]);
 
   // Touch event handlers for mobile support
   const getTouchDistance = (touches: React.TouchList) => {
@@ -1279,7 +1305,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           <div className="event-details-overlay">
             <div className="event-details-modal">
               <div className="event-details-header">
-                <h3>Create Event at T{createEventPosition.timeStart}</h3>
+                <h3>Create Event at {formatDateDisplay(createEventPosition.timeStart)}</h3>
                 <button 
                   className="modal-close"
                   onClick={cancelCreateEvent}
@@ -1311,17 +1337,17 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
                   </div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Start Time</label>
+                      <label>Start Date</label>
                       <input
-                        type="number"
+                        type="date"
                         value={formData.time_start}
                         onChange={(e) => setFormData(prev => ({ ...prev, time_start: e.target.value }))}
                       />
                     </div>
                     <div className="form-group">
-                      <label>End Time</label>
+                      <label>End Date</label>
                       <input
-                        type="number"
+                        type="date"
                         value={formData.time_end}
                         onChange={(e) => setFormData(prev => ({ ...prev, time_end: e.target.value }))}
                       />
