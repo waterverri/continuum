@@ -330,15 +330,6 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const timeStartConverted = startDateObj ? dateToTime(startDateObj) : undefined;
       const timeEndConverted = endDateObj ? dateToTime(endDateObj) : undefined;
       
-      console.log('🐛 Event creation debug:', {
-        formData,
-        baseDate: baseDate.toISOString(),
-        startDateObj: startDateObj?.toISOString(),
-        endDateObj: endDateObj?.toISOString(),
-        timeStartConverted,
-        timeEndConverted
-      });
-      
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
@@ -384,13 +375,8 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const loadProjectBaseDate = useCallback(async () => {
     try {
       const project = await getProject(projectId);
-      console.log('🐛 Project base date loaded:', project.base_date);
       if (project.base_date) {
-        const newBaseDate = new Date(project.base_date);
-        console.log('🐛 Setting base date to:', newBaseDate.toISOString());
-        setBaseDate(newBaseDate);
-      } else {
-        console.log('🐛 No base date set, using current date');
+        setBaseDate(new Date(project.base_date));
       }
     } catch (err) {
       console.error('Failed to load project base date:', err);
@@ -514,13 +500,6 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     
     const timelineElement = e.currentTarget as HTMLElement;
     const clickTime = calculateTimeFromMousePosition(e, timelineElement);
-    
-    console.log('🐛 Timeline click debug:', {
-      clickTime,
-      baseDate: baseDate.toISOString(),
-      startDate: timeToDate(clickTime).toISOString(),
-      endDate: timeToDate(clickTime + 5).toISOString()
-    });
     
     // Create event with 5-unit duration by default
     const startTime = clickTime;
