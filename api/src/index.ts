@@ -9,7 +9,7 @@ export interface RequestWithUser extends Request {
 }
 
 // --- Custom Authentication Middleware ---
-const validateSupabaseJwt = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const validateSupabaseJwt = async (req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
