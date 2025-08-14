@@ -118,7 +118,7 @@ export default function ProjectDetailPage() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/presets/${projectId}/${preset.id}/pdf`,
+        `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/presets/${preset.id}/pdf`,
         {
           method: 'GET',
           headers: {
@@ -128,7 +128,14 @@ export default function ProjectDetailPage() {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to download PDF: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('PDF download failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          errorText
+        });
+        throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
       }
 
       // Create a blob from the response
