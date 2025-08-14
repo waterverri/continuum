@@ -3,6 +3,9 @@ import type { Preset, Document } from '../api';
 
 interface ComponentOverride {
   componentKey: string;
+  namespacedKey: string;  // docid.componentkey for namespacing
+  sourceDocumentId: string;
+  sourceDocumentTitle: string;
   originalDocumentId: string;
   originalDocumentTitle: string;
   overrideDocumentId?: string;
@@ -21,13 +24,26 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
   const [isLoading, setIsLoading] = useState(false);
   const [expandedComponents, setExpandedComponents] = useState<Set<string>>(new Set());
 
-  // Extract component references from the preset's base document
+  // Extract component references recursively from all documents in the preset tree
   useEffect(() => {
     if (!preset.document) return;
 
-    const extractComponentReferences = (content: string, components: Record<string, string> = {}) => {
+    const extractComponentReferencesRecursively = (
+      docId: string, 
+      content: string, 
+      components: Record<string, string> = {},
+      visited: Set<string> = new Set(),
+      parentPath: string[] = []
+    ): ComponentOverride[] => {
       const overrides: ComponentOverride[] = [];
       const existingOverrides = preset.rules.component_overrides || {};
+      
+      // Prevent infinite recursion
+      if (visited.has(docId)) return overrides;
+      visited.add(docId);
+
+      const currentDoc = documents.find(d => d.id === docId);
+      if (!currentDoc) return overrides;
       
       // Parse component references from content
       const componentRegex = /{{([^}]+)}}/g;
@@ -38,41 +54,63 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
         if (!componentKey) continue;
         
         const referencedDocId = components[componentKey];
+        if (!referencedDocId) continue;
         
-        if (referencedDocId) {
-          const referencedDoc = documents.find(d => d.id === referencedDocId);
-          const overrideDocId = existingOverrides[componentKey];
-          const overrideDoc = overrideDocId ? documents.find(d => d.id === overrideDocId) : undefined;
-          
-          if (referencedDoc) {
-            overrides.push({
-              componentKey,
-              originalDocumentId: referencedDocId,
-              originalDocumentTitle: referencedDoc.title,
-              overrideDocumentId: overrideDocId,
-              overrideDocumentTitle: overrideDoc?.title
-            });
-          }
+        const referencedDoc = documents.find(d => d.id === referencedDocId);
+        if (!referencedDoc) continue;
+
+        // Create namespaced key for this component
+        const namespacedKey = `${docId}.${componentKey}`;
+        
+        // Check for overrides using both global and namespaced keys
+        const overrideDocId = existingOverrides[namespacedKey] || existingOverrides[componentKey];
+        const overrideDoc = overrideDocId ? documents.find(d => d.id === overrideDocId) : undefined;
+        
+        overrides.push({
+          componentKey,
+          namespacedKey,
+          sourceDocumentId: docId,
+          sourceDocumentTitle: currentDoc.title,
+          originalDocumentId: referencedDocId,
+          originalDocumentTitle: referencedDoc.title,
+          overrideDocumentId: overrideDocId,
+          overrideDocumentTitle: overrideDoc?.title
+        });
+
+        // If the referenced document is composite, recursively extract its components
+        if (referencedDoc.is_composite && referencedDoc.components) {
+          const nestedOverrides = extractComponentReferencesRecursively(
+            referencedDocId,
+            referencedDoc.content || '',
+            referencedDoc.components,
+            new Set(visited), // Create new visited set to avoid cross-contamination
+            [...parentPath, componentKey]
+          );
+          overrides.push(...nestedOverrides);
         }
       }
       
       return overrides;
     };
 
-    if (preset.document?.is_composite && preset.document.components && preset.document.content) {
-      const overrides = extractComponentReferences(
-        preset.document.content,
+    // Start extraction from the base document
+    if (preset.document.is_composite && preset.document.components) {
+      const allOverrides = extractComponentReferencesRecursively(
+        preset.document.id,
+        preset.document.content || '',
         preset.document.components
       );
-      setComponentOverrides(overrides);
+      setComponentOverrides(allOverrides);
+    } else {
+      setComponentOverrides([]);
     }
   }, [preset, documents]);
 
-  const handleOverrideSelect = (componentKey: string, documentId: string) => {
+  const handleOverrideSelect = (namespacedKey: string, documentId: string) => {
     const selectedDoc = documents.find(d => d.id === documentId);
     
     setComponentOverrides(prev => prev.map(override =>
-      override.componentKey === componentKey
+      override.namespacedKey === namespacedKey
         ? {
             ...override,
             overrideDocumentId: documentId,
@@ -82,9 +120,9 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
     ));
   };
 
-  const handleClearOverride = (componentKey: string) => {
+  const handleClearOverride = (namespacedKey: string) => {
     setComponentOverrides(prev => prev.map(override =>
-      override.componentKey === componentKey
+      override.namespacedKey === namespacedKey
         ? {
             ...override,
             overrideDocumentId: undefined,
@@ -94,16 +132,24 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
     ));
   };
 
-  const toggleComponentExpansion = (componentKey: string) => {
+  const toggleComponentExpansion = (namespacedKey: string) => {
     setExpandedComponents(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(componentKey)) {
-        newSet.delete(componentKey);
+      if (newSet.has(namespacedKey)) {
+        newSet.delete(namespacedKey);
       } else {
-        newSet.add(componentKey);
+        newSet.add(namespacedKey);
       }
       return newSet;
     });
+  };
+
+  const handleExpandAll = () => {
+    setExpandedComponents(new Set(componentOverrides.map(o => o.namespacedKey)));
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedComponents(new Set());
   };
 
   const handleSave = async () => {
@@ -112,7 +158,8 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
       const overrides: Record<string, string> = {};
       componentOverrides.forEach(override => {
         if (override.overrideDocumentId) {
-          overrides[override.componentKey] = override.overrideDocumentId;
+          // Use namespaced key for more precise override control
+          overrides[override.namespacedKey] = override.overrideDocumentId;
         }
       });
       
@@ -134,14 +181,6 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
       overrideDocumentId: undefined,
       overrideDocumentTitle: undefined
     })));
-  };
-
-  const handleExpandAll = () => {
-    setExpandedComponents(new Set(componentOverrides.map(o => o.componentKey)));
-  };
-
-  const handleCollapseAll = () => {
-    setExpandedComponents(new Set());
   };
 
   return (
@@ -203,15 +242,18 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
             ) : (
               <div className="components-list">
                 {componentOverrides.map((override) => (
-                  <div key={override.componentKey} className="component-override-card">
+                  <div key={override.namespacedKey} className="component-override-card">
                     <div className="component-header">
                       <div className="component-info">
-                        <span className="component-key">{override.componentKey}</span>
+                        <div className="component-key-info">
+                          <span className="component-key">{override.componentKey}</span>
+                          <span className="component-source">in {override.sourceDocumentTitle}</span>
+                        </div>
                         <button
                           className="expand-toggle"
-                          onClick={() => toggleComponentExpansion(override.componentKey)}
+                          onClick={() => toggleComponentExpansion(override.namespacedKey)}
                         >
-                          {expandedComponents.has(override.componentKey) ? '▼' : '▶'}
+                          {expandedComponents.has(override.namespacedKey) ? '▼' : '▶'}
                         </button>
                       </div>
                       <div className="component-status">
@@ -223,7 +265,7 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
                       </div>
                     </div>
 
-                    {expandedComponents.has(override.componentKey) && (
+                    {expandedComponents.has(override.namespacedKey) && (
                       <div className="component-details">
                         <div className="reference-section">
                           <h5>Original Reference</h5>
@@ -239,9 +281,9 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
                               value={override.overrideDocumentId || ''}
                               onChange={(e) => {
                                 if (e.target.value) {
-                                  handleOverrideSelect(override.componentKey, e.target.value);
+                                  handleOverrideSelect(override.namespacedKey, e.target.value);
                                 } else {
-                                  handleClearOverride(override.componentKey);
+                                  handleClearOverride(override.namespacedKey);
                                 }
                               }}
                             >
@@ -263,7 +305,7 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
                               <>
                                 <button
                                   className="btn btn--xs btn--ghost"
-                                  onClick={() => handleClearOverride(override.componentKey)}
+                                  onClick={() => handleClearOverride(override.namespacedKey)}
                                   title="Clear override"
                                 >
                                   Clear
