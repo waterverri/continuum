@@ -402,12 +402,12 @@ router.get('/:presetId/context', async (req: RequestWithUser, res) => {
   }
 });
 
-// GET /api/presets/:presetId/pdf - Generate PDF from preset content (private, requires auth)
-router.get('/:presetId/pdf', async (req: RequestWithUser, res) => {
+// GET /api/presets/:projectId/:presetId/pdf - Generate PDF from preset content (private, requires auth)
+router.get('/:projectId/:presetId/pdf', async (req: RequestWithUser, res) => {
   let browser: Browser | null = null;
   
   try {
-    const { presetId } = req.params;
+    const { projectId, presetId } = req.params;
     const supabase = getSupabaseClient(req.token!);
 
     // Get the preset with document info - reuse the same logic as context endpoint
@@ -415,6 +415,7 @@ router.get('/:presetId/pdf', async (req: RequestWithUser, res) => {
       .from('presets')
       .select('id, name, rules, project_id')
       .eq('id', presetId)
+      .eq('project_id', projectId)
       .single();
 
     if (presetError || !preset) {
