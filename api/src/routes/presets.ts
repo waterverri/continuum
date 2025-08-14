@@ -647,7 +647,8 @@ router.get('/:projectId/:presetId/pdf', async (req: RequestWithUser, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${preset.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     
-    res.send(pdfBuffer);
+    // Send the buffer directly without JSON serialization
+    res.end(pdfBuffer, 'binary');
 
   } catch (error) {
     console.error('Error in GET /presets/:presetId/pdf:', error);
