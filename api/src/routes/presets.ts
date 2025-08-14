@@ -600,11 +600,6 @@ router.get('/:projectId/:presetId/pdf', async (req: RequestWithUser, res) => {
       <body>
         <div class="header">
           <h1>${preset.name}</h1>
-          <div class="metadata">
-            <p><strong>Document:</strong> ${document.title}</p>
-            <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
-            ${Object.keys(overrides).length > 0 ? `<p><strong>Applied Overrides:</strong> ${Object.keys(overrides).join(', ')}</p>` : ''}
-          </div>
         </div>
         ${htmlContent}
       </body>
