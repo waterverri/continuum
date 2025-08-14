@@ -121,8 +121,8 @@ router.delete('/:projectId/members/:userId', authenticateUser, async (req: Reque
       return res.status(400).json({ error: 'Cannot remove project owner' });
     }
 
-    // Prevent self-removal
-    if (memberToRemove.user_id === userId) {
+    // Prevent self-removal  
+    if (memberUserId === userId) {
       return res.status(400).json({ error: 'Cannot remove yourself' });
     }
 
