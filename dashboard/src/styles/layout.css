@@ -640,6 +640,15 @@
     transform: translateX(0);
   }
 
+  .right-sidebar--collapsed {
+    width: 300px !important; /* Show full sidebar on mobile even when collapsed */
+    transform: translateX(100%); /* Keep it hidden until opened */
+  }
+
+  .right-sidebar--collapsed.right-sidebar--mobile-open {
+    transform: translateX(0); /* Show when mobile-open */
+  }
+
   .right-sidebar--collapsed .right-sidebar__header-actions,
   .right-sidebar--collapsed .right-sidebar__content {
     display: block; /* Override collapsed display for mobile */

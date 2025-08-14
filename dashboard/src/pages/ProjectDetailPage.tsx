@@ -74,7 +74,9 @@ export default function ProjectDetailPage() {
       const project = await getProject(projectId);
       setCurrentProject(project);
       // Update the app context with the current project
-      setAppCurrentProject({ id: project.id, title: project.title });
+      if (project?.id && project?.title) {
+        setAppCurrentProject({ id: project.id, title: project.title });
+      }
     } catch (error) {
       console.error('Failed to load project:', error);
     }
@@ -104,6 +106,13 @@ export default function ProjectDetailPage() {
     operations.loadTags();
     loadEvents();
     loadProject();
+  }, []);
+
+  // Clean up project context on unmount
+  useEffect(() => {
+    return () => {
+      setAppCurrentProject(null);
+    };
   }, []);
 
   const getPresetUrl = (presetName: string) => {
@@ -666,8 +675,9 @@ export default function ProjectDetailPage() {
                     <div key={preset.id} className="preset-card">
                       <div className="preset-card__main">
                         <div className="preset-card__header">
-                          <h5 className="preset-card__name">{preset.name}</h5>
-                          <div className="preset-card__actions">
+                          <div className="preset-card__title-row">
+                            <h5 className="preset-card__name">{preset.name}</h5>
+                            <div className="preset-card__actions">
                             <button 
                               className="preset-card__action"
                               onClick={() => {
@@ -709,6 +719,7 @@ export default function ProjectDetailPage() {
                             >
                               ✕
                             </button>
+                            </div>
                           </div>
                         </div>
                         
