@@ -118,7 +118,7 @@ export default function ProjectDetailPage() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/presets/${preset.id}/pdf`,
+        `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/presets/${projectId}/${preset.id}/pdf`,
         {
           method: 'GET',
           headers: {
