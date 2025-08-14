@@ -108,6 +108,49 @@ export default function ProjectDetailPage() {
     return `${import.meta.env.VITE_API_URL}/preset/${projectId}/${presetName}`;
   };
 
+  const downloadPresetPdf = async (preset: any) => {
+    try {
+      const { supabase } = await import('../supabaseClient');
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        console.error('No authentication token available');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/presets/${projectId}/${preset.id}/pdf`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to download PDF: ${response.statusText}`);
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create a temporary link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${preset.name}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      // You might want to show a user-friendly error message here
+    }
+  };
+
   // Component-specific handlers
   const handleCreateDocument = async () => {
     try {
@@ -632,6 +675,13 @@ export default function ProjectDetailPage() {
                               title="Copy API URL to clipboard"
                             >
                               📋
+                            </button>
+                            <button
+                              className="preset-card__action"
+                              onClick={() => downloadPresetPdf(preset)}
+                              title="Download as PDF"
+                            >
+                              📄
                             </button>
                             <button
                               className="preset-card__action"
