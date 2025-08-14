@@ -21,9 +21,13 @@ const ProjectActionsContext = createContext<{
     onToggleSidebar?: () => void;
     onToggleRightSidebar?: () => void;
   };
+  setCurrentProject: (project: { id: string; title: string } | null) => void;
+  currentProject: { id: string; title: string } | null;
 }>({ 
   setProjectActions: () => {}, 
-  projectActions: {} 
+  projectActions: {},
+  setCurrentProject: () => {},
+  currentProject: null
 });
 
 export const useProjectActions = () => useContext(ProjectActionsContext); 
@@ -36,6 +40,7 @@ function App() {
     onToggleSidebar?: () => void;
     onToggleRightSidebar?: () => void;
   }>({});
+  const [currentProject, setCurrentProject] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,7 +62,7 @@ function App() {
   }
 
   return (
-    <ProjectActionsContext.Provider value={{ setProjectActions, projectActions }}>
+    <ProjectActionsContext.Provider value={{ setProjectActions, projectActions, setCurrentProject, currentProject }}>
       <div className="app-container">
         <AppHeader session={session} />
         <main>
@@ -91,7 +96,7 @@ function App() {
 
 const AppHeader = ({ session }: { session: Session | null }) => {
   const location = useLocation();
-  const { projectActions } = useProjectActions();
+  const { projectActions, currentProject } = useProjectActions();
   const { onCreateDocument, onToggleSidebar, onToggleRightSidebar } = projectActions;
   
   if (!session) return null;
@@ -129,7 +134,7 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       </div>
       
       <div className="app-header__center">
-        <span>Continuum</span>
+        <span>{isProjectDetailPage && currentProject ? currentProject.title : 'Continuum'}</span>
       </div>
       
       <div className="app-header__right">

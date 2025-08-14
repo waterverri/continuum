@@ -34,7 +34,7 @@ export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   
   // Get project actions context
-  const { setProjectActions } = useProjectActions();
+  const { setProjectActions, setCurrentProject: setAppCurrentProject } = useProjectActions();
   
   // Use custom hooks for state management
   const state = useProjectDetailState();
@@ -73,6 +73,8 @@ export default function ProjectDetailPage() {
       const { getProject } = await import('../accessors/projectAccessor');
       const project = await getProject(projectId);
       setCurrentProject(project);
+      // Update the app context with the current project
+      setAppCurrentProject({ id: project.id, title: project.title });
     } catch (error) {
       console.error('Failed to load project:', error);
     }

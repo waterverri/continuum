@@ -64,6 +64,7 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: var(--spacing-md);
+  gap: var(--spacing-md);
 }
 
 .preset-card__name {
@@ -72,13 +73,18 @@
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   flex: 1;
-  padding-right: var(--spacing-md);
+  min-width: 0; /* Allow text to shrink */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4; /* Match button height for alignment */
 }
 
 .preset-card__actions {
   display: flex;
   gap: var(--spacing-xs);
   align-items: center;
+  flex-shrink: 0; /* Prevent actions from shrinking */
 }
 
 .preset-card__action {

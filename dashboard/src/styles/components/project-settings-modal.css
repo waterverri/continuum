@@ -27,6 +27,26 @@
   color: var(--color-text-primary);
 }
 
+.project-settings-modal .modal-close {
+  background: none;
+  border: none;
+  font-size: var(--font-size-2xl);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  color: var(--color-text-primary);
+}
+
+.project-settings-modal .modal-close:hover {
+  background-color: var(--color-background-lighter);
+}
+
 /* Error Message */
 .project-settings-modal .error-message {
   background: var(--color-danger-light);
