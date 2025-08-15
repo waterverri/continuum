@@ -15,36 +15,46 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleTextSelection = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      setSelectedText('');
-      setSelectionRange(null);
-      setShowCreateButton(false);
-      return;
-    }
+    try {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setSelectedText('');
+        setSelectionRange(null);
+        setShowCreateButton(false);
+        return;
+      }
 
-    const range = selection.getRangeAt(0);
-    const selectedText = selection.toString().trim();
-    
-    // Only show button if text is selected and it's within our content div
-    if (selectedText && contentRef.current && contentRef.current.contains(range.commonAncestorContainer)) {
-      // Calculate text position in the full document content
-      const fullText = document.content || '';
-      const startIndex = fullText.indexOf(selectedText);
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
       
-      if (startIndex !== -1) {
-        setSelectedText(selectedText);
-        setSelectionRange({
-          start: startIndex,
-          end: startIndex + selectedText.length
-        });
-        setShowCreateButton(true);
+      // Only show button if text is selected and it's within our content div
+      if (selectedText && contentRef.current && range.commonAncestorContainer && 
+          (contentRef.current.contains(range.commonAncestorContainer) || 
+           contentRef.current === range.commonAncestorContainer)) {
+        // Calculate text position in the full document content
+        const fullText = document.content || '';
+        const startIndex = fullText.indexOf(selectedText);
+        
+        if (startIndex !== -1) {
+          setSelectedText(selectedText);
+          setSelectionRange({
+            start: startIndex,
+            end: startIndex + selectedText.length
+          });
+          setShowCreateButton(true);
+        } else {
+          setSelectedText('');
+          setSelectionRange(null);
+          setShowCreateButton(false);
+        }
       } else {
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
       }
-    } else {
+    } catch (error) {
+      // Silently handle any selection-related errors
+      console.warn('Text selection error:', error);
       setSelectedText('');
       setSelectionRange(null);
       setShowCreateButton(false);
@@ -52,12 +62,20 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
   }, [document.content]);
 
   const handleCreateFromSelection = useCallback(() => {
-    if (selectedText && selectionRange && onCreateFromSelection) {
-      onCreateFromSelection(selectedText, selectionRange);
+    try {
+      if (selectedText && selectionRange && onCreateFromSelection) {
+        onCreateFromSelection(selectedText, selectionRange);
+        setSelectedText('');
+        setSelectionRange(null);
+        setShowCreateButton(false);
+        window.getSelection()?.removeAllRanges();
+      }
+    } catch (error) {
+      console.error('Error creating document from selection:', error);
+      // Reset state on error
       setSelectedText('');
       setSelectionRange(null);
       setShowCreateButton(false);
-      window.getSelection()?.removeAllRanges();
     }
   }, [selectedText, selectionRange, onCreateFromSelection]);
 
