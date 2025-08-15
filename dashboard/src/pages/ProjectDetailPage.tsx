@@ -675,7 +675,6 @@ export default function ProjectDetailPage() {
                     <div key={preset.id} className="preset-card">
                       <div className="preset-card__main">
                         <div className="preset-card__header">
-                          <div className="preset-card__title-row">
                             <h5 className="preset-card__name">{preset.name}</h5>
                             <div className="preset-card__actions">
                             <button 
@@ -720,7 +719,6 @@ export default function ProjectDetailPage() {
                               ✕
                             </button>
                             </div>
-                          </div>
                         </div>
                         
                         <div className="preset-card__meta">

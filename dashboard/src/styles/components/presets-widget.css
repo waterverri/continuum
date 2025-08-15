@@ -61,16 +61,10 @@
 /* Card Header */
 .preset-card__header {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-.preset-card__title-row {
-  display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  gap: var(--spacing-md);
 }
 
 .preset-card__name {
@@ -80,7 +74,7 @@
   color: var(--color-text-primary);
   flex: 1;
   line-height: 1.4;
-  word-break: break-word; /* Allow long names to wrap */
+  min-width: 0; /* Allow text to shrink but prefer to keep icons on same line */
 }
 
 .preset-card__actions {
@@ -88,7 +82,7 @@
   gap: var(--spacing-xs);
   align-items: center;
   flex-shrink: 0; /* Prevent actions from shrinking */
-  align-self: flex-end; /* Align to the right when name wraps */
+  flex-wrap: wrap; /* Allow actions to wrap to next line if needed */
 }
 
 .preset-card__action {
