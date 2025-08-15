@@ -258,6 +258,61 @@ export function useDocumentOperations({
     }
   }, [projectId, documents, getAccessToken, setDocuments, setError]);
 
+  const handleCreateFromSelection = useCallback(async (
+    sourceDocument: Document, 
+    selectedText: string, 
+    selectionInfo: { start: number; end: number }
+  ) => {
+    if (!projectId) return;
+    
+    try {
+      const token = await getAccessToken();
+      
+      // Generate a title from the selected text (first few words)
+      const words = selectedText.trim().split(/\s+/).slice(0, 4);
+      const generatedTitle = words.join(' ') + (selectedText.split(/\s+/).length > 4 ? '...' : '');
+      
+      // Create new document with selected text
+      const extractedDoc = await createDocument(projectId, {
+        title: generatedTitle,
+        content: selectedText,
+        document_type: 'event', // Default type for extracted content
+        is_composite: false,
+        components: {}
+      }, token);
+
+      // Generate a unique component key based on the title
+      const componentKey = generatedTitle.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+      
+      // Update source document to be composite and add component reference
+      const updatedComponents = { ...sourceDocument.components, [componentKey]: extractedDoc.id };
+      
+      // Replace selected text with placeholder in source content
+      const sourceContent = sourceDocument.content || '';
+      const beforeText = sourceContent.substring(0, selectionInfo.start);
+      const afterText = sourceContent.substring(selectionInfo.end);
+      const updatedContent = beforeText + `{{${componentKey}}}` + afterText;
+      
+      const updatedSourceDoc = await updateDocument(projectId, sourceDocument.id, {
+        ...sourceDocument,
+        content: updatedContent,
+        is_composite: true,
+        components: updatedComponents
+      }, token);
+
+      // Update local state
+      setDocuments([extractedDoc, ...documents.map(doc => 
+        doc.id === sourceDocument.id ? updatedSourceDoc : doc
+      )]);
+      setSelectedDocument(updatedSourceDoc);
+      
+      return { extractedDoc, updatedSourceDoc };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create document from selection');
+      throw err;
+    }
+  }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
+
   return {
     loadDocuments,
     loadPresets,
@@ -271,5 +326,6 @@ export function useDocumentOperations({
     handleUpdatePresetOverrides,
     handleDeletePreset,
     handleCreateDerivative,
+    handleCreateFromSelection,
   };
 }
