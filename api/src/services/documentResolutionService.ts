@@ -55,25 +55,26 @@ export const resolveDocumentWithOverrides = async (
       const preferredType = groupParts[2] || null;
       
       // Query for documents in the group
-      let query = supabase
+      const { data: groupDocs, error: groupError } = await supabase
         .from('documents')
         .select('id, title, document_type, content, is_composite, components')
         .eq('project_id', projectId)
         .eq('group_id', groupId)
         .order('created_at', { ascending: true });
       
-      if (preferredType) {
-        query = query.eq('document_type', preferredType);
-      }
-      
-      const { data: groupDocs, error: groupError } = await query.limit(1);
-      
       if (groupError || !groupDocs || groupDocs.length === 0) {
         console.warn(`Group document not found for group ${groupId}${preferredType ? ' with type ' + preferredType : ''}`);
         continue;
       }
       
-      const groupDoc = groupDocs[0];
+      let groupDoc;
+      if (preferredType) {
+        // Use specific preferred type if available
+        groupDoc = groupDocs.find(doc => doc.document_type === preferredType) || groupDocs[0];
+      } else {
+        // Use default representative document selection (document id = group id)
+        groupDoc = groupDocs.find(doc => doc.id === groupId) || groupDocs[0];
+      }
       targetDocId = groupDoc.id;
       
       // Update the components mapping to cache this resolution

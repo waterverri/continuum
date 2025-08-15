@@ -194,10 +194,8 @@ export async function resolveCompositeDocument(
           // Use specific preferred type if available
           componentDoc = groupDocs.find(doc => doc.document_type === preferredType) || groupDocs[0];
         } else {
-          // Use default representative document selection
-          componentDoc = groupDocs.find(doc => 
-            !doc.document_type || doc.document_type === 'source' || doc.document_type === 'original'
-          ) || groupDocs[0];
+          // Use default representative document selection (document id = group id)
+          componentDoc = groupDocs.find(doc => doc.id === groupId) || groupDocs[0];
         }
       } else {
         // Handle direct document reference

@@ -305,10 +305,8 @@ router.get('/:projectId/groups', async (req: RequestWithUser, res: Response) => 
       const group = groupMap.get(doc.group_id!)!;
       group.documents.push(doc);
       
-      // Update representative doc (prefer source documents or documents without document_type)
-      if (!group.representativeDoc.document_type || 
-          (doc.document_type && (doc.document_type === 'source' || doc.document_type === 'original')) ||
-          (!doc.document_type && group.representativeDoc.document_type)) {
+      // Update representative doc (prefer document where id = group_id)
+      if (doc.id === doc.group_id) {
         group.representativeDoc = doc;
       }
     });
@@ -349,10 +347,8 @@ router.get('/:projectId/groups/:groupId', async (req: RequestWithUser, res: Resp
       return res.status(404).json({ error: 'Group not found' });
     }
     
-    // Find representative document
-    const representativeDoc = documents.find(doc => 
-      !doc.document_type || doc.document_type === 'source' || doc.document_type === 'original'
-    ) || documents[0];
+    // Find representative document (document where id = group_id)
+    const representativeDoc = documents.find(doc => doc.id === groupId) || documents[0];
     
     res.json({ 
       groupId,
@@ -401,10 +397,8 @@ router.get('/:projectId/groups/:groupId/resolve', async (req: RequestWithUser, r
     if (preferredType && typeof preferredType === 'string') {
       selectedDoc = documents.find(doc => doc.document_type === preferredType) || documents[0];
     } else {
-      // Default selection logic: prefer source, original, or documents without type
-      selectedDoc = documents.find(doc => 
-        !doc.document_type || doc.document_type === 'source' || doc.document_type === 'original'
-      ) || documents[0];
+      // Default selection logic: prefer document where id = group_id
+      selectedDoc = documents.find(doc => doc.id === groupId) || documents[0];
     }
     
     // If selected document is composite, resolve it

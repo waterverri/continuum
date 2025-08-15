@@ -27,11 +27,8 @@ export function GroupPickerModal({ documents, componentKey, onSelect, onCancel }
         }
         groupMap.get(doc.group_id)!.documents.push(doc);
         
-        // Update representative doc (prefer source documents or documents without document_type)
-        const current = groupMap.get(doc.group_id)!.representativeDoc;
-        if (!current.document_type || 
-            (doc.document_type && (doc.document_type === 'source' || doc.document_type === 'original')) ||
-            (!doc.document_type && current.document_type)) {
+        // Update representative doc (prefer document where id = group_id)
+        if (doc.id === doc.group_id) {
           groupMap.get(doc.group_id)!.representativeDoc = doc;
         }
       }

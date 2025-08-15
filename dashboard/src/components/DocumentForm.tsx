@@ -45,7 +45,7 @@ export function DocumentForm({
         if (preferredType) {
           representative = groupDocs.find(d => d.document_type === preferredType) || groupDocs[0];
         } else {
-          representative = groupDocs.find(d => !d.document_type || d.document_type === 'source' || d.document_type === 'original') || groupDocs[0];
+          representative = groupDocs.find(d => d.id === groupId) || groupDocs[0];
         }
         
         const typeLabel = preferredType ? ` - ${preferredType}` : '';
