@@ -77,38 +77,78 @@
   min-width: 0; /* Allow text to shrink but prefer to keep icons on same line */
 }
 
-.preset-card__actions {
+/* Menu Container */
+.preset-card__menu-container {
+  position: relative;
   display: flex;
-  gap: var(--spacing-xs);
   align-items: center;
-  flex-shrink: 0; /* Prevent actions from shrinking */
-  flex-wrap: wrap; /* Allow actions to wrap to next line if needed */
+  flex-shrink: 0;
 }
 
-.preset-card__action {
+/* Menu Toggle Button */
+.preset-card__menu-toggle {
   background: none;
   border: none;
   cursor: pointer;
   padding: var(--spacing-xs);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   transition: var(--transition-fast);
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: bold;
 }
 
-.preset-card__action:hover {
+.preset-card__menu-toggle:hover {
   background: var(--color-background);
   color: var(--color-text-primary);
 }
 
-.preset-card__action--danger:hover {
-  background: var(--color-danger-light);
+/* Dropdown Menu */
+.preset-card__dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  min-width: 180px;
+  padding: var(--spacing-xs) 0;
+  margin-top: var(--spacing-xs);
+}
+
+/* Dropdown Items */
+.preset-card__dropdown-item {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.preset-card__dropdown-item:hover {
+  background: var(--color-background-light);
+}
+
+.preset-card__dropdown-item--danger {
   color: var(--color-danger);
+}
+
+.preset-card__dropdown-item--danger:hover {
+  background: var(--color-danger-light);
 }
 
 /* Card Meta */
@@ -150,16 +190,11 @@
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .preset-card__header {
-    flex-direction: column;
-    align-items: stretch;
     gap: var(--spacing-sm);
   }
 
-  .preset-card__actions {
-    align-self: flex-end;
-  }
-
-  .preset-card__name {
-    padding-right: 0;
+  .preset-card__dropdown {
+    right: -10px; /* Adjust positioning on mobile */
+    min-width: 160px;
   }
 }

@@ -61,6 +61,9 @@ export default function ProjectDetailPage() {
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
   const [rightSidebarMobileOpen, setRightSidebarMobileOpen] = useState(false);
   
+  // Preset dropdown states
+  const [openPresetDropdown, setOpenPresetDropdown] = useState<string | null>(null);
+  
   // Project settings modal
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [currentProject, setCurrentProject] = useState<any>(null);
@@ -107,6 +110,20 @@ export default function ProjectDetailPage() {
     loadEvents();
     loadProject();
   }, []);
+
+  // Close preset dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openPresetDropdown && !(event.target as Element).closest('.preset-card__menu-container')) {
+        setOpenPresetDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openPresetDropdown]);
 
   // Clean up project context on unmount
   useEffect(() => {
@@ -676,48 +693,65 @@ export default function ProjectDetailPage() {
                       <div className="preset-card__main">
                         <div className="preset-card__header">
                             <h5 className="preset-card__name">{preset.name}</h5>
-                            <div className="preset-card__actions">
-                            <button 
-                              className="preset-card__action"
-                              onClick={() => {
-                                state.setEditingPreset(preset);
-                                state.openModal('showPresetDashboard');
-                              }}
-                              title="Manage preset overrides"
-                            >
-                              🎛️
-                            </button>
-                            <button 
-                              className="preset-card__action"
-                              onClick={() => navigator.clipboard.writeText(getPresetUrl(preset.name))}
-                              title="Copy API URL to clipboard"
-                            >
-                              📋
-                            </button>
-                            <button
-                              className="preset-card__action"
-                              onClick={() => downloadPresetPdf(preset)}
-                              title="Download as PDF"
-                            >
-                              📄
-                            </button>
-                            <button
-                              className="preset-card__action"
-                              onClick={() => {
-                                state.setEditingPreset(preset);
-                                state.openModal('showPresetEdit');
-                              }}
-                              title="Edit preset"
-                            >
-                              ✎
-                            </button>
-                            <button
-                              className="preset-card__action preset-card__action--danger"
-                              onClick={() => operations.handleDeletePreset(preset.id)}
-                              title="Delete preset"
-                            >
-                              ✕
-                            </button>
+                            <div className="preset-card__menu-container">
+                              <button 
+                                className="preset-card__menu-toggle"
+                                onClick={() => setOpenPresetDropdown(openPresetDropdown === preset.id ? null : preset.id)}
+                                title="More actions"
+                              >
+                                ⋯
+                              </button>
+                              {openPresetDropdown === preset.id && (
+                                <div className="preset-card__dropdown">
+                                  <button 
+                                    className="preset-card__dropdown-item"
+                                    onClick={() => {
+                                      state.setEditingPreset(preset);
+                                      state.openModal('showPresetDashboard');
+                                      setOpenPresetDropdown(null);
+                                    }}
+                                  >
+                                    🎛️ Manage Overrides
+                                  </button>
+                                  <button 
+                                    className="preset-card__dropdown-item"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(getPresetUrl(preset.name));
+                                      setOpenPresetDropdown(null);
+                                    }}
+                                  >
+                                    📋 Copy API URL
+                                  </button>
+                                  <button
+                                    className="preset-card__dropdown-item"
+                                    onClick={() => {
+                                      downloadPresetPdf(preset);
+                                      setOpenPresetDropdown(null);
+                                    }}
+                                  >
+                                    📄 Download PDF
+                                  </button>
+                                  <button
+                                    className="preset-card__dropdown-item"
+                                    onClick={() => {
+                                      state.setEditingPreset(preset);
+                                      state.openModal('showPresetEdit');
+                                      setOpenPresetDropdown(null);
+                                    }}
+                                  >
+                                    ✎ Edit Preset
+                                  </button>
+                                  <button
+                                    className="preset-card__dropdown-item preset-card__dropdown-item--danger"
+                                    onClick={() => {
+                                      operations.handleDeletePreset(preset.id);
+                                      setOpenPresetDropdown(null);
+                                    }}
+                                  >
+                                    ✕ Delete Preset
+                                  </button>
+                                </div>
+                              )}
                             </div>
                         </div>
                         
