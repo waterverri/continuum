@@ -53,10 +53,39 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
         const componentKey = match[1];
         if (!componentKey) continue;
         
-        const referencedDocId = components[componentKey];
+        let referencedDocId = components[componentKey];
         if (!referencedDocId) continue;
         
-        const referencedDoc = documents.find(d => d.id === referencedDocId);
+        let referencedDoc: typeof documents[0] | undefined;
+        
+        // Handle group references: group:groupId or group:groupId:preferredType
+        if (referencedDocId.startsWith('group:')) {
+          const groupParts = referencedDocId.split(':');
+          const groupId = groupParts[1];
+          const preferredType = groupParts[2] || null;
+          
+          // Find documents in the group
+          let groupDocs = documents.filter(d => d.group_id === groupId);
+          
+          if (preferredType) {
+            // Try to find document with preferred type first
+            const preferredDoc = groupDocs.find(d => d.document_type === preferredType);
+            if (preferredDoc) {
+              referencedDoc = preferredDoc;
+              referencedDocId = preferredDoc.id; // Update to actual document ID
+            }
+          }
+          
+          // If no preferred type or preferred type not found, use first document in group
+          if (!referencedDoc && groupDocs.length > 0) {
+            referencedDoc = groupDocs[0];
+            referencedDocId = groupDocs[0].id; // Update to actual document ID
+          }
+        } else {
+          // Direct document ID reference
+          referencedDoc = documents.find(d => d.id === referencedDocId);
+        }
+        
         if (!referencedDoc) continue;
 
         // Create namespaced key for this component
