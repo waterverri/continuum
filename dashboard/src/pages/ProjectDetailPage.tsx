@@ -414,6 +414,21 @@ export default function ProjectDetailPage() {
     state.setSidebarOpen(false);
   };
 
+  const handleDocumentRename = (document: Document) => {
+    const newTitle = prompt('Enter new document title:', document.title);
+    if (newTitle && newTitle.trim() && newTitle.trim() !== document.title) {
+      const formData = {
+        title: newTitle.trim(),
+        content: document.content || '',
+        document_type: document.document_type || '',
+        is_composite: document.is_composite,
+        components: document.components || {},
+        group_id: document.group_id
+      };
+      operations.handleUpdateDocument(document.id, formData);
+    }
+  };
+
   // Provide action handlers to the app header through context
   useEffect(() => {
     setProjectActions({
@@ -524,6 +539,7 @@ export default function ProjectDetailPage() {
             selectedDocumentId={state.selectedDocument?.id}
             onDocumentClick={handleSidebarDocumentClick}
             onDocumentEdit={handleSidebarDocumentEdit}
+            onDocumentRename={handleDocumentRename}
             onDocumentDelete={operations.handleDeleteDocument}
             onCreateDerivative={handleCreateDerivative}
             onManageTags={(document) => openTagSelector(document.id)}

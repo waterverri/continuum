@@ -9,6 +9,7 @@ interface DocumentListItemProps {
   showPreview?: boolean;
   showActions?: boolean;
   onEdit?: (document: Document) => void;
+  onRename?: (document: Document) => void;
   onDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
   onManageTags?: (document: Document) => void;
@@ -25,6 +26,7 @@ function DocumentListItem({
   showPreview = false,
   showActions = false,
   onEdit,
+  onRename,
   onDelete,
   onCreateDerivative,
   onManageTags,
@@ -180,6 +182,14 @@ function DocumentListItem({
             </button>
             {showDropdown && (
               <div className="document-dropdown-menu">
+                {onRename && (
+                  <button 
+                    className="document-dropdown-item"
+                    onClick={handleDropdownAction(() => onRename(document))}
+                  >
+                    ✏️ Rename
+                  </button>
+                )}
                 {onCreateDerivative && (
                   <button 
                     className="document-dropdown-item"
@@ -235,6 +245,7 @@ interface DocumentListProps {
   selectedDocumentId?: string;
   onDocumentClick?: (document: Document) => void;
   onDocumentEdit?: (document: Document) => void;
+  onDocumentRename?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
   onManageTags?: (document: Document) => void;
@@ -250,6 +261,7 @@ export function DocumentList({
   selectedDocumentId, 
   onDocumentClick, 
   onDocumentEdit, 
+  onDocumentRename,
   onDocumentDelete,
   onCreateDerivative,
   onManageTags,
@@ -276,6 +288,7 @@ export function DocumentList({
           isSelected={selectedDocumentId === doc.id}
           onClick={onDocumentClick}
           onEdit={onDocumentEdit}
+          onRename={onDocumentRename}
           onDelete={onDocumentDelete}
           onCreateDerivative={onCreateDerivative}
           onManageTags={onManageTags}

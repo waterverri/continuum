@@ -12,6 +12,8 @@ import {
   deletePreset,
   getTags,
   getDocumentTags,
+  addTagsToDocument,
+  addDocumentToEvent,
 } from '../api';
 import { supabase } from '../supabaseClient';
 import type { Document, Preset, Tag } from '../api';
@@ -250,6 +252,29 @@ export function useDocumentOperations({
         ));
       }
 
+      // Copy tags from source document to derivative document
+      if (sourceDocument.tags && sourceDocument.tags.length > 0) {
+        try {
+          const tagIds = sourceDocument.tags.map(tag => tag.id);
+          await addTagsToDocument(projectId, derivativeDoc.id, tagIds, token);
+        } catch (err) {
+          console.warn('Failed to copy tags to derivative document:', err);
+        }
+      }
+
+      // Copy event associations from source document to derivative document
+      if (sourceDocument.event_documents && sourceDocument.event_documents.length > 0) {
+        try {
+          await Promise.all(
+            sourceDocument.event_documents.map(eventDoc => 
+              addDocumentToEvent(projectId, eventDoc.event_id, derivativeDoc.id, token)
+            )
+          );
+        } catch (err) {
+          console.warn('Failed to copy event associations to derivative document:', err);
+        }
+      }
+
       setDocuments([derivativeDoc, ...documents]);
       return derivativeDoc;
     } catch (err) {
@@ -268,13 +293,19 @@ export function useDocumentOperations({
     try {
       const token = await getAccessToken();
       
-      // Generate a title from the selected text (first few words)
+      // Generate a suggested title from the selected text (first few words)
       const words = selectedText.trim().split(/\s+/).slice(0, 4);
-      const generatedTitle = words.join(' ') + (selectedText.split(/\s+/).length > 4 ? '...' : '');
+      const suggestedTitle = words.join(' ') + (selectedText.split(/\s+/).length > 4 ? '...' : '');
+      
+      // Prompt user for document title
+      const title = prompt('Enter title for extracted document:', suggestedTitle);
+      if (!title || !title.trim()) {
+        return; // User cancelled or entered empty title
+      }
       
       // Create new document with selected text
       const extractedDoc = await createDocument(projectId, {
-        title: generatedTitle,
+        title: title.trim(),
         content: selectedText,
         document_type: 'event', // Default type for extracted content
         is_composite: false,
@@ -282,7 +313,7 @@ export function useDocumentOperations({
       }, token);
 
       // Generate a unique component key based on the title
-      const componentKey = generatedTitle.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+      const componentKey = title.trim().toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
       
       // Update source document to be composite and add component reference
       const updatedComponents = { ...sourceDocument.components, [componentKey]: extractedDoc.id };
@@ -299,6 +330,29 @@ export function useDocumentOperations({
         is_composite: true,
         components: updatedComponents
       }, token);
+
+      // Copy tags from source document to extracted document
+      if (sourceDocument.tags && sourceDocument.tags.length > 0) {
+        try {
+          const tagIds = sourceDocument.tags.map(tag => tag.id);
+          await addTagsToDocument(projectId, extractedDoc.id, tagIds, token);
+        } catch (err) {
+          console.warn('Failed to copy tags to extracted document:', err);
+        }
+      }
+
+      // Copy event associations from source document to extracted document
+      if (sourceDocument.event_documents && sourceDocument.event_documents.length > 0) {
+        try {
+          await Promise.all(
+            sourceDocument.event_documents.map(eventDoc => 
+              addDocumentToEvent(projectId, eventDoc.event_id, extractedDoc.id, token)
+            )
+          );
+        } catch (err) {
+          console.warn('Failed to copy event associations to extracted document:', err);
+        }
+      }
 
       // Update local state
       setDocuments([extractedDoc, ...documents.map(doc => 

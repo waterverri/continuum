@@ -93,7 +93,7 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
           </button>
         )}
         {showCreateButton && selectedText && !document.is_composite && (
-          <button className="btn btn--success" onClick={handleCreateFromSelection} style={{ marginLeft: '0.5rem' }}>
+          <button className="btn btn--primary" onClick={handleCreateFromSelection} style={{ marginLeft: '0.5rem' }}>
             📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
           </button>
         )}
