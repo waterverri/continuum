@@ -100,30 +100,19 @@ The `documents` table is the most complex entity. Relationships between document
 
 ## **4. Feature State & Roadmap**
 
-### **4.1. Completed**
+### **4.1. Current Implementation Status**
 
-  * **Conceptual Design:** All features listed have been conceptually designed.
-  * **v1 DB Schema & Triggers:** The initial schema and server-side helper functions are defined in `supabase/migrations/0001_initial_schema.sql`.
-  * **CI/CD Pipelines:** Workflows for Database, API, and Frontend deployments are complete and operational.
-  * **User Authentication:** A full authentication flow is implemented on the frontend.
-  * **Row Level Security (RLS) & Project Management:**
-      * **Database:** RLS policies are active for projects, `project_members`, and documents, ensuring users can only access data for projects they are a member of. This is defined in `0002_implement_rls_policies.sql` and `0003_fix_project_members_policy.sql`.
-      * **Frontend UI & Logic:** The UI and logic for listing, creating, and deleting projects is complete. These actions call the Supabase API directly and rely on RLS for security.
-  * **Phase 3: Complete Document Management System:**
-      * **Database Schema:** Migration `0004_add_document_management_columns.sql` added `title`, `is_composite`, and `components` columns to the documents table.
-      * **Backend API:** Full REST API implemented in `api/src/routes/documents.ts` with:
-          * Document CRUD operations (GET, POST, PUT, DELETE) for individual projects
-          * Document group management endpoints (GET /groups, GET /groups/:id, GET /groups/:id/resolve)
-          * Cyclic dependency validation using DFS algorithm in `api/src/services/documentService.ts`
-          * Document resolution engine for composite documents with recursive {{placeholder}} resolution
-          * User-authenticated Supabase clients ensuring RLS compliance
-      * **Frontend UI:** Complete document management interface in `ProjectDetailPage.tsx` with:
-          * Mobile-responsive design with hideable sidebar navigation
-          * Professional modal-based component selection (replacing browser prompts)
-          * Document picker with advanced filtering (search, type, format)
-          * Improved component management with visual document title display
-          * Document viewer with raw content display and real-time template resolution
-          * Error handling and loading states throughout
+**Core Infrastructure:**
+- Full-stack architecture with React frontend, Node.js API, and Supabase database
+- Complete user authentication and project management with role-based access control
+- Row Level Security (RLS) policies ensuring data isolation between projects
+- CI/CD pipelines for automated deployment
+**Document Management System:**
+- Complete CRUD operations for static and composite documents
+- Document groups with derivative creation and intelligent type selection
+- Composite document engine with recursive {{placeholder}} resolution
+- Advanced group references (`group:groupId:preferredType`) for precise control
+- Cyclic dependency validation and professional mobile-responsive UI
   * **Phase 4: Enhanced UX & Component Architecture (COMPLETED):**
       * **UI/UX Improvements:**
           * Responsive mobile-first design for all document management interfaces
@@ -170,116 +159,51 @@ The `documents` table is the most complex entity. Relationships between document
           * Fallback logic for missing types within groups
           * Seamless integration with existing composite document system
 
-### **4.2. ✅ Completed: Phase 6 - Comprehensive Tagging System**
+**Tagging System:**
+- Full-stack tagging with many-to-many relationships
+- Color-coded project-scoped tags with comprehensive CRUD operations
+- Real-time filtering integration with document search
+- Professional tag management and selection interfaces
 
-**Implementation Status:** COMPLETE - Full-stack tagging system successfully implemented and deployed.
+**Events & Timeline System:**
+- Professional Gantt chart with industry-standard project management features
+- Interactive timeline with advanced pan/zoom and touch/trackpad support
+- Hierarchical event organization with parent-child relationships
+- Comprehensive event filtering and real-time updates
+- Document evolution tracking through event associations
 
-**Database Schema:** 
-  * **Migration 0005:** Redesigned tags architecture with proper many-to-many relationships
-    - `tags` table: Project-scoped tag definitions with color coding
-    - `document_tags` table: Many-to-many relationships between documents and tags
-    - `event_tags` table: Ready for future events integration
-  * **Migration 0006:** Complete RLS policies for multi-tenant tag access control
+**Testing Infrastructure:**
+- Frontend: Vitest + React Testing Library (103+ unit tests)
+- Backend: Jest + Supertest (comprehensive API testing)
+- Focus on business logic validation and user interactions
 
-**Backend API (`/api/src/routes/tags.ts`):**
-  * Full CRUD operations for tags with comprehensive validation
-  * Document-tag association endpoints with conflict prevention
-  * JWT authentication integration with existing middleware
-  * Comprehensive error handling and user-friendly messages
+### **4.4. Current System Implementation**
 
-**Frontend Components:**
-  * **TagManager Modal:** Create, edit, delete project tags with color picker (10 predefined colors)
-  * **TagSelector Modal:** Intuitive document-tag association management with real-time updates
-  * **TagFilter Component:** Enhanced filtering integrated with existing document search
-  * **Enhanced useDocumentFilter Hook:** Extended with tag-based filtering capabilities
+**Project Collaboration:**
+- Complete member management with role-based access control (owner/editor/viewer)
+- Secure invitation system with backend validation and JWT authentication
+- Professional project settings interface with member management capabilities
 
-**Key Features Implemented:**
-  * Color-coded tags with professional UI design
-  * Real-time tag filtering with multiple selection support
-  * Project-scoped tag isolation with RLS enforcement  
-  * Comprehensive validation (duplicate prevention, input sanitization)
-  * Mobile-responsive design with touch-friendly interfaces
-  * Integration with existing document management workflows
+**Advanced Preset System:**
+- Recursive component resolution with infinite depth document tree traversal
+- Namespaced overrides (`documentId.componentName`) for precise component control
+- PDF export functionality with professional styling using Puppeteer
+- Enhanced group references (`group:groupId:preferredType`) for specific type selection
+- Unified resolution engine across all preset endpoints
 
-**Testing Coverage:**
-  * **Frontend:** 32 comprehensive unit tests covering all components and hooks
-  * **Backend:** 16 integration tests validating API endpoints and validation logic
-  * **Build Validation:** Full TypeScript compliance and successful production builds
+**Enhanced Event & Document Management:**
+- Comprehensive event tagging with color-coded organization
+- Advanced filtering with real-time timeline updates (search, tags, date ranges)
+- Smart text extraction from both static and composite documents
+- Automatic document creation preserving relationships and metadata
+- Professional modal interfaces replacing browser prompts throughout
+- Touch and trackpad support with mobile optimization
 
-### **4.3. ✅ Completed: Phase 7 - Interactive Events & Timeline System**
+### **4.5. Next Phase: Advanced Features**
 
-**Implementation Status:** COMPLETE - Professional project management system with interactive timeline features successfully implemented and deployed.
-
-**Database Schema Enhancements:**
-  * **Migration 0007:** Core events system with hierarchical relationships and document evolution
-    - `event_documents` table: Many-to-many relationships between events and documents
-    - `event_hierarchy` table: Parent-child event relationships with cycle detection
-    - Enhanced `events` table: Added `display_order` and `parent_event_id` columns
-    - Enhanced `documents` table: Added `event_id` for document evolution tracking
-  * **Migration 0008:** Comprehensive RLS policies for multi-tenant event access control
-
-**Backend API Infrastructure:**
-  * **17 Event API Endpoints:** Complete CRUD operations with advanced features
-    - Basic CRUD: GET/POST/PUT/DELETE for events
-    - Hierarchy Management: Parent-child relationship handling
-    - Document Associations: Link/unlink documents to events
-    - Timeline API: Chronological event ordering with hierarchy support
-    - Document Evolution: Create and manage event-specific document versions
-  * **Cycle Detection:** Prevents circular dependencies in event hierarchies
-  * **JWT Authentication:** Integrated with existing middleware and RLS policies
-
-**Professional Timeline Interface:**
-  * **EventTimelineModal:** Full-screen Gantt chart with industry-standard project management features
-    - **Advanced Pan & Zoom:** 0.25x-5x zoom range with smooth drag-based panning and visual feedback
-    - **Click-to-Create Events:** Double-click timeline to create events with precise time positioning
-    - **Interactive Timeline Controls:** Reset zoom, fit-to-view, and real-time pan offset display
-    - **Parent-Child Collapsing:** Hierarchical event organization with expand/collapse functionality
-    - **Hash-Based Color Coding:** Consistent, unique colors for each event based on ID hashing
-  * **EventsWidget:** Redesigned inline event management
-    - **Compact Interface:** Clean, professional design replacing modal-heavy workflows
-    - **Document Integration:** Direct view/edit/delete buttons for event-associated documents
-    - **Real-time Updates:** Live event management with comprehensive error handling
-
-**Enhanced User Experience:**
-  * **Professional UI Design:** Glassmorphism effects with smooth transitions and modern aesthetics
-  * **Interactive Feedback:** Comprehensive cursor states (grab/grabbing/crosshair) and hover effects
-  * **Coordinate Precision:** Advanced mouse-to-time calculations accounting for zoom/pan transformations
-  * **Responsive Controls:** Touch-friendly interfaces with mobile-optimized interactions
-  * **Visual Hierarchy:** Clear parent-child relationships with collapsible groups and child count indicators
-
-**Key Features Implemented:**
-  * **Event Hierarchies:** Events can have parent-child relationships (e.g., "Chapter 1" → "Morning Scene")
-  * **Document Evolution:** Track how documents change over time through event-specific versions
-  * **Interactive Timeline:** Professional Gantt chart with real-time manipulation capabilities
-  * **Advanced Filtering:** Filter documents by associated events, separate base vs. event versions
-  * **Document Management:** Comprehensive CRUD operations accessible directly from timeline interface
-  * **Timeline Interaction:** Pan, zoom, click-to-create, and hierarchical organization in single interface
-
-**Technical Implementation:**
-  * **State Management:** Complex timeline state with pan/zoom/collapse states managed via React hooks
-  * **Performance Optimization:** Memoized calculations and efficient rendering for smooth interactions
-  * **Type Safety:** Comprehensive TypeScript interfaces for all timeline operations and event data
-  * **Error Handling:** Robust validation and user feedback for all interactive operations
-
-**Testing Coverage:**
-  * **Backend:** 70 comprehensive API tests validating all endpoints and error conditions
-  * **Frontend:** 103+ unit tests covering component behavior, user interactions, and interactive features
-  * **Integration:** End-to-end workflow validation from event creation to timeline interaction
-
-### **4.4. Next Up: Advanced Collaboration Features**
-
-**Note:** With events system complete, the next phase focuses on user collaboration and advanced content generation features.
-
-1.  **Project Member Management (Quick Win):**
-      * **Frontend UI & Logic:** Build a project settings page where project owners can manage members (add/remove users, change roles) by inserting/deleting/updating rows in the `project_members` table.
-
-### **4.4. Future: Phase 6 - The Core "Preset" Engine**
-
-  * **API:**
-      * Build CRUD endpoints for presets.
-      * Implement the core logic for the preset engine: create the `GET /presets/:id/context` endpoint. This will read the preset's rules (JSONB), dynamically build a complex SQL query to fetch the relevant data (including recursively resolving composite documents), concatenate it into a clean string, and serve it as text/plain.
-  * **Frontend:**
-      * Design and build a "Preset Rule Builder" UI. This will allow users to intuitively create filter rules (e.g., "include all documents of type 'character' with tag 'protagonist'") that will be saved into the preset's `rules` field.
+1. **Advanced Preset Rule Builder:** Visual interface for complex context generation rules
+2. **Document Versioning System:** Change tracking and version comparison
+3. **Real-time Collaboration:** Multi-user editing with conflict resolution
 
 ## **5. Current File Structure**
 
@@ -297,11 +221,13 @@ This structure outlines where the application's logic and code currently live.
 │   │   │   └── supabaseClient.ts
 │   │   ├── routes/             # API route handlers
 │   │   │   ├── documents.ts    # Document CRUD endpoints
-│   │   │   ├── presets.ts      # Preset management endpoints  
+│   │   │   ├── presets.ts      # Preset management endpoints with PDF export
 │   │   │   ├── tags.ts         # Tag CRUD and document-tag association endpoints
-│   │   │   └── events.ts       # Event CRUD, hierarchy management, and document evolution endpoints
+│   │   │   ├── events.ts       # Event CRUD, hierarchy management, and document evolution endpoints
+│   │   │   └── projectManagement.ts # Project collaboration and invitation system
 │   │   └── services/           # Business logic layer
-│   │       └── documentService.ts # Composite document resolution & validation
+│   │       ├── documentService.ts # Composite document resolution & validation
+│   │       └── documentResolutionService.ts # Unified recursive resolution engine
 │   └── test/                   # Testing infrastructure
 │       ├── setup.ts            # Jest configuration and mocks
 │       ├── services/           # Service layer tests
@@ -309,7 +235,8 @@ This structure outlines where the application's logic and code currently live.
 │       │   ├── documents.test.ts
 │       │   ├── presets.test.ts
 │       │   ├── tags.test.ts    # Comprehensive tag API tests
-│       │   └── events.test.ts  # Comprehensive events API tests
+│       │   ├── events.test.ts  # Comprehensive events API tests
+│       │   └── projectManagement.test.ts # Project collaboration tests
 │       └── middleware/         # Authentication middleware tests
 │
 ├── dashboard/                  # Frontend Web Application

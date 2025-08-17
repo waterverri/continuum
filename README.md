@@ -58,14 +58,18 @@ This is Continuum. It's not just a place to store your notes. It's an engine tha
 ## Features
 
 * **User Authentication:** Full user sign-up and login with email/password and Google.
-* **Project Management:** Create, manage, and collaborate on writing projects with role-based access control.
-* **Document Management:** Complete CRUD system for static and composite documents.
+* **Project Management:** Complete collaboration system with role-based access control, member management, and secure invitation system.
+* **Document Management:** Complete CRUD system for static and composite documents with text extraction and rename functionality.
 * **Document Groups:** Create derivative documents (summaries, translations, etc.) organized by groups with intelligent type selection.
 * **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents or entire document groups using {{placeholder}} syntax.
 * **Advanced Group Selection:** Choose specific document types within groups or use intelligent auto-selection for composite documents.
-* **Tagging System:** Comprehensive document organization with color-coded tags, real-time filtering, and intuitive tag management interface.
-* **Interactive Events & Timeline System:** Professional Gantt chart with pan/zoom, click-to-create events, hierarchical organization, and document integration.
-* **Advanced Timeline Features:** Industry-standard project management interface with real-time interaction, parent-child event collapsing, and precise time positioning.
+* **Tagging System:** Comprehensive document and event organization with color-coded tags, real-time filtering, and intuitive tag management interface.
+* **Interactive Events & Timeline System:** Professional Gantt chart with advanced pan/zoom controls, touch/trackpad support, click-to-create events, and comprehensive filtering.
+* **Advanced Timeline Features:** Industry-standard project management interface with real-time interaction, parent-child event collapsing, precise time positioning, and mobile optimization.
+* **Document Text Extraction:** Select text from any document to automatically create new linked documents with proper modal interfaces.
+* **Event Management:** Comprehensive event tagging, filtering, and document association system with real-time timeline updates.
+* **Preset System:** Advanced context generation with recursive component resolution, namespaced overrides, and PDF export functionality.
+* **Professional Landing Page:** Security-focused landing page addressing Google OAuth security requirements with progressive disclosure.
 * **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document and group references.
 * **Real-time Resolution:** View how composite documents resolve into final assembled content with group-based substitutions.
 * **Secure API:** Backend API protected with JWT authentication and Row Level Security.
@@ -102,76 +106,57 @@ Prerequisites for development:
 3.  Create a `.env.local` file and add your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. For local development, also add `VITE_API_URL=http://localhost:8080`.
 4.  Run `npm run dev` to start the local development server, typically available at `http://localhost:5173`.
 
-## Current Implementation Status
-
-### ✅ Completed Features
+## System Overview
 
 **Core Infrastructure:**
-- **Full-stack architecture** with React frontend, Node.js API, and Supabase database
-- **User authentication** with JWT-based security and Row Level Security (RLS)
-- **Project management** with multi-tenancy and role-based access control
+- Full-stack architecture with React frontend, Node.js API, and Supabase database
+- User authentication with JWT-based security and Row Level Security (RLS)
+- Project management with multi-tenancy and role-based access control
 
-**Document Management System:**
-- **Complete CRUD operations** for both static and composite documents
-- **Document group management** with derivative document creation and intelligent type selection
-- **Composite document engine** with recursive {{placeholder}} resolution supporting both documents and groups
-- **Advanced group switching** with modal interfaces for choosing specific document types within groups
-- **Extended reference format** (`group:groupId:preferredType`) for precise control over group content selection
-- **Cyclic dependency validation** using DFS algorithms for both documents and groups
-- **Professional UI** with responsive design and mobile-first approach
+**Document Management:**
+- Complete CRUD operations for both static and composite documents
+- Document groups with derivative creation and intelligent type selection
+- Composite document engine with recursive {{placeholder}} resolution
+- Advanced group references (`group:groupId:preferredType`) for precise control
+- Cyclic dependency validation and professional mobile-responsive UI
 
-**Enhanced User Experience:**
-- **Modal-based interfaces** replacing browser prompts for better UX
-- **Advanced filtering system** with reusable search, type, format, and tag filters
-- **Enhanced document picker** with comprehensive filtering and content previews  
-- **Group management modals** for derivative creation and type switching
-- **Visual group indicators** showing document relationships and type preferences
-- **Intelligent component selection** with choice between documents and groups
-- **Comprehensive tagging system** with color-coded tags, intuitive management interface, and real-time filtering
-- **Interactive events & timeline system** with professional Gantt chart, pan/zoom controls, and hierarchical organization
-- **Advanced timeline features** including click-to-create events, parent-child collapsing, and real-time manipulation
-- **Responsive design** optimized for desktop, tablet, and mobile devices
-- **Real-time content resolution** for composite documents with group substitutions
-- **Unified component architecture** with modular, performant filtering components
+**Event & Timeline System:**
+- Professional Gantt chart with industry-standard project management capabilities
+- Interactive controls with advanced pan/zoom and touch/trackpad support
+- Hierarchical event organization with parent-child relationships
+- Real-time timeline manipulation with comprehensive filtering
+- Document integration accessible directly from timeline interface
 
-**Professional Timeline Interface:**
-- **Full-screen Gantt chart** with industry-standard project management capabilities  
-- **Interactive controls** with 0.25x-5x zoom range and smooth drag-based panning
-- **Click-to-create events** with double-click functionality and precise time positioning
-- **Hierarchical organization** with parent-child event collapsing and visual indicators
-- **Document integration** with view/edit/delete operations accessible from timeline
-- **Professional UI design** with glassmorphism effects and responsive controls
+**Collaboration & Presets:**
+- Complete member management with role-based access control
+- Advanced preset system with recursive component resolution
+- PDF export functionality with professional styling
+- Namespaced overrides for precise component control
+- Secure invitation system with backend validation
 
-**Testing Infrastructure:**
-- **Frontend testing** with Vitest + React Testing Library (103+ focused unit tests)
-- **Backend testing** with Jest + Supertest (API and service tests)
-- **Quality-focused approach** prioritizing unit tests for core business logic  
-- **Interactive feature validation** covering timeline interactions and event management
-- **Clean test architecture** with streamlined mock infrastructure
-- **Production validation** strategy for complex integration scenarios
+**Enhanced Features:**
+- Comprehensive tagging system with color-coded organization
+- Text extraction and automatic document creation
+- Professional modal interfaces throughout
+- Mobile-first responsive design with touch optimization
 
-### 🚀 Next Phase: Advanced Collaboration Features
-- Project member management with role-based access control
-- Preset engine for dynamic context generation
-- Advanced collaboration tools and real-time editing
+### 🚀 Next Phase
+- Advanced preset rule builder interface
+- Enhanced collaboration tools and real-time editing
+- Document versioning and change tracking
 
 ## Testing
 
-### Frontend Tests
+### Testing
+
+**Frontend:** Vitest + React Testing Library with 103+ unit tests
 ```bash
-cd dashboard
-npm run test        # Run in watch mode
-npm run test:run    # Run once
-npm run test:ui     # Run with UI interface
-npm run coverage    # Generate coverage report
+cd dashboard && npm run test:run
 ```
 
-### Backend Tests
+**Backend:** Jest + Supertest with comprehensive API tests
 ```bash
-cd api
-npm test              # Run all tests
-npm run test:watch    # Run in watch mode  
-npm run test:coverage # Generate coverage report
+cd api && npm test
 ```
 
 ## Contributing

@@ -32,12 +32,9 @@ Navigate to `/dashboard` directory:
 - Database deployment handled via GitHub Actions workflow
 
 ### Testing Infrastructure
-- **Frontend**: Vitest + React Testing Library with focused unit tests for core functionality
-- **Backend**: Jest + Supertest for API endpoints, services, and middleware testing
-- **Test Strategy**: Prioritizes unit tests for business logic validation, production testing for integration scenarios
-- **Coverage**: Core functionality verified through targeted unit tests with clean mock architecture
-- **Current Status**: 103 unit tests passing across components, hooks, and utilities  
-- **Testing Philosophy**: Test behavior, not implementation details; focus on user interactions and business logic
+- **Frontend**: Vitest + React Testing Library (103+ unit tests)
+- **Backend**: Jest + Supertest (comprehensive API testing)
+- **Strategy**: Focus on business logic validation and user interactions
 
 ## Architecture Overview
 
@@ -74,41 +71,34 @@ Continuum is a full-stack application for writers to manage story context with t
 
 ## Current Implementation Status
 
-**Completed**: 
-- User authentication and project CRUD with RLS policies
-- Complete document management system with composite document support
-- Professional UI with responsive design and modal interfaces
-- **Refactored Document Filtering System** with reusable components:
-  - `useDocumentFilter` custom hook for shared filtering logic
-  - Modular filter components (search, type, format filtering)
-  - Enhanced sidebar with comprehensive search and filtering capabilities
-  - Performance optimizations with memoization
-- **Document Group Management System**:
-  - Derivative document creation with free-form document types
-  - Group-based component selection in composite documents
-  - Group type switching UI with advanced modal interfaces
-  - Backend group APIs with intelligent document resolution
-  - Extended group reference format: `group:groupId:preferredType`
-- **Comprehensive Tagging System**:
-  - Full-stack tagging implementation with many-to-many relationships
-  - TagManager modal for creating, editing, and deleting project tags with color picker
-  - TagSelector modal for document-tag associations with intuitive UI
-  - Enhanced document filtering with tag-based search capabilities
-  - Complete REST API with CRUD operations and validation
-  - Row Level Security policies for multi-tenant tag access
-  - Comprehensive test coverage (48 tests across frontend and backend)
-- **Fully Refactored ProjectDetailPage Architecture**:
-  - Modular component architecture with 83% code reduction (1,776 → 303 lines)
-  - Custom hooks for state management (`useProjectDetailState`) and operations (`useDocumentOperations`)
-  - 10 extracted reusable components (DocumentForm, DocumentViewer, modals, etc.)
-  - Comprehensive CSS design system with variables, utilities, and component-specific styles
-  - Maintained full test compatibility (32 tests passing) with improved maintainability
-- Focused unit test suite for core functionality validation
-- CI/CD pipelines for automated deployment
+**Current System Features:**
 
-**Next**: Project member management, preset engine for dynamic context generation
+**Core Infrastructure:**
+- User authentication and project management with role-based access control
+- Complete document management with static and composite document support
+- Professional responsive UI with mobile-first design
 
-**Latest Achievement**: Professional project management timeline with industry-standard Gantt chart functionality, interactive event creation, and comprehensive document integration - transforming Continuum into a complete story development platform.
+**Document System:**
+- Document filtering with reusable components and custom hooks
+- Document groups with derivative creation and intelligent type selection
+- Composite documents with recursive resolution and group references
+- Comprehensive tagging system with color-coded organization
+- Text extraction and automatic document creation
+
+**Events & Timeline:**
+- Professional Gantt chart with industry-standard project management features
+- Interactive timeline with pan/zoom and touch/trackpad support
+- Hierarchical event organization with comprehensive filtering
+
+**Collaboration & Presets:**
+- Complete project member management with secure invitation system
+- Advanced preset system with recursive component resolution
+- PDF export functionality with professional styling
+- Namespaced overrides for precise component control
+
+**Next**: Advanced preset rule builder interface, enhanced collaboration tools, document versioning system
+
+**Current Status**: Production-ready story development platform with complete collaboration, preset, and event management systems.
 
 ## Environment Setup
 
@@ -123,48 +113,25 @@ Dashboard requires `.env.local` with:
 
 ## Important Technical Details
 
-- The `projectcontext.md` file contains comprehensive technical specifications and should be consulted for detailed implementation requirements
-- Composite documents require server-side validation to prevent cyclic dependencies
-- All database schema changes must be implemented as Supabase migrations
-- **Component Architecture**: Follow the established patterns in `ProjectDetailPage.tsx` for component composition, custom hooks, and state management
-- **Styling Convention**: Use the CSS design system with variables, utilities, and component-specific styles
-- **Code Organization**: Prefer small, focused components (under 200 lines) with single responsibilities over large monolithic files
-- **Document Groups**: Support derivative relationships via `group_id` with dynamic type selection in composite documents
-- **Group Reference Format**: Extended format `group:groupId:preferredType` enables specific document type selection within groups
-- **Tagging Architecture**: Many-to-many relationship design with `tags`, `document_tags`, and `event_tags` tables for flexible content organization
-- **Tag Management**: Project-scoped tags with color coding, comprehensive CRUD operations, and real-time UI updates
-- **Tag Filtering**: Integrated tag-based filtering extends existing document search with multiple selection support
-- **Testing Approach**: Focus on unit tests for business logic validation rather than complex integration testing with mocks
-- **Document Evolution**: Simplified approach using existing systems:
-  - Evolution discovery through documents with event associations (via `event_documents` table)
-  - Leverages existing `group_id` system to group related document versions  
-  - DocumentEvolution component shows all documents in same group and their event associations
-  - Direct Supabase queries for efficiency - no complex backend API calls needed
-  - Advanced recursive evolution queries (evolution "through Event X") reserved for future implementation
-  - UI accessible via document dropdown "🔄 Evolution" option
-- **✅ COMPLETED: Interactive Events & Timeline System**: 
-  - **Professional Timeline Interface**: Full-screen Gantt chart modal with professional project management capabilities
-  - **Complete Events Management**: Hierarchical parent-child event relationships with comprehensive CRUD operations
-  - **Interactive Timeline Features**:
-    - Advanced pan and zoom controls (0.25x-5x zoom range with reset and fit-to-view)
-    - Click-to-create events with double-click functionality and precise time positioning
-    - Parent-child event group collapsing with visual hierarchy controls
-    - Real-time timeline manipulation with drag-based panning and scroll wheel zoom
-  - **Document Management Integration**: 
-    - View/edit/delete buttons for documents within event details
-    - Seamless document operations accessible from timeline interface
-    - Event-document associations with comprehensive relationship management
-  - **Enhanced User Experience**:
-    - Professional glassmorphism UI design with smooth transitions
-    - Responsive controls with visual feedback (cursor changes, hover states)
-    - Hash-based consistent color coding for event identification
-    - Intuitive double-click creation with modal form interface
-  - **Technical Implementation**:
-    - Full backend API with 17 endpoints supporting CRUD operations, hierarchies, and document evolution
-    - Advanced coordinate-to-time calculations accounting for zoom/pan transformations
-    - Comprehensive state management with React hooks and TypeScript interfaces
-    - Database migrations with cycle detection to prevent circular event dependencies
-    - 103+ comprehensive unit tests validating all interactive functionality
+- The `projectcontext.md` file contains comprehensive technical specifications
+- Composite documents use server-side validation to prevent cyclic dependencies
+- All database schema changes implemented as Supabase migrations
+- **Component Architecture**: Small, focused components with custom hooks for state management
+- **Styling Convention**: CSS design system with variables, utilities, and component-specific styles
+- **Document Groups**: Support derivative relationships with `group:groupId:preferredType` format
+- **Tagging Architecture**: Many-to-many relationship design for flexible content organization
+- **Testing Approach**: Focus on unit tests for business logic validation
+- **Document Evolution**: Event-based document versioning with group relationships
+- **Security**: Backend APIs for administrative operations, RLS for data isolation
+**Current System Capabilities:**
+
+**Interactive Events & Timeline**: Professional Gantt chart with pan/zoom controls, touch support, hierarchical organization, and real-time filtering
+
+**Project Collaboration**: Complete member management with role-based access control and secure invitation system
+
+**Advanced Presets**: Recursive component resolution, namespaced overrides, PDF export, and enhanced group references
+
+**Document Operations**: Smart text extraction, automatic document creation, rename functionality, and professional modal interfaces
 
 ## Frontend Architecture Patterns
 
@@ -239,12 +206,21 @@ src/
 4. **Follow CSS architecture**: Place styles in appropriate component-specific files using the design system
 5. **Test thoroughly**: Run `npm run test:run` and `npm run build` before committing changes
 
-## Recent Refactoring (2025)
-The ProjectDetailPage underwent a major architectural refactoring that serves as the template for all future development:
-- **Component Extraction**: Large monolithic components were broken down into focused, reusable components
-- **Custom Hooks**: State management and business logic were extracted into custom hooks for better separation of concerns
-- **CSS Modularization**: Styles were organized into a comprehensive design system with variables, utilities, and component-specific modules
-- **Type Safety**: Full TypeScript coverage with proper type definitions throughout
-- **Testing Maintained**: All existing tests continue to pass, ensuring no regressions
+## Recent Major Achievements (2025)
 
-This refactoring demonstrates the preferred architecture for complex UI components in this codebase.
+**Complete System Implementation:**
+
+1. **Project Collaboration Infrastructure**: Full member management with secure backend APIs, role-based access control, and invitation system
+
+2. **Advanced Preset System**: Recursive component resolution, namespaced overrides, PDF export, and professional dashboard interface
+
+3. **Enhanced Event Management**: Comprehensive tagging, advanced filtering, professional timeline interface with touch/trackpad support
+
+4. **Document Operation Enhancements**: Text extraction, rename functionality, automatic document creation with relationship preservation
+
+5. **Professional UI/UX**: Security-focused landing page, mobile optimization, touch support, and complete modal system
+
+**Architectural Evolution:**
+The system has evolved from component extraction and refactoring to complete feature implementation across all major subsystems. The codebase now demonstrates production-ready patterns with comprehensive testing, security validation, and mobile-first responsive design throughout all interfaces.
+
+This evolution establishes the foundation for advanced features like preset rule builders and real-time collaboration tools.
