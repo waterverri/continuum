@@ -446,6 +446,50 @@ export const removeTagFromDocument = async (projectId: string, documentId: strin
   }
 };
 
+export const getEventTags = async (projectId: string, eventId: string, accessToken: string): Promise<Tag[]> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/events/${eventId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch event tags');
+  }
+
+  const data = await response.json();
+  return data.tags;
+};
+
+export const addTagsToEvent = async (projectId: string, eventId: string, tagIds: string[], accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/events/${eventId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tagIds }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add tags to event');
+  }
+};
+
+export const removeTagFromEvent = async (projectId: string, eventId: string, tagId: string, accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/tags/${projectId}/events/${eventId}/${tagId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to remove tag from event');
+  }
+};
+
 // Event API functions
 export const getEvents = async (projectId: string, accessToken: string, includeHierarchy = false): Promise<{ events: Event[], hierarchy?: EventHierarchy[] }> => {
   const url = `${API_URL}/api/events/${projectId}${includeHierarchy ? '?include_hierarchy=true' : ''}`;

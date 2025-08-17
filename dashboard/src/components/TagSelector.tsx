@@ -1,17 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import { getTags, getDocumentTags, addTagsToDocument, removeTagFromDocument } from '../api';
+import { getTags, getDocumentTags, addTagsToDocument, removeTagFromDocument, getEventTags, addTagsToEvent, removeTagFromEvent } from '../api';
 import type { Tag } from '../api';
 
 interface TagSelectorProps {
   projectId: string;
-  documentId: string;
+  entityType: 'document' | 'event';
+  entityId: string;
+  entityName: string;
   onClose: () => void;
+  onUpdate?: () => void;
 }
 
-export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps) {
+export function TagSelector({ projectId, entityType, entityId, entityName, onClose, onUpdate }: TagSelectorProps) {
   const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [documentTags, setDocumentTags] = useState<Tag[]>([]);
+  const [entityTags, setEntityTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,26 +28,30 @@ export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps
       setLoading(true);
       const token = await getAccessToken();
       
-      const [allTagsData, docTagsData] = await Promise.all([
-        getTags(projectId, token),
-        getDocumentTags(projectId, documentId, token)
-      ]);
+      const allTagsData = await getTags(projectId, token);
+      let entityTagsData: Tag[];
+      
+      if (entityType === 'document') {
+        entityTagsData = await getDocumentTags(projectId, entityId, token);
+      } else {
+        entityTagsData = await getEventTags(projectId, entityId, token);
+      }
       
       setAllTags(allTagsData);
-      setDocumentTags(docTagsData);
+      setEntityTags(entityTagsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tags');
     } finally {
       setLoading(false);
     }
-  }, [projectId, documentId]);
+  }, [projectId, entityType, entityId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const isTagSelected = (tagId: string) => {
-    return documentTags.some(tag => tag.id === tagId);
+    return entityTags.some(tag => tag.id === tagId);
   };
 
   const handleTagToggle = async (tag: Tag) => {
@@ -54,14 +61,23 @@ export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps
       
       if (isSelected) {
         // Remove tag
-        await removeTagFromDocument(projectId, documentId, tag.id, token);
-        setDocumentTags(documentTags.filter(t => t.id !== tag.id));
+        if (entityType === 'document') {
+          await removeTagFromDocument(projectId, entityId, tag.id, token);
+        } else {
+          await removeTagFromEvent(projectId, entityId, tag.id, token);
+        }
+        setEntityTags(entityTags.filter(t => t.id !== tag.id));
       } else {
         // Add tag
-        await addTagsToDocument(projectId, documentId, [tag.id], token);
-        setDocumentTags([...documentTags, tag]);
+        if (entityType === 'document') {
+          await addTagsToDocument(projectId, entityId, [tag.id], token);
+        } else {
+          await addTagsToEvent(projectId, entityId, [tag.id], token);
+        }
+        setEntityTags([...entityTags, tag]);
       }
       
+      onUpdate?.();
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update tag');
@@ -70,7 +86,7 @@ export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps
 
   const availableTags = allTags.filter(tag => !isTagSelected(tag.id));
   const hasAvailableTags = availableTags.length > 0;
-  const hasSelectedTags = documentTags.length > 0;
+  const hasSelectedTags = entityTags.length > 0;
 
   if (loading) return <div className="loading">Loading tags...</div>;
 
@@ -78,11 +94,15 @@ export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps
     <div className="modal-overlay">
       <div className="modal-content tag-selector-modal">
         <div className="modal-header">
-          <h3>Document Tags</h3>
+          <h3>{entityType === 'document' ? 'Document' : 'Event'} Tags</h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <div className="modal-body">
+          <div className="entity-info">
+            <h4>{entityType === 'document' ? 'Document' : 'Event'}: {entityName}</h4>
+          </div>
+
           {error && (
             <div className="error-message">
               {error}
@@ -93,9 +113,9 @@ export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps
           {/* Selected Tags */}
           {hasSelectedTags && (
             <div className="tags-section">
-              <h4>Applied Tags ({documentTags.length})</h4>
+              <h4>Applied Tags ({entityTags.length})</h4>
               <div className="tags-grid">
-                {documentTags.map(tag => (
+                {entityTags.map(tag => (
                   <div key={tag.id} className="tag-item selectable selected">
                     <span 
                       className="tag-badge"
@@ -161,7 +181,7 @@ export function TagSelector({ projectId, documentId, onClose }: TagSelectorProps
           <div className="tag-summary">
             {hasSelectedTags && (
               <span className="tag-count">
-                {documentTags.length} tag{documentTags.length !== 1 ? 's' : ''} applied
+                {entityTags.length} tag{entityTags.length !== 1 ? 's' : ''} applied
               </span>
             )}
           </div>

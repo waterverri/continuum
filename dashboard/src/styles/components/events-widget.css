@@ -235,6 +235,23 @@
   border-radius: var(--radius-sm);
 }
 
+.event-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.event-card__tags .tag-chip {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  color: white;
+  white-space: nowrap;
+}
+
 /* Empty State */
 .empty-state--compact {
   text-align: center;

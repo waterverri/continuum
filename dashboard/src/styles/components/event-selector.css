@@ -1,0 +1,273 @@
+/* Event Selector Modal */
+.event-selector {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-selector .modal-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-primary);
+}
+
+.event-selector .modal-header h3 {
+  margin: 0;
+  font-size: var(--font-xl);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.event-selector .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.event-selector .document-info {
+  padding: var(--spacing-lg);
+  background: var(--surface-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.event-selector .document-info h4 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-lg);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.event-selector .association-summary {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.event-selector .error-message {
+  margin: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--status-error-background);
+  border: 1px solid var(--status-error-border);
+  border-radius: var(--radius-md);
+  color: var(--status-error-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.event-selector .error-message button {
+  background: none;
+  border: none;
+  color: var(--status-error-text);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-lg);
+  line-height: 1;
+}
+
+.event-selector .error-message button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.event-selector .events-list {
+  padding: var(--spacing-lg);
+}
+
+.event-selector .empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+}
+
+.event-selector .events-hierarchy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.event-selector .event-group {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-primary);
+}
+
+.event-selector .event-selector-item {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-secondary);
+  transition: background-color 0.2s ease;
+}
+
+.event-selector .event-selector-item:last-child {
+  border-bottom: none;
+}
+
+.event-selector .event-selector-item:hover {
+  background: var(--surface-secondary);
+}
+
+.event-selector .event-selector-item.child-event {
+  margin-left: var(--spacing-lg);
+  border-left: 3px solid var(--accent-primary);
+  background: var(--surface-secondary);
+}
+
+.event-selector .event-checkbox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.event-selector .event-checkbox label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.event-selector .event-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  opacity: 0;
+  position: absolute;
+  cursor: pointer;
+}
+
+.event-selector .event-checkbox .checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.event-selector .event-checkbox input[type="checkbox"]:checked + .checkmark {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.event-selector .event-checkbox input[type="checkbox"]:checked + .checkmark::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.event-selector .event-checkbox input[type="checkbox"]:disabled + .checkmark {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.event-selector .event-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-selector .event-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+}
+
+.event-selector .event-name {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.event-selector .pending-indicator {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.event-selector .event-description {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.event-selector .event-details {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.event-selector .detail-item {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.event-selector .detail-item strong {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.event-selector .detail-item--date {
+  background: var(--surface-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+}
+
+.event-selector .child-events {
+  background: var(--surface-tertiary);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.event-selector .modal-footer {
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-primary);
+  background: var(--surface-primary);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+}
+
+.event-selector .loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .event-selector {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+  
+  .event-selector .event-details {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .event-selector .event-selector-item.child-event {
+    margin-left: var(--spacing-md);
+  }
+}

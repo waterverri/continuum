@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { getEventTimeline, getEvent, updateEvent, deleteEvent } from '../api';
+import { getEventTimeline, getEvent, updateEvent, deleteEvent, getEventTags } from '../api';
 import { getProject, updateProjectBaseDate } from '../accessors/projectAccessor';
-import type { Event, Document, EventDocument } from '../api';
+import { EventFilters, filterEvents, type EventFilterOptions } from './EventFilters';
+import type { Event, Document, EventDocument, Tag } from '../api';
 
 interface EventTimelineModalProps {
   projectId: string;
@@ -12,6 +13,7 @@ interface EventTimelineModalProps {
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCloseAllModals?: () => void;
+  onEventsChange?: () => void;
 }
 
 interface TimelineData {
@@ -30,7 +32,7 @@ interface EventFormData {
   parent_event_id: string;
 }
 
-export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocumentEdit, onDocumentDelete, onCloseAllModals }: EventTimelineModalProps) {
+export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocumentEdit, onDocumentDelete, onCloseAllModals, onEventsChange }: EventTimelineModalProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,12 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [eventTags, setEventTags] = useState<Map<string, Tag[]>>(new Map());
+  const [filters, setFilters] = useState<EventFilterOptions>({
+    searchTerm: '',
+    selectedTagIds: [],
+    dateRange: { startDate: '', endDate: '' }
+  });
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
     description: '',
@@ -100,6 +108,27 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     return diffDays;
   }, [baseDate]);
 
+  const loadEventTags = useCallback(async (eventList: Event[]) => {
+    try {
+      const token = await getAccessToken();
+      const tagMap = new Map<string, Tag[]>();
+      
+      await Promise.all(eventList.map(async (event) => {
+        try {
+          const tags = await getEventTags(projectId, event.id, token);
+          tagMap.set(event.id, tags);
+        } catch (err) {
+          console.warn(`Failed to load tags for event ${event.id}:`, err);
+          tagMap.set(event.id, []);
+        }
+      }));
+      
+      setEventTags(tagMap);
+    } catch (err) {
+      console.error('Failed to load event tags:', err);
+    }
+  }, [projectId]);
+
   const loadTimeline = useCallback(async () => {
     try {
       setLoading(true);
@@ -107,12 +136,17 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const token = await getAccessToken();
       const { events: timelineEvents } = await getEventTimeline(projectId, token);
       setEvents(timelineEvents);
+      
+      // Load tags for all events
+      if (timelineEvents.length > 0) {
+        await loadEventTags(timelineEvents);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load timeline');
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, loadEventTags]);
 
   const loadEventDetails = async (event: Event) => {
     try {
@@ -144,6 +178,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       await loadTimeline();
       setEditingEvent(null);
       setShowEventDetails(false);
+      onEventsChange?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update event');
     }
@@ -162,6 +197,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
         setShowEventDetails(false);
         setSelectedEvent(null);
       }
+      onEventsChange?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete event');
     }
@@ -342,6 +378,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
       const { createEvent } = await import('../api');
       await createEvent(projectId, eventData, token);
       await loadTimeline();
+      onEventsChange?.();
       
       // Reset form
       setIsCreatingEvent(false);
@@ -399,12 +436,16 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     loadTimeline();
   }, [loadProjectBaseDate, loadTimeline]);
 
+  const filteredEvents = useMemo(() => {
+    return filterEvents(events, filters, eventTags, baseDate);
+  }, [events, filters, eventTags, baseDate]);
+
   const timelineData: TimelineData = useMemo(() => {
-    const eventsWithTime = events.filter(e => e.time_start != null);
+    const eventsWithTime = filteredEvents.filter(e => e.time_start != null);
     
     if (eventsWithTime.length === 0) {
       return {
-        events,
+        events: filteredEvents,
         minTime: 0,
         maxTime: 100,
         timeRange: 100
@@ -425,12 +466,12 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
     const timeRange = maxTime - minTime;
 
     return {
-      events,
+      events: filteredEvents,
       minTime,
       maxTime,
       timeRange
     };
-  }, [events]);
+  }, [filteredEvents]);
 
   // Mouse up handler - defined after timelineData
   const handleMouseUp = useCallback(() => {
@@ -1117,12 +1158,31 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
           </div>
         )}
 
+        {/* Event Filters */}
+        {events.length > 0 && (
+          <div className="timeline-modal__filters">
+            <EventFilters
+              projectId={projectId}
+              events={events}
+              filters={filters}
+              onFiltersChange={setFilters}
+              baseDate={baseDate}
+            />
+          </div>
+        )}
+
         <div className="timeline-modal__body">
           {events.length === 0 ? (
             <div className="timeline-empty">
               <div className="empty-icon">📅</div>
               <h3>No Events Found</h3>
               <p>Create events to visualize them on the timeline.</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="timeline-empty">
+              <div className="empty-icon">🔍</div>
+              <h3>No Events Match Filters</h3>
+              <p>Try adjusting your filter criteria or clearing them to see more events.</p>
             </div>
           ) : (
             <div className={`timeline-content ${viewMode}`}>

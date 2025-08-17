@@ -908,8 +908,11 @@ export default function ProjectDetailPage() {
       {state.modals.showTagSelector && state.tagSelectorDocumentId && projectId && (
         <TagSelector
           projectId={projectId}
-          documentId={state.tagSelectorDocumentId}
+          entityType="document"
+          entityId={state.tagSelectorDocumentId}
+          entityName={state.documents.find((d: any) => d.id === state.tagSelectorDocumentId)?.title || 'Document'}
           onClose={closeTagSelector}
+          onUpdate={operations.loadDocuments}
         />
       )}
 
@@ -942,6 +945,7 @@ export default function ProjectDetailPage() {
           onDocumentDelete={(documentId) => {
             operations.handleDeleteDocument(documentId);
           }}
+          onEventsChange={loadEvents}
         />
       )}
 

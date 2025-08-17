@@ -386,4 +386,179 @@ router.delete('/:projectId/documents/:documentId/:tagId', async (req: RequestWit
   }
 });
 
+/**
+ * GET /api/tags/:projectId/events/:eventId
+ * Get all tags for a specific event
+ */
+router.get('/:projectId/events/:eventId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId } = req.params;
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Get tags associated with the event
+    const { data: eventTags, error } = await userSupabase
+      .from('event_tags')
+      .select(`
+        tag_id,
+        created_at,
+        tags!inner(
+          id,
+          project_id,
+          name,
+          color,
+          created_at
+        )
+      `)
+      .eq('event_id', eventId)
+      .eq('tags.project_id', projectId);
+    
+    if (error) {
+      console.error('Error fetching event tags:', error);
+      return res.status(500).json({ error: 'Failed to fetch event tags' });
+    }
+    
+    // Transform the data to return just the tags
+    const tags = eventTags?.map((et: any) => et.tags) || [];
+    
+    res.json({ tags });
+  } catch (error) {
+    console.error('Error in GET /tags/:projectId/events/:eventId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/tags/:projectId/events/:eventId
+ * Add tags to an event
+ */
+router.post('/:projectId/events/:eventId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId } = req.params;
+    const { tagIds } = req.body;
+    const userToken = req.token!;
+    
+    // Validate tagIds
+    if (!Array.isArray(tagIds) || tagIds.length === 0) {
+      return res.status(400).json({ error: 'tagIds must be a non-empty array' });
+    }
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify event exists and user has access
+    const { data: event, error: eventError } = await userSupabase
+      .from('events')
+      .select('id')
+      .eq('id', eventId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Verify all tags exist and belong to the project
+    const { data: tags, error: tagsError } = await userSupabase
+      .from('tags')
+      .select('id')
+      .eq('project_id', projectId)
+      .in('id', tagIds);
+    
+    if (tagsError) {
+      console.error('Error verifying tags:', tagsError);
+      return res.status(500).json({ error: 'Failed to verify tags' });
+    }
+    
+    if (!tags || tags.length !== tagIds.length) {
+      return res.status(400).json({ error: 'One or more tags not found or do not belong to this project' });
+    }
+    
+    // Get existing associations to avoid duplicates
+    const { data: existing } = await userSupabase
+      .from('event_tags')
+      .select('tag_id')
+      .eq('event_id', eventId)
+      .in('tag_id', tagIds);
+    
+    const existingTagIds = existing?.map((et: any) => et.tag_id) || [];
+    const newTagIds = tagIds.filter(id => !existingTagIds.includes(id));
+    
+    if (newTagIds.length === 0) {
+      return res.status(409).json({ error: 'All specified tags are already associated with this event' });
+    }
+    
+    // Create new associations
+    const associations = newTagIds.map(tagId => ({
+      event_id: eventId,
+      tag_id: tagId
+    }));
+    
+    const { data: eventTags, error } = await userSupabase
+      .from('event_tags')
+      .insert(associations)
+      .select();
+    
+    if (error) {
+      console.error('Error creating event-tag associations:', error);
+      return res.status(500).json({ error: 'Failed to associate tags with event' });
+    }
+    
+    res.status(201).json({ 
+      message: `Added ${newTagIds.length} tag(s) to event`,
+      associations: eventTags 
+    });
+  } catch (error) {
+    console.error('Error in POST /tags/:projectId/events/:eventId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * DELETE /api/tags/:projectId/events/:eventId/:tagId
+ * Remove a specific tag from an event
+ */
+router.delete('/:projectId/events/:eventId/:tagId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId, tagId } = req.params;
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify event and tag belong to the project
+    const [eventResult, tagResult] = await Promise.all([
+      userSupabase.from('events').select('id').eq('id', eventId).eq('project_id', projectId).single(),
+      userSupabase.from('tags').select('id').eq('id', tagId).eq('project_id', projectId).single()
+    ]);
+    
+    if (eventResult.error || !eventResult.data) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    if (tagResult.error || !tagResult.data) {
+      return res.status(404).json({ error: 'Tag not found' });
+    }
+    
+    // Remove the association
+    const { error } = await userSupabase
+      .from('event_tags')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('tag_id', tagId);
+    
+    if (error) {
+      console.error('Error removing event-tag association:', error);
+      return res.status(500).json({ error: 'Failed to remove tag from event' });
+    }
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error in DELETE /tags/:projectId/events/:eventId/:tagId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

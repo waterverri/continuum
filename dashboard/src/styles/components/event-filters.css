@@ -1,0 +1,101 @@
+/* Event Filters Component */
+.event-filters {
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--border-primary);
+}
+
+.event-filters__row {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.event-filters .filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 120px;
+}
+
+.event-filters .filter-label {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.event-filters .filter-input {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.event-filters .filter-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-primary-alpha);
+}
+
+.event-filters .filter-input--date {
+  min-width: 140px;
+}
+
+.event-filters .filter-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.event-filters .filter-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-primary-alpha);
+}
+
+.date-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.date-range-separator {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  padding: 0 var(--spacing-xs);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .event-filters__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .event-filters .filter-section {
+    min-width: unset;
+  }
+  
+  .date-range-inputs {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+  
+  .date-range-separator {
+    text-align: center;
+    padding: var(--spacing-xs) 0;
+  }
+}

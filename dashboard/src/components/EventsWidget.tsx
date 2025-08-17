@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import { createEvent, updateEvent, deleteEvent, getEvent } from '../api';
+import { createEvent, updateEvent, deleteEvent, getEvent, getEventTags } from '../api';
 import { getProject } from '../accessors/projectAccessor';
-import type { Event, Document, EventDocument } from '../api';
+import { EventFilters, filterEvents, type EventFilterOptions } from './EventFilters';
+import { TagSelector } from './TagSelector';
+import type { Event, Document, EventDocument, Tag } from '../api';
 
 interface EventsWidgetProps {
   projectId: string;
@@ -33,6 +35,14 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const [eventDocuments, setEventDocuments] = useState<(EventDocument & {documents: Document})[]>([]);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [baseDate, setBaseDate] = useState(new Date());
+  const [eventTags, setEventTags] = useState<Map<string, Tag[]>>(new Map());
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const [tagSelectorEvent, setTagSelectorEvent] = useState<Event | null>(null);
+  const [filters, setFilters] = useState<EventFilterOptions>({
+    searchTerm: '',
+    selectedTagIds: [],
+    dateRange: { startDate: '', endDate: '' }
+  });
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
     description: '',
@@ -62,6 +72,33 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   useEffect(() => {
     loadProjectBaseDate();
   }, [loadProjectBaseDate]);
+
+  const loadEventTags = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      const tagMap = new Map<string, Tag[]>();
+      
+      await Promise.all(events.map(async (event) => {
+        try {
+          const tags = await getEventTags(projectId, event.id, token);
+          tagMap.set(event.id, tags);
+        } catch (err) {
+          console.warn(`Failed to load tags for event ${event.id}:`, err);
+          tagMap.set(event.id, []);
+        }
+      }));
+      
+      setEventTags(tagMap);
+    } catch (err) {
+      console.error('Failed to load event tags:', err);
+    }
+  }, [projectId, events]);
+
+  useEffect(() => {
+    if (events.length > 0) {
+      loadEventTags();
+    }
+  }, [loadEventTags]);
 
 
   const timeToDate = (timeValue: number): Date => {
@@ -182,6 +219,17 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     }
   };
 
+  const handleTagsManagement = (event: Event) => {
+    setTagSelectorEvent(event);
+    setShowTagSelector(true);
+  };
+
+  const handleTagsUpdate = async () => {
+    await loadEventTags();
+    setShowTagSelector(false);
+    setTagSelectorEvent(null);
+  };
+
 
   const getEventDuration = (event: Event) => {
     if (!event.time_start || !event.time_end) return null;
@@ -194,7 +242,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     return parent?.name || 'Unknown Parent';
   };
 
-  const sortedEvents = events
+  const filteredEvents = filterEvents(events, filters, eventTags, baseDate);
+  const sortedEvents = filteredEvents
     .sort((a, b) => (a.time_start || 0) - (b.time_start || 0));
 
   return (
@@ -226,6 +275,17 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           )}
         </div>
       </div>
+
+      {/* Event Filters */}
+      {events.length > 3 && (
+        <EventFilters
+          projectId={projectId}
+          events={events}
+          filters={filters}
+          onFiltersChange={setFilters}
+          baseDate={baseDate}
+        />
+      )}
 
       {error && (
         <div className="events-widget__error">
@@ -340,6 +400,14 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                       </button>
                       <button
                         className="event-card__action"
+                        onClick={() => handleTagsManagement(event)}
+                        disabled={loading}
+                        title="Manage tags"
+                      >
+                        🏷️
+                      </button>
+                      <button
+                        className="event-card__action"
                         onClick={() => handleEdit(event)}
                         disabled={loading}
                         title="Edit event"
@@ -372,6 +440,19 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                       <span className="event-card__parent">
                         ↳ {getParentEventName(event.parent_event_id)}
                       </span>
+                    )}
+                    {eventTags.get(event.id) && eventTags.get(event.id)!.length > 0 && (
+                      <div className="event-card__tags">
+                        {eventTags.get(event.id)!.map(tag => (
+                          <span 
+                            key={tag.id} 
+                            className="tag-chip"
+                            style={{ backgroundColor: tag.color }}
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -463,6 +544,19 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
             </div>
           </div>
         </div>,
+        document.getElementById('modal-portal')!
+      )}
+
+      {/* Tag Selector Modal */}
+      {showTagSelector && tagSelectorEvent && createPortal(
+        <TagSelector
+          projectId={projectId}
+          entityType="event"
+          entityId={tagSelectorEvent.id}
+          entityName={tagSelectorEvent.name}
+          onClose={() => setShowTagSelector(false)}
+          onUpdate={handleTagsUpdate}
+        />,
         document.getElementById('modal-portal')!
       )}
     </div>
