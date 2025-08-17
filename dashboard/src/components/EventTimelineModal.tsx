@@ -146,12 +146,11 @@ export function EventTimelineModal({
           onZoomReset={viewport.handleZoomReset}
           onZoomToFit={viewport.handleZoomToFit}
           onBaseDateClick={() => state.setShowBaseDateModal(true)}
+          onClose={onClose}
           filteredEventsCount={state.filteredEvents.length}
           totalEventsCount={state.events.length}
           timeRange={state.timelineData.timeRange}
         />
-        
-        <button className="modal-close" onClick={onClose}>&times;</button>
 
         {/* Error Display */}
         {state.error && (

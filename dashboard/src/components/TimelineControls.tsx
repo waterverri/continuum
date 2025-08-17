@@ -9,6 +9,7 @@ export interface TimelineControlsProps {
   onZoomReset: () => void;
   onZoomToFit: () => void;
   onBaseDateClick: () => void;
+  onClose: () => void;
   filteredEventsCount: number;
   totalEventsCount: number;
   timeRange: number;
@@ -24,6 +25,7 @@ export function TimelineControls({
   onZoomReset,
   onZoomToFit,
   onBaseDateClick,
+  onClose,
   filteredEventsCount,
   totalEventsCount,
   timeRange
@@ -37,6 +39,8 @@ export function TimelineControls({
           {totalEventsCount !== filteredEventsCount ? `/${totalEventsCount}` : ''} events • {timeRange} time units
         </p>
       </div>
+      
+      <button className="modal-close" onClick={onClose}>&times;</button>
       
       <div className="timeline-modal__controls">
         <button 
