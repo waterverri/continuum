@@ -1,17 +1,19 @@
 import { useState, useRef, useCallback } from 'react';
 import type { Document } from '../api';
+import { ExtractTextModal } from './ExtractTextModal';
 
 interface DocumentViewerProps {
   document: Document;
   resolvedContent: string | null;
   onResolve: () => void;
-  onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }) => void;
+  onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string) => void;
 }
 
 export function DocumentViewer({ document, resolvedContent, onResolve, onCreateFromSelection }: DocumentViewerProps) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const [showCreateButton, setShowCreateButton] = useState(false);
+  const [showExtractModal, setShowExtractModal] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleTextSelection = useCallback(() => {
@@ -61,13 +63,18 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
     }
   }, [document.content]);
 
-  const handleCreateFromSelection = useCallback(() => {
+  const handleShowExtractModal = useCallback(() => {
+    setShowExtractModal(true);
+  }, []);
+
+  const handleExtractConfirm = useCallback((title: string, documentType: string) => {
     try {
       if (selectedText && selectionRange && onCreateFromSelection) {
-        onCreateFromSelection(selectedText, selectionRange);
+        onCreateFromSelection(selectedText, selectionRange, title, documentType);
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
+        setShowExtractModal(false);
         window.getSelection()?.removeAllRanges();
       }
     } catch (error) {
@@ -76,8 +83,13 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
       setSelectedText('');
       setSelectionRange(null);
       setShowCreateButton(false);
+      setShowExtractModal(false);
     }
   }, [selectedText, selectionRange, onCreateFromSelection]);
+
+  const handleExtractCancel = useCallback(() => {
+    setShowExtractModal(false);
+  }, []);
 
   return (
     <div className="document-viewer">
@@ -93,7 +105,7 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
           </button>
         )}
         {showCreateButton && selectedText && !document.is_composite && (
-          <button className="btn btn--primary" onClick={handleCreateFromSelection} style={{ marginLeft: '0.5rem' }}>
+          <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
             📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
           </button>
         )}
@@ -132,6 +144,15 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
             {resolvedContent}
           </div>
         </div>
+      )}
+
+      {showExtractModal && (
+        <ExtractTextModal
+          sourceDocument={document}
+          selectedText={selectedText}
+          onConfirm={handleExtractConfirm}
+          onCancel={handleExtractCancel}
+        />
       )}
     </div>
   );

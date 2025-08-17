@@ -574,8 +574,8 @@ export default function ProjectDetailPage() {
                 document={state.selectedDocument}
                 resolvedContent={state.resolvedContent}
                 onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-                onCreateFromSelection={(selectedText, selectionInfo) => 
-                  state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo)
+                onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
+                  state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
                 }
               />
             )}
