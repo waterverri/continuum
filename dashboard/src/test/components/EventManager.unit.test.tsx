@@ -8,6 +8,8 @@ vi.mock('../../api', () => ({
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
   deleteEvent: vi.fn(),
+  getTags: vi.fn(),
+  getEventTags: vi.fn(),
 }));
 
 // Mock the supabase client
@@ -17,7 +19,17 @@ vi.mock('../../supabaseClient', () => ({
       getSession: vi.fn().mockResolvedValue({
         data: { session: { access_token: 'mock-token' } }
       })
-    }
+    },
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: 'project-1', name: 'Test Project', base_date: '2023-01-01' },
+            error: null
+          })
+        })
+      })
+    })
   }
 }));
 

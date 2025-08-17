@@ -8,6 +8,8 @@ vi.mock('../../api', () => ({
   getEvent: vi.fn(),
   addDocumentToEvent: vi.fn(),
   removeDocumentFromEvent: vi.fn(),
+  getTags: vi.fn(),
+  getEventTags: vi.fn(),
 }));
 
 // Mock the supabase client
@@ -17,7 +19,17 @@ vi.mock('../../supabaseClient', () => ({
       getSession: vi.fn().mockResolvedValue({
         data: { session: { access_token: 'mock-token' } }
       })
-    }
+    },
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: 'project-1', name: 'Test Project', base_date: '2023-01-01' },
+            error: null
+          })
+        })
+      })
+    })
   }
 }));
 
@@ -63,8 +75,12 @@ describe('EventSelector', () => {
     onUpdate: vi.fn()
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Set default return values for API functions to prevent crashes
+    const { getTags, getEventTags } = await import('../../api');
+    vi.mocked(getTags).mockResolvedValue([]);
+    vi.mocked(getEventTags).mockResolvedValue([]);
   });
 
   it('renders loading state initially', async () => {
@@ -262,9 +278,9 @@ describe('EventSelector', () => {
     await waitFor(() => {
       // Both events have time information, so Start: and End: appear twice
       expect(screen.getAllByText('Start:')).toHaveLength(2);
-      expect(screen.getAllByText('Time 100')).toHaveLength(2); // Both events start at time 100
+      expect(screen.getAllByText('Apr 11, 2023')).toHaveLength(2); // Both events start at time 100 (100 days from Jan 1, 2023)
       expect(screen.getAllByText('End:')).toHaveLength(2);
-      expect(screen.getByText('Time 200')).toBeInTheDocument(); // Only first event ends at 200
+      expect(screen.getByText('Jul 20, 2023')).toBeInTheDocument(); // First event ends at time 200 (200 days from Jan 1, 2023)
     });
   });
 
@@ -287,8 +303,10 @@ describe('EventSelector', () => {
     render(<EventSelector {...mockProps} />);
     
     await waitFor(() => {
-      // "Not set" appears twice - once for start time, once for end time
-      expect(screen.getAllByText('Not set')).toHaveLength(2);
+      // "Not set" appears once for start time. End time is not shown when undefined.
+      expect(screen.getAllByText('Not set')).toHaveLength(1);
+      expect(screen.getByText('Start:')).toBeInTheDocument();
+      expect(screen.queryByText('End:')).not.toBeInTheDocument();
     });
   });
 

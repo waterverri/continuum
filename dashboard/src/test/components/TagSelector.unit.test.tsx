@@ -8,6 +8,9 @@ vi.mock('../../api', () => ({
   getDocumentTags: vi.fn(),
   addTagsToDocument: vi.fn(),
   removeTagFromDocument: vi.fn(),
+  getEventTags: vi.fn(),
+  addTagsToEvent: vi.fn(),
+  removeTagFromEvent: vi.fn(),
 }));
 
 // Mock the supabase client
@@ -67,7 +70,7 @@ describe('TagSelector', () => {
     vi.mocked(getTags).mockResolvedValue(mockAllTags);
     vi.mocked(getDocumentTags).mockResolvedValue(mockDocumentTags);
 
-    render(<TagSelector projectId="project-1" documentId="doc-1" onClose={mockOnClose} />);
+    render(<TagSelector projectId="project-1" entityType="document" entityId="doc-1" entityName="Test Document" onClose={mockOnClose} />);
 
     await waitFor(() => {
       expect(screen.getByText('Document Tags')).toBeInTheDocument();
@@ -88,7 +91,7 @@ describe('TagSelector', () => {
     vi.mocked(getDocumentTags).mockResolvedValue([]);
     vi.mocked(addTagsToDocument).mockResolvedValue();
 
-    render(<TagSelector projectId="project-1" documentId="doc-1" onClose={mockOnClose} />);
+    render(<TagSelector projectId="project-1" entityType="document" entityId="doc-1" entityName="Test Document" onClose={mockOnClose} />);
 
     await waitFor(() => {
       expect(screen.getByText('Available Tags (3)')).toBeInTheDocument();
@@ -108,7 +111,7 @@ describe('TagSelector', () => {
     vi.mocked(getDocumentTags).mockResolvedValue(mockDocumentTags);
     vi.mocked(removeTagFromDocument).mockResolvedValue();
 
-    render(<TagSelector projectId="project-1" documentId="doc-1" onClose={mockOnClose} />);
+    render(<TagSelector projectId="project-1" entityType="document" entityId="doc-1" entityName="Test Document" onClose={mockOnClose} />);
 
     await waitFor(() => {
       expect(screen.getByText('Applied Tags (1)')).toBeInTheDocument();
@@ -128,7 +131,7 @@ describe('TagSelector', () => {
     vi.mocked(getTags).mockResolvedValue([]);
     vi.mocked(getDocumentTags).mockResolvedValue([]);
 
-    render(<TagSelector projectId="project-1" documentId="doc-1" onClose={mockOnClose} />);
+    render(<TagSelector projectId="project-1" entityType="document" entityId="doc-1" entityName="Test Document" onClose={mockOnClose} />);
 
     await waitFor(() => {
       expect(screen.getByText('No tags available.')).toBeInTheDocument();
@@ -141,7 +144,7 @@ describe('TagSelector', () => {
     vi.mocked(getTags).mockResolvedValue(mockAllTags);
     vi.mocked(getDocumentTags).mockResolvedValue(mockAllTags); // All tags applied
 
-    render(<TagSelector projectId="project-1" documentId="doc-1" onClose={mockOnClose} />);
+    render(<TagSelector projectId="project-1" entityType="document" entityId="doc-1" entityName="Test Document" onClose={mockOnClose} />);
 
     await waitFor(() => {
       expect(screen.getByText('Applied Tags (3)')).toBeInTheDocument();
