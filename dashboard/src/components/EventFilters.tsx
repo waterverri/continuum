@@ -175,17 +175,27 @@ export function filterEvents(
 ): Event[] {
   return events.filter(event => {
     // Search term filter
-    if (filters.searchTerm && !event.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) &&
-        !(event.description?.toLowerCase().includes(filters.searchTerm.toLowerCase()))) {
-      return false;
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      const nameMatch = event.name.toLowerCase().includes(searchLower);
+      const descMatch = event.description?.toLowerCase().includes(searchLower) || false;
+      if (!nameMatch && !descMatch) {
+        return false;
+      }
     }
 
     // Tag filter
     if (filters.selectedTagIds.length > 0) {
-      const eventTagIds = eventTags.get(event.id)?.map(t => t.id) || [];
-      const hasSelectedTag = filters.selectedTagIds.some(tagId => eventTagIds.includes(tagId));
-      if (!hasSelectedTag) {
-        return false;
+      const eventTagList = eventTags.get(event.id);
+      // If eventTags Map is not populated yet, don't filter by tags
+      if (eventTags.size === 0) {
+        // Map not loaded yet, don't apply tag filter
+      } else {
+        const eventTagIds = eventTagList?.map(t => t.id) || [];
+        const hasSelectedTag = filters.selectedTagIds.some(tagId => eventTagIds.includes(tagId));
+        if (!hasSelectedTag) {
+          return false;
+        }
       }
     }
 

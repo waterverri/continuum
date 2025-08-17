@@ -226,6 +226,10 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
 
   const handleTagsUpdate = async () => {
     await loadEventTags();
+    // Don't close the modal - let user close it manually
+  };
+  
+  const handleTagSelectorClose = () => {
     setShowTagSelector(false);
     setTagSelectorEvent(null);
   };
@@ -277,7 +281,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       </div>
 
       {/* Event Filters */}
-      {events.length > 3 && (
+      {events.length > 0 && (
         <EventFilters
           projectId={projectId}
           events={events}
@@ -554,7 +558,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           entityType="event"
           entityId={tagSelectorEvent.id}
           entityName={tagSelectorEvent.name}
-          onClose={() => setShowTagSelector(false)}
+          onClose={handleTagSelectorClose}
           onUpdate={handleTagsUpdate}
         />,
         document.getElementById('modal-portal')!

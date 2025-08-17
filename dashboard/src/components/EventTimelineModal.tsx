@@ -437,6 +437,15 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   }, [loadProjectBaseDate, loadTimeline]);
 
   const filteredEvents = useMemo(() => {
+    // Only apply tag filters if we have tag data loaded or no tag filter is applied
+    const hasTagFilter = filters.selectedTagIds.length > 0;
+    const hasTagData = eventTags.size > 0;
+    
+    // If we're trying to filter by tags but don't have tag data yet, return all events
+    if (hasTagFilter && !hasTagData && events.length > 0) {
+      return events;
+    }
+    
     return filterEvents(events, filters, eventTags, baseDate);
   }, [events, filters, eventTags, baseDate]);
 
