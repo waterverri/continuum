@@ -40,8 +40,6 @@ export function TimelineControls({
         </p>
       </div>
       
-      <button className="modal-close" onClick={onClose}>&times;</button>
-      
       <div className="timeline-modal__controls">
         <button 
           className="btn btn--secondary"
@@ -109,6 +107,8 @@ export function TimelineControls({
             </div>
           </>
         )}
+        
+        <button className="modal-close" onClick={onClose}>&times;</button>
       </div>
     </div>
   );
