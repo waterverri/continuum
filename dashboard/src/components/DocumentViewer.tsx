@@ -15,6 +15,7 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
   const [showCreateButton, setShowCreateButton] = useState(false);
   const [showExtractModal, setShowExtractModal] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const resolvedContentRef = useRef<HTMLDivElement>(null);
 
   const handleTextSelection = useCallback(() => {
     try {
@@ -29,25 +30,39 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
       const range = selection.getRangeAt(0);
       const selectedText = selection.toString().trim();
       
-      // Only show button if text is selected and it's within our content div
-      if (selectedText && contentRef.current && range.commonAncestorContainer && 
+      // Only show button if text is selected and it's within our content divs
+      const isInRawContent = contentRef.current && range.commonAncestorContainer && 
           (contentRef.current.contains(range.commonAncestorContainer) || 
-           contentRef.current === range.commonAncestorContainer)) {
-        // Calculate text position in the full document content
-        const fullText = document.content || '';
-        const startIndex = fullText.indexOf(selectedText);
-        
-        if (startIndex !== -1) {
-          setSelectedText(selectedText);
-          setSelectionRange({
-            start: startIndex,
-            end: startIndex + selectedText.length
-          });
-          setShowCreateButton(true);
+           contentRef.current === range.commonAncestorContainer);
+      const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer && 
+          (resolvedContentRef.current.contains(range.commonAncestorContainer) || 
+           resolvedContentRef.current === range.commonAncestorContainer);
+      
+      if (selectedText && (isInRawContent || isInResolvedContent)) {
+        if (isInRawContent) {
+          // For raw content, try to find position in document content
+          const fullText = document.content || '';
+          const startIndex = fullText.indexOf(selectedText);
+          
+          if (startIndex !== -1) {
+            setSelectedText(selectedText);
+            setSelectionRange({
+              start: startIndex,
+              end: startIndex + selectedText.length
+            });
+            setShowCreateButton(true);
+          } else {
+            // Even if we can't find exact position, still allow extraction
+            setSelectedText(selectedText);
+            setSelectionRange({ start: 0, end: selectedText.length });
+            setShowCreateButton(true);
+          }
         } else {
-          setSelectedText('');
-          setSelectionRange(null);
-          setShowCreateButton(false);
+          // For resolved content, we can't determine exact position in raw content
+          // but we can still extract the selected text
+          setSelectedText(selectedText);
+          setSelectionRange({ start: 0, end: selectedText.length });
+          setShowCreateButton(true);
         }
       } else {
         setSelectedText('');
@@ -104,7 +119,7 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
             🔗 Resolve Template
           </button>
         )}
-        {showCreateButton && selectedText && !document.is_composite && (
+        {showCreateButton && selectedText && (
           <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
             📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
           </button>
@@ -140,7 +155,13 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
       {document.is_composite && resolvedContent && (
         <div className="content-section">
           <h4>Resolved Content:</h4>
-          <div className="content-display content-display--resolved">
+          <div 
+            ref={resolvedContentRef}
+            className="content-display content-display--resolved"
+            onMouseUp={handleTextSelection}
+            onKeyUp={handleTextSelection}
+            style={{ userSelect: 'text', cursor: 'text' }}
+          >
             {resolvedContent}
           </div>
         </div>
