@@ -38,6 +38,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const [eventTags, setEventTags] = useState<Map<string, Tag[]>>(new Map());
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [tagSelectorEvent, setTagSelectorEvent] = useState<Event | null>(null);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [filters, setFilters] = useState<EventFilterOptions>({
     searchTerm: '',
     selectedTagIds: [],
@@ -246,6 +247,11 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     return parent?.name || 'Unknown Parent';
   };
 
+  const hasActiveFilters = filters.searchTerm || 
+    filters.selectedTagIds.length > 0 || 
+    filters.dateRange.startDate || 
+    filters.dateRange.endDate;
+
   const filteredEvents = filterEvents(events, filters, eventTags, baseDate);
   const sortedEvents = filteredEvents
     .sort((a, b) => (a.time_start || 0) - (b.time_start || 0));
@@ -254,8 +260,17 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     <div className="events-widget">
       {/* Header with Create Button */}
       <div className="events-widget__header">
-        <h4>📅 Events ({events.length})</h4>
+        <h4>📅 Events ({filteredEvents.length}{events.length !== filteredEvents.length ? `/${events.length}` : ''})</h4>
         <div className="events-widget__actions">
+          {events.length > 0 && (
+            <button 
+              className={`btn btn--xs ${hasActiveFilters ? 'btn--primary' : 'btn--ghost'}`}
+              onClick={() => setShowFiltersModal(true)}
+              title={hasActiveFilters ? 'Filters active - click to edit' : 'Filter events'}
+            >
+              🔍 {hasActiveFilters ? '●' : ''}
+            </button>
+          )}
           <button 
             className="btn btn--xs btn--secondary"
             onClick={() => {
@@ -279,17 +294,6 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           )}
         </div>
       </div>
-
-      {/* Event Filters */}
-      {events.length > 0 && (
-        <EventFilters
-          projectId={projectId}
-          events={events}
-          filters={filters}
-          onFiltersChange={setFilters}
-          baseDate={baseDate}
-        />
-      )}
 
       {error && (
         <div className="events-widget__error">
@@ -561,6 +565,48 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           onClose={handleTagSelectorClose}
           onUpdate={handleTagsUpdate}
         />,
+        document.getElementById('modal-portal')!
+      )}
+
+      {/* Event Filters Modal */}
+      {showFiltersModal && createPortal(
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Filter Events</h3>
+              <button className="modal-close" onClick={() => setShowFiltersModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <EventFilters
+                projectId={projectId}
+                events={events}
+                filters={filters}
+                onFiltersChange={setFilters}
+                baseDate={baseDate}
+              />
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn--ghost" 
+                onClick={() => {
+                  setFilters({
+                    searchTerm: '',
+                    selectedTagIds: [],
+                    dateRange: { startDate: '', endDate: '' }
+                  });
+                }}
+              >
+                Clear All
+              </button>
+              <button 
+                className="btn btn--primary" 
+                onClick={() => setShowFiltersModal(false)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>,
         document.getElementById('modal-portal')!
       )}
     </div>

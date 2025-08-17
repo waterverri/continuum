@@ -67,14 +67,15 @@
 
 .date-range-inputs {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--spacing-xs);
 }
 
 .date-range-separator {
   color: var(--text-tertiary);
   font-weight: 500;
-  padding: 0 var(--spacing-xs);
+  text-align: center;
+  font-size: var(--font-xs);
 }
 
 /* Responsive adjustments */

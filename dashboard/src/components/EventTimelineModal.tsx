@@ -743,7 +743,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   const getEventsByParent = () => {
     const parentMap = new Map<string | null, Event[]>();
     
-    events.forEach(event => {
+    filteredEvents.forEach(event => {
       const parentId = event.parent_event_id || null;
       if (!parentMap.has(parentId)) {
         parentMap.set(parentId, []);
@@ -1000,7 +1000,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
   };
 
   const renderListView = () => {
-    const sortedEvents = [...events].sort((a, b) => {
+    const sortedEvents = [...filteredEvents].sort((a, b) => {
       const aTime = a.time_start || 0;
       const bTime = b.time_start || 0;
       if (aTime !== bTime) return aTime - bTime;
@@ -1087,7 +1087,7 @@ export function EventTimelineModal({ projectId, onClose, onDocumentView, onDocum
         <div className="timeline-modal__header">
           <div className="timeline-modal__title">
             <h2>📅 Event Timeline</h2>
-            <p>{events.length} events • {timelineData.timeRange} time units</p>
+            <p>{filteredEvents.length}{events.length !== filteredEvents.length ? `/${events.length}` : ''} events • {timelineData.timeRange} time units</p>
           </div>
           
           <div className="timeline-modal__controls">
