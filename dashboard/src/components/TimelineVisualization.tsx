@@ -56,6 +56,16 @@ export function TimelineVisualization({
     getAdjustedPosition,
     getAdjustedViewportRange
   } = useTimelineCollapse({ events, viewport });
+
+  // Format date for ticker display (dd MMM yy format)
+  const formatDateForTicker = (timeValue: number) => {
+    const date = new Date(timeValue * 24 * 60 * 60 * 1000); // Convert day units to milliseconds
+    return date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: '2-digit'
+    });
+  };
   
   const getEventColor = (eventId: string) => {
     // Simple hash function to generate consistent colors
@@ -252,7 +262,7 @@ export function TimelineVisualization({
               className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
               style={{ left: `${finalPosition}%` }}
             >
-              <span className="ruler-label">{formatDateDisplay(timeValue).replace(/,\s/g, '\n')}</span>
+              <span className="ruler-label">{formatDateForTicker(timeValue)}</span>
               {isCollapseBoundary && (
                 <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
                   ⚡
@@ -263,10 +273,11 @@ export function TimelineVisualization({
         }
       });
       
-      // Then add collapse buttons as additional tickers
+      // Then add collapse/expand buttons for collapsible segments
       console.log('Adding collapse button tickers, segments:', timeSegments.length);
       timeSegments.forEach(segment => {
-        if (segment.type === 'collapsed' && segment.collapsedSegment) {
+        // Show buttons for both collapsed AND expanded segments that can be collapsed
+        if (segment.collapsedSegment) {
           const segmentData = segment.collapsedSegment;
           const segmentMidpoint = segmentData.startTime + (segmentData.endTime - segmentData.startTime) / 2;
           
@@ -275,13 +286,14 @@ export function TimelineVisualization({
           const transformOffset = isDragging ? (panOffset / 10) : 0;
           const finalPosition = position + transformOffset;
           
-          console.log(`Collapse button: segment ${segmentData.id}, position ${finalPosition}%`);
+          const isCollapsed = segment.type === 'collapsed';
+          console.log(`${isCollapsed ? 'Collapse' : 'Expand'} button: segment ${segmentData.id}, position ${finalPosition}%`);
           
           if (finalPosition > -10 && finalPosition < 110) {
             ticks.push(
               <div 
-                key={`collapse-${segmentData.id}`}
-                className="ruler-tick collapse-tick"
+                key={`toggle-${segmentData.id}`}
+                className={`ruler-tick ${isCollapsed ? 'collapse-tick' : 'expand-tick'}`}
                 style={{ left: `${finalPosition}%` }}
                 onClick={(e) => {
                   e.preventDefault();
@@ -293,8 +305,8 @@ export function TimelineVisualization({
                   e.stopPropagation();
                 }}
               >
-                <div className="collapse-button">
-                  <span className="collapse-icon">⋯</span>
+                <div className={isCollapsed ? 'collapse-button' : 'expand-button'}>
+                  <span className="collapse-icon">{isCollapsed ? '⋯' : '⤴'}</span>
                   <span className="collapse-duration">{Math.round(segmentData.duration)}d</span>
                 </div>
               </div>
