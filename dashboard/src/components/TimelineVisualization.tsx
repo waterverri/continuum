@@ -213,6 +213,7 @@ export function TimelineVisualization({
         }
       });
       
+      // First add all regular tickers
       filteredTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
@@ -220,85 +221,82 @@ export function TimelineVisualization({
         const finalPosition = position + transformOffset;
         
         if (finalPosition > -10 && finalPosition < 110) {
-          // Check if this tick should show a collapse button instead of regular tick
-          let foundCollapsedSegment = false;
-          
-          for (const segment of timeSegments) {
-            if (segment.type === 'collapsed' && segment.collapsedSegment) {
-              const segmentData = segment.collapsedSegment;
-              const segmentStart = segmentData.startTime;
-              const segmentEnd = segmentData.endTime;
-              const segmentMidpoint = segmentStart + (segmentEnd - segmentStart) / 2;
-              
-              // If this tick is close to the collapsed segment midpoint, show collapse button here
-              if (Math.abs(timeValue - segmentMidpoint) < Math.abs(timeValue - segmentStart) && 
-                  Math.abs(timeValue - segmentMidpoint) < Math.abs(timeValue - segmentEnd)) {
-                // Render collapse button as a ticker
-                ticks.push(
-                  <div 
-                    key={`collapse-${segmentData.id}`}
-                    className="ruler-tick collapse-tick"
-                    style={{ left: `${finalPosition}%` }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleSegmentCollapse(segmentData.id);
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  >
-                    <div className="collapse-button">
-                      <span className="collapse-icon">⋯</span>
-                      <span className="collapse-duration">{Math.round(segmentData.duration)}d</span>
-                    </div>
-                  </div>
-                );
-                foundCollapsedSegment = true;
-                break;
-              }
-            }
-          }
-          
-          if (!foundCollapsedSegment) {
-            // Check if this is a 3x collapse boundary
-            let isCollapseBoundary = false;
-            eventsWithTime.forEach((event, index) => {
-              const eventEnd = event.time_end || event.time_start!;
-              const eventDuration = Math.max(1, eventEnd - event.time_start!);
-              const threeX = eventEnd + (eventDuration * 2);
-              
-              if (Math.abs(timeValue - threeX) < 0.1) { // Close enough to 3x position
-                const nextEvent = eventsWithTime[index + 1];
-                if (nextEvent) {
-                  const nextStart = nextEvent.time_start!;
-                  const nextEnd = nextEvent.time_end || nextEvent.time_start!;
-                  const nextDuration = Math.max(1, nextEnd - nextStart);
-                  const averageDuration = (eventDuration + nextDuration) / 2;
-                  const collapseThreshold = averageDuration * 3;
-                  const gapDuration = nextStart - eventEnd;
-                  
-                  if (gapDuration > collapseThreshold && threeX <= nextStart) {
-                    isCollapseBoundary = true;
-                  }
+          // Check if this is a 3x collapse boundary
+          let isCollapseBoundary = false;
+          eventsWithTime.forEach((event, index) => {
+            const eventEnd = event.time_end || event.time_start!;
+            const eventDuration = Math.max(1, eventEnd - event.time_start!);
+            const threeX = eventEnd + (eventDuration * 2);
+            
+            if (Math.abs(timeValue - threeX) < 0.1) { // Close enough to 3x position
+              const nextEvent = eventsWithTime[index + 1];
+              if (nextEvent) {
+                const nextStart = nextEvent.time_start!;
+                const nextEnd = nextEvent.time_end || nextEvent.time_start!;
+                const nextDuration = Math.max(1, nextEnd - nextStart);
+                const averageDuration = (eventDuration + nextDuration) / 2;
+                const collapseThreshold = averageDuration * 3;
+                const gapDuration = nextStart - eventEnd;
+                
+                if (gapDuration > collapseThreshold && threeX <= nextStart) {
+                  isCollapseBoundary = true;
                 }
               }
-            });
-            
-            // Render regular ticker
+            }
+          });
+          
+          // Render regular ticker
+          ticks.push(
+            <div 
+              key={timeValue} 
+              className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
+              style={{ left: `${finalPosition}%` }}
+            >
+              <span className="ruler-label">{formatDateDisplay(timeValue).replace(/,\s/g, '\n')}</span>
+              {isCollapseBoundary && (
+                <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
+                  ⚡
+                </div>
+              )}
+            </div>
+          );
+        }
+      });
+      
+      // Then add collapse buttons as additional tickers
+      console.log('Adding collapse button tickers, segments:', timeSegments.length);
+      timeSegments.forEach(segment => {
+        if (segment.type === 'collapsed' && segment.collapsedSegment) {
+          const segmentData = segment.collapsedSegment;
+          const segmentMidpoint = segmentData.startTime + (segmentData.endTime - segmentData.startTime) / 2;
+          
+          const adjustedTime = getAdjustedPosition(segmentMidpoint);
+          const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+          const transformOffset = isDragging ? (panOffset / 10) : 0;
+          const finalPosition = position + transformOffset;
+          
+          console.log(`Collapse button: segment ${segmentData.id}, position ${finalPosition}%`);
+          
+          if (finalPosition > -10 && finalPosition < 110) {
             ticks.push(
               <div 
-                key={timeValue} 
-                className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
+                key={`collapse-${segmentData.id}`}
+                className="ruler-tick collapse-tick"
                 style={{ left: `${finalPosition}%` }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleSegmentCollapse(segmentData.id);
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
-                <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
-                {isCollapseBoundary && (
-                  <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
-                    ⚡
-                  </div>
-                )}
+                <div className="collapse-button">
+                  <span className="collapse-icon">⋯</span>
+                  <span className="collapse-duration">{Math.round(segmentData.duration)}d</span>
+                </div>
               </div>
             );
           }

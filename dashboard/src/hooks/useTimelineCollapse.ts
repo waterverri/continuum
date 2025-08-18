@@ -54,6 +54,11 @@ export function useTimelineCollapse({
       .filter(e => e.time_start != null)
       .sort((a, b) => a.time_start! - b.time_start!);
 
+    console.log(`Timeline collapse: Processing ${eventsWithTime.length} events with time`);
+    eventsWithTime.forEach((event, i) => {
+      console.log(`Event ${i}: ${event.name}, start: ${event.time_start}, end: ${event.time_end}`);
+    });
+
     if (eventsWithTime.length === 0) return [];
 
     const segments: TimeSegment[] = [];
@@ -92,6 +97,8 @@ export function useTimelineCollapse({
             // Create collapsible gap - START COLLAPSED by default
             const segmentId = `gap_${gapStart}_${gapEnd}`;
             const isExpanded = collapsedSegments.has(segmentId); // Inverted logic - set contains expanded gaps
+
+            console.log(`Creating collapsible gap: ${segmentId}, duration: ${gapDuration}, threshold: ${collapseThreshold}, isExpanded: ${isExpanded}`);
 
             segments.push({
               type: isExpanded ? 'gap' : 'collapsed',
