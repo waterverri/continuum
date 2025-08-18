@@ -59,12 +59,21 @@ export function TimelineVisualization({
 
   // Format date for ticker display (dd MMM yy format)
   const formatDateForTicker = (timeValue: number) => {
-    const date = new Date(timeValue * 24 * 60 * 60 * 1000); // Convert day units to milliseconds
-    return date.toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: '2-digit'
-    });
+    // Use the existing formatDateDisplay which handles project base date correctly
+    const fullDate = formatDateDisplay(timeValue);
+    
+    // Convert to shorter format: parse the date and reformat
+    try {
+      const date = new Date(fullDate);
+      return date.toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: '2-digit'
+      });
+    } catch (error) {
+      // Fallback to original if parsing fails
+      return fullDate;
+    }
   };
   
   const getEventColor = (eventId: string) => {
