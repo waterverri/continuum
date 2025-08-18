@@ -8,6 +8,7 @@ export interface TimelineVisualizationProps {
   viewport: Viewport;
   isDragging: boolean;
   panOffset: number;
+  zoomLevel: number;
   isCreatingEvent: boolean;
   collapsedParents: Set<string>;
   formatDateDisplay: (timeValue?: number) => string;
@@ -31,6 +32,7 @@ export function TimelineVisualization({
   viewport,
   isDragging,
   panOffset,
+  zoomLevel,
   isCreatingEvent,
   collapsedParents,
   formatDateDisplay,
@@ -55,7 +57,7 @@ export function TimelineVisualization({
     toggleSegmentCollapse,
     getAdjustedPosition,
     getAdjustedViewportRange
-  } = useTimelineCollapse({ events, viewport });
+  } = useTimelineCollapse({ events, viewport, zoomLevel });
 
   // Format date for ticker display (dd MMM yy format)
   const formatDateForTicker = (timeValue: number) => {
@@ -157,8 +159,7 @@ export function TimelineVisualization({
       for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-        const transformOffset = isDragging ? (panOffset / 10) : 0;
-        const finalPosition = position + transformOffset;
+        const finalPosition = position;
         
         if (finalPosition > -10 && finalPosition < 110) {
           ticks.push(
@@ -236,8 +237,7 @@ export function TimelineVisualization({
       filteredTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-        const transformOffset = isDragging ? (panOffset / 10) : 0;
-        const finalPosition = position + transformOffset;
+        const finalPosition = position;
         
         if (finalPosition > -10 && finalPosition < 110) {
           // Check if this is a 3x collapse boundary
@@ -343,9 +343,7 @@ export function TimelineVisualization({
       const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
       const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
       
-      // During dragging, apply transform offset for smooth panning
-      const transformOffset = isDragging ? (panOffset / 10) : 0;
-      const finalLeft = startPercent + transformOffset;
+      const finalLeft = startPercent;
       const finalWidth = Math.max(0.5, endPercent - startPercent);
       
       // Check if event is visible
@@ -430,7 +428,6 @@ export function TimelineVisualization({
         <div 
           className="gantt-timeline" 
           style={{ 
-            transform: isDragging ? `translateX(${panOffset}px)` : 'none',
             cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
             touchAction: 'none' // Prevent default touch scrolling
           }}
@@ -487,7 +484,6 @@ export function TimelineVisualization({
           <div 
             className="gantt-timeline-header" 
             style={{ 
-              transform: isDragging ? `translateX(${panOffset}px)` : 'none',
               cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
               touchAction: 'none' // Prevent default touch scrolling
             }}

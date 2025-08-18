@@ -22,6 +22,7 @@ export interface TimeSegment {
 export interface UseTimelineCollapseProps {
   events: Event[];
   viewport: { minTime: number; maxTime: number };
+  zoomLevel?: number;
 }
 
 export interface UseTimelineCollapseResult {
@@ -32,18 +33,23 @@ export interface UseTimelineCollapseResult {
   getAdjustedViewportRange: () => number;
 }
 
-// Convert fixed pixel width to time units based on current viewport
-function getFixedCollapsedTimeUnits(viewport: { minTime: number; maxTime: number }): number {
+// Convert fixed pixel width to time units based on current viewport and zoom
+function getFixedCollapsedTimeUnits(
+  viewport: { minTime: number; maxTime: number }, 
+  zoomLevel: number = 1
+): number {
   const fixedPixelWidth = 80; // Fixed 80px for collapsed button
   const assumedTimelineWidth = 1000; // Assume 1000px timeline width
-  const viewportRange = viewport.maxTime - viewport.minTime;
-  const timeUnitsPerPixel = viewportRange / assumedTimelineWidth;
+  const baseViewportRange = viewport.maxTime - viewport.minTime;
+  const zoomedViewportRange = baseViewportRange / zoomLevel;
+  const timeUnitsPerPixel = zoomedViewportRange / assumedTimelineWidth;
   return fixedPixelWidth * timeUnitsPerPixel;
 }
 
 export function useTimelineCollapse({ 
   events, 
-  viewport 
+  viewport,
+  zoomLevel = 1
 }: UseTimelineCollapseProps): UseTimelineCollapseResult {
   
   const [collapsedSegments, setCollapsedSegments] = useState<Set<string>>(new Set());
@@ -154,12 +160,12 @@ export function useTimelineCollapse({
         
         if (originalTime > endTime) {
           // Time is after this collapsed segment, save everything except fixed button width
-          const savedTime = duration - getFixedCollapsedTimeUnits(viewport);
+          const savedTime = duration - getFixedCollapsedTimeUnits(viewport, zoomLevel);
           cumulativeCompression += Math.max(0, savedTime);
         } else if (originalTime > startTime) {
           // Time is within collapsed segment, map it to compressed space
           const progressInSegment = (originalTime - startTime) / duration;
-          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport);
+          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport, zoomLevel);
           const compressedOffset = progressInSegment * fixedCollapsedTimeUnits;
           adjustedTime = startTime - cumulativeCompression + compressedOffset;
           return adjustedTime;
@@ -168,7 +174,7 @@ export function useTimelineCollapse({
     }
 
     return originalTime - cumulativeCompression;
-  }, [timeSegments]);
+  }, [timeSegments, zoomLevel]);
 
   // Calculate adjusted viewport range accounting for collapsed segments
   const getAdjustedViewportRange = useCallback((): number => {
@@ -188,7 +194,7 @@ export function useTimelineCollapse({
           const overlapDuration = overlapEnd - overlapStart;
           
           // Calculate compression savings for the overlapping portion
-          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport);
+          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport, zoomLevel);
           const maxSavings = overlapDuration - fixedCollapsedTimeUnits;
           const overlapSavings = Math.max(0, maxSavings);
           compressionSavings += overlapSavings;
@@ -197,7 +203,7 @@ export function useTimelineCollapse({
     }
 
     return originalRange - compressionSavings;
-  }, [viewport, timeSegments]);
+  }, [viewport, timeSegments, zoomLevel]);
 
   return {
     collapsedSegments,

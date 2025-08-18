@@ -174,22 +174,21 @@ export function useTimelineViewport({
     if (!isDragging || isCreatingEvent) return;
     
     const deltaX = e.clientX - dragStart.x;
-    const panSensitivity = 1 / zoomLevel; // More sensitive when zoomed in
-    const newPanOffset = dragStart.panOffset - (deltaX * panSensitivity);
+    // Convert pixel delta to percentage of viewport - zoom is already integrated
+    const timelinePseudoWidth = 1000; // Assume 1000px timeline for percentage calculation
+    const deltaPercentage = (deltaX / timelinePseudoWidth) * 100;
+    const newPanOffset = dragStart.panOffset - deltaPercentage;
     
     // No pan constraints - allow unlimited panning
-    const constrainedPan = newPanOffset;
-    
-    setPanOffset(constrainedPan);
-  }, [isDragging, dragStart, zoomLevel, isCreatingEvent]);
+    setPanOffset(newPanOffset);
+  }, [isDragging, dragStart, isCreatingEvent]);
 
   const handleMouseUp = useCallback(() => {
     if (isDragging) {
-      // Convert pan offset (in pixels) to time units
-      // Assume timeline is roughly 1000px wide, so 1% = 10px
-      const panPercentage = panOffset / 10; // Convert px to percentage
-      const viewportRange = viewport.maxTime - viewport.minTime;
-      const timeShift = (panPercentage / 100) * viewportRange;
+      // Convert pan offset percentage to actual time shift using zoom-integrated calculations
+      const baseViewportRange = viewport.maxTime - viewport.minTime;
+      const zoomedViewportRange = baseViewportRange / zoomLevel;
+      const timeShift = (panOffset / 100) * zoomedViewportRange;
       
       // Create new viewport shifted by the pan amount
       const newViewport = {
@@ -204,7 +203,7 @@ export function useTimelineViewport({
       setPanOffset(0);
     }
     setIsDragging(false);
-  }, [isDragging, panOffset, viewport]);
+  }, [isDragging, panOffset, viewport, zoomLevel]);
   
   // Enhanced wheel/trackpad functionality
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -231,13 +230,13 @@ export function useTimelineViewport({
     else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       e.preventDefault();
       
-      // Adjust pan sensitivity based on zoom level and device
+      // Convert pixel delta to percentage of viewport using consistent calculations
       const isMacLike = navigator.platform.includes('Mac');
       const baseSensitivity = isMacLike ? 0.5 : 1;
-      const panSensitivity = baseSensitivity / Math.max(zoomLevel, 0.25);
-      const deltaPan = e.deltaX * panSensitivity;
+      const timelinePseudoWidth = 1000;
+      const deltaPercentage = (e.deltaX * baseSensitivity / timelinePseudoWidth) * 100;
       
-      setPanOffset(prev => prev - deltaPan);
+      setPanOffset(prev => prev - deltaPercentage);
     }
     // Handle vertical scrolling for zooming when shift is held (alternative zoom method)
     else if (e.shiftKey && Math.abs(e.deltaY) > 0) {
@@ -309,9 +308,9 @@ export function useTimelineViewport({
       
       // Only start panning if moved more than a threshold (to distinguish from taps)
       if (Math.abs(deltaX) > 10) {
-        const panSensitivity = 1 / zoomLevel;
-        const deltaPan = -deltaX * panSensitivity;
-        const newPan = touchState.initialPan + deltaPan;
+        const timelinePseudoWidth = 1000;
+        const deltaPercentage = (-deltaX / timelinePseudoWidth) * 100;
+        const newPan = touchState.initialPan + deltaPercentage;
         
         setPanOffset(newPan);
       }
@@ -377,33 +376,39 @@ export function useTimelineViewport({
   }, [touchState, isCreatingEvent]);
   
   // Position utilities
-  const calculateTimeFromMousePosition = useCallback((e: React.MouseEvent, element: HTMLElement) => {
+  const calculateTimeFromMousePosition = useCallback((e: React.MouseEvent, element: HTMLElement, zoom: number = zoomLevel) => {
     const rect = element.getBoundingClientRect();
     const relativeX = e.clientX - rect.left;
     const elementWidth = rect.width;
-    const percentageX = Math.max(0, Math.min(100, (relativeX / elementWidth) * 100));
     
-    // Convert percentage to time value using current viewport
-    const viewportRange = viewport.maxTime - viewport.minTime;
-    const timeValue = viewport.minTime + (percentageX / 100) * viewportRange;
+    // Apply zoom to the mouse position calculation
+    const zoomedRelativeX = relativeX + (panOffset * zoom);
+    const percentageX = Math.max(0, Math.min(100, (zoomedRelativeX / elementWidth) * 100));
+    
+    // Convert percentage to time value using current viewport with zoom consideration
+    const baseViewportRange = viewport.maxTime - viewport.minTime;
+    const zoomedViewportRange = baseViewportRange / zoom;
+    const timeValue = viewport.minTime + (percentageX / 100) * zoomedViewportRange;
     
     return Math.round(timeValue);
-  }, [viewport]);
+  }, [viewport, zoomLevel, panOffset]);
 
-  const getEventPosition = useCallback((event: Event) => {
+  const getEventPosition = useCallback((event: Event, zoom: number = zoomLevel) => {
     if (!event.time_start) return { left: 0, width: 0, visible: false };
     
-    const viewportRange = viewport.maxTime - viewport.minTime;
-    if (viewportRange <= 0) return { left: 0, width: 0, visible: false };
+    const baseViewportRange = viewport.maxTime - viewport.minTime;
+    if (baseViewportRange <= 0) return { left: 0, width: 0, visible: false };
     
-    // Calculate position relative to current viewport
-    const startPercent = ((event.time_start - viewport.minTime) / viewportRange) * 100;
+    // Calculate zoomed viewport range
+    const zoomedViewportRange = baseViewportRange / zoom;
+    const zoomedViewportStart = viewport.minTime - (panOffset * zoomedViewportRange / 100);
+    
+    // Calculate position relative to zoomed viewport
+    const startPercent = ((event.time_start - zoomedViewportStart) / zoomedViewportRange) * 100;
     const endTime = event.time_end || (event.time_start + 1); // Default 1 unit width for instant events
-    const endPercent = ((endTime - viewport.minTime) / viewportRange) * 100;
+    const endPercent = ((endTime - zoomedViewportStart) / zoomedViewportRange) * 100;
     
-    // During dragging, apply transform offset for smooth panning
-    const transformOffset = isDragging ? (panOffset / 10) : 0; // Convert px to percentage
-    const finalLeft = startPercent + transformOffset;
+    const finalLeft = startPercent;
     const finalWidth = Math.max(0.5, endPercent - startPercent);
     
     // Check if event is visible (including some margin for smooth transitions)
@@ -414,7 +419,7 @@ export function useTimelineViewport({
       width: finalWidth,
       visible
     };
-  }, [viewport, isDragging, panOffset]);
+  }, [viewport, zoomLevel, panOffset]);
   
   // Update viewport when zoom changes (always) or when timeline data changes (if not manually panned)
   useEffect(() => {

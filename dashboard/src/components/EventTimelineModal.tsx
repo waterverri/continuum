@@ -195,6 +195,7 @@ export function EventTimelineModal({
                   viewport={viewport.viewport}
                   isDragging={viewport.isDragging}
                   panOffset={viewport.panOffset}
+                  zoomLevel={viewport.zoomLevel}
                   isCreatingEvent={state.isCreatingEvent}
                   collapsedParents={state.collapsedParents}
                   formatDateDisplay={operations.formatDateDisplay}
