@@ -32,6 +32,15 @@ export interface UseTimelineCollapseResult {
   getAdjustedViewportRange: () => number;
 }
 
+// Convert fixed pixel width to time units based on current viewport
+function getFixedCollapsedTimeUnits(viewport: { minTime: number; maxTime: number }): number {
+  const fixedPixelWidth = 80; // Fixed 80px for collapsed button
+  const assumedTimelineWidth = 1000; // Assume 1000px timeline width
+  const viewportRange = viewport.maxTime - viewport.minTime;
+  const timeUnitsPerPixel = viewportRange / assumedTimelineWidth;
+  return fixedPixelWidth * timeUnitsPerPixel;
+}
+
 export function useTimelineCollapse({ 
   events, 
   viewport 
@@ -137,15 +146,14 @@ export function useTimelineCollapse({
         const { startTime, endTime, duration } = segment.collapsedSegment;
         
         if (originalTime > endTime) {
-          // Time is after this collapsed segment, apply full compression
-          const compressionRatio = 0.1; // Collapse to 10% of original duration
-          const savedTime = duration * (1 - compressionRatio);
-          cumulativeCompression += savedTime;
+          // Time is after this collapsed segment, save everything except fixed button width
+          const savedTime = duration - getFixedCollapsedTimeUnits(viewport);
+          cumulativeCompression += Math.max(0, savedTime);
         } else if (originalTime > startTime) {
           // Time is within collapsed segment, map it to compressed space
           const progressInSegment = (originalTime - startTime) / duration;
-          const compressedDuration = duration * 0.1;
-          const compressedOffset = progressInSegment * compressedDuration;
+          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport);
+          const compressedOffset = progressInSegment * fixedCollapsedTimeUnits;
           adjustedTime = startTime - cumulativeCompression + compressedOffset;
           return adjustedTime;
         }
@@ -173,8 +181,9 @@ export function useTimelineCollapse({
           const overlapDuration = overlapEnd - overlapStart;
           
           // Calculate compression savings for the overlapping portion
-          const compressionRatio = 0.9; // Save 90% of the space
-          const overlapSavings = overlapDuration * compressionRatio;
+          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport);
+          const maxSavings = overlapDuration - fixedCollapsedTimeUnits;
+          const overlapSavings = Math.max(0, maxSavings);
           compressionSavings += overlapSavings;
         }
       }

@@ -190,10 +190,31 @@ export function TimelineVisualization({
         }
       });
       
-      // Convert set to sorted array and create ticks
+      // Convert set to sorted array and filter for minimum pixel spacing
       const sortedTicks = Array.from(tickSet).sort((a, b) => a - b);
+      const filteredTicks: number[] = [];
+      const minPixelSpacing = 80; // Minimum 80px between tickers
       
+      // Filter ticks based on pixel spacing
       sortedTicks.forEach(timeValue => {
+        const adjustedTime = getAdjustedPosition(timeValue);
+        const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const pixelPosition = (position / 100) * 1000; // Assume 1000px timeline width
+        
+        // Check if this tick is too close to any existing tick
+        const tooClose = filteredTicks.some(existingTick => {
+          const existingAdjustedTime = getAdjustedPosition(existingTick);
+          const existingPosition = ((existingAdjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+          const existingPixelPosition = (existingPosition / 100) * 1000;
+          return Math.abs(pixelPosition - existingPixelPosition) < minPixelSpacing;
+        });
+        
+        if (!tooClose) {
+          filteredTicks.push(timeValue);
+        }
+      });
+      
+      filteredTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
         const transformOffset = isDragging ? (panOffset / 10) : 0;
@@ -262,7 +283,15 @@ export function TimelineVisualization({
                 width: `${width}%`,
                 transform: isDragging ? `translateX(${panOffset}px)` : 'none'
               }}
-              onClick={() => toggleSegmentCollapse(id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSegmentCollapse(id);
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
               title={`Collapsed ${Math.round(duration)} day gap. Click to expand.`}
             >
               <div className="collapsed-segment-content">

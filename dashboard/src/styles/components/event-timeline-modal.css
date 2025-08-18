@@ -417,8 +417,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  z-index: 3;
+  width: 80px !important; /* Fixed 80px width regardless of original gap size */
+  min-width: 80px;
+  max-width: 80px;
+  z-index: 10; /* Higher z-index to ensure it's above the draggable area */
+  pointer-events: auto; /* Ensure it can be clicked */
 }
 
 .collapsed-time-segment:hover {
@@ -436,6 +439,7 @@
   padding: var(--spacing-xs);
   text-align: center;
   pointer-events: none;
+  width: 100%; /* Fill the fixed 80px container */
 }
 
 .collapsed-segment-icon {
