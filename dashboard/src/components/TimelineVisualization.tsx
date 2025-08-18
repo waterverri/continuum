@@ -112,7 +112,6 @@ export function TimelineVisualization({
     const adjustedViewportRange = getAdjustedViewportRange();
     const originalViewportRange = viewport.maxTime - viewport.minTime;
     const ticks: React.ReactElement[] = [];
-    const collapsedIndicators: React.ReactElement[] = [];
     
     // Get events with time
     const eventsWithTime = events.filter(e => e.time_start != null);
@@ -221,90 +220,93 @@ export function TimelineVisualization({
         const finalPosition = position + transformOffset;
         
         if (finalPosition > -10 && finalPosition < 110) {
-          // Check if this is a 3x collapse boundary
-          let isCollapseBoundary = false;
-          eventsWithTime.forEach((event, index) => {
-            const eventEnd = event.time_end || event.time_start!;
-            const eventDuration = Math.max(1, eventEnd - event.time_start!);
-            const threeX = eventEnd + (eventDuration * 2);
-            
-            if (Math.abs(timeValue - threeX) < 0.1) { // Close enough to 3x position
-              const nextEvent = eventsWithTime[index + 1];
-              if (nextEvent) {
-                const nextStart = nextEvent.time_start!;
-                const nextEnd = nextEvent.time_end || nextEvent.time_start!;
-                const nextDuration = Math.max(1, nextEnd - nextStart);
-                const averageDuration = (eventDuration + nextDuration) / 2;
-                const collapseThreshold = averageDuration * 3;
-                const gapDuration = nextStart - eventEnd;
-                
-                if (gapDuration > collapseThreshold && threeX <= nextStart) {
-                  isCollapseBoundary = true;
-                }
+          // Check if this tick should show a collapse button instead of regular tick
+          let foundCollapsedSegment = false;
+          
+          for (const segment of timeSegments) {
+            if (segment.type === 'collapsed' && segment.collapsedSegment) {
+              const segmentData = segment.collapsedSegment;
+              const segmentStart = segmentData.startTime;
+              const segmentEnd = segmentData.endTime;
+              const segmentMidpoint = segmentStart + (segmentEnd - segmentStart) / 2;
+              
+              // If this tick is close to the collapsed segment midpoint, show collapse button here
+              if (Math.abs(timeValue - segmentMidpoint) < Math.abs(timeValue - segmentStart) && 
+                  Math.abs(timeValue - segmentMidpoint) < Math.abs(timeValue - segmentEnd)) {
+                // Render collapse button as a ticker
+                ticks.push(
+                  <div 
+                    key={`collapse-${segmentData.id}`}
+                    className="ruler-tick collapse-tick"
+                    style={{ left: `${finalPosition}%` }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleSegmentCollapse(segmentData.id);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    <div className="collapse-button">
+                      <span className="collapse-icon">⋯</span>
+                      <span className="collapse-duration">{Math.round(segmentData.duration)}d</span>
+                    </div>
+                  </div>
+                );
+                foundCollapsedSegment = true;
+                break;
               }
             }
-          });
+          }
           
-          ticks.push(
-            <div 
-              key={timeValue} 
-              className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
-              style={{ left: `${finalPosition}%` }}
-            >
-              <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
-              {isCollapseBoundary && (
-                <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
-                  ⚡
-                </div>
-              )}
-            </div>
-          );
+          if (!foundCollapsedSegment) {
+            // Check if this is a 3x collapse boundary
+            let isCollapseBoundary = false;
+            eventsWithTime.forEach((event, index) => {
+              const eventEnd = event.time_end || event.time_start!;
+              const eventDuration = Math.max(1, eventEnd - event.time_start!);
+              const threeX = eventEnd + (eventDuration * 2);
+              
+              if (Math.abs(timeValue - threeX) < 0.1) { // Close enough to 3x position
+                const nextEvent = eventsWithTime[index + 1];
+                if (nextEvent) {
+                  const nextStart = nextEvent.time_start!;
+                  const nextEnd = nextEvent.time_end || nextEvent.time_start!;
+                  const nextDuration = Math.max(1, nextEnd - nextStart);
+                  const averageDuration = (eventDuration + nextDuration) / 2;
+                  const collapseThreshold = averageDuration * 3;
+                  const gapDuration = nextStart - eventEnd;
+                  
+                  if (gapDuration > collapseThreshold && threeX <= nextStart) {
+                    isCollapseBoundary = true;
+                  }
+                }
+              }
+            });
+            
+            // Render regular ticker
+            ticks.push(
+              <div 
+                key={timeValue} 
+                className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
+                style={{ left: `${finalPosition}%` }}
+              >
+                <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
+                {isCollapseBoundary && (
+                  <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
+                    ⚡
+                  </div>
+                )}
+              </div>
+            );
+          }
         }
       });
     }
     
-    // Add collapsed segment indicators
-    timeSegments.forEach(segment => {
-      if (segment.type === 'collapsed' && segment.collapsedSegment) {
-        const { id, startTime, endTime, duration } = segment.collapsedSegment;
-        const adjustedStart = getAdjustedPosition(startTime);
-        const adjustedEnd = getAdjustedPosition(endTime);
-        const adjustedStartPos = ((adjustedStart - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-        const adjustedEndPos = ((adjustedEnd - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-        const width = adjustedEndPos - adjustedStartPos;
-        
-        if (adjustedStartPos < 110 && adjustedEndPos > -10) {
-          collapsedIndicators.push(
-            <div 
-              key={`collapsed-${id}`} 
-              className="collapsed-time-segment"
-              style={{ 
-                left: `${adjustedStartPos}%`, 
-                width: `${width}%`,
-                transform: isDragging ? `translateX(${panOffset}px)` : 'none'
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleSegmentCollapse(id);
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              title={`Collapsed ${Math.round(duration)} day gap. Click to expand.`}
-            >
-              <div className="collapsed-segment-content">
-                <span className="collapsed-segment-icon">⋯</span>
-                <span className="collapsed-segment-duration">{Math.round(duration)}d</span>
-              </div>
-            </div>
-          );
-        }
-      }
-    });
-    
-    return [...ticks, ...collapsedIndicators];
+    return ticks;
   };
 
   const renderGanttRow = (event: Event, level: number, isChild = false) => {
