@@ -216,8 +216,8 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
       return res.status(400).json({ error: 'time_start must be a number' });
     }
 
-    if (time_end != null && (typeof time_end !== 'number' || time_end < 0)) {
-      return res.status(400).json({ error: 'time_end must be a non-negative number' });
+    if (time_end != null && typeof time_end !== 'number') {
+      return res.status(400).json({ error: 'time_end must be a number' });
     }
 
     if (time_start != null && time_end != null && time_end < time_start) {
@@ -293,8 +293,8 @@ router.put('/:projectId/:eventId', async (req: RequestWithUser, res: Response) =
       return res.status(400).json({ error: 'time_start must be a number' });
     }
 
-    if (time_end !== undefined && time_end != null && (typeof time_end !== 'number' || time_end < 0)) {
-      return res.status(400).json({ error: 'time_end must be a non-negative number' });
+    if (time_end !== undefined && time_end != null && typeof time_end !== 'number') {
+      return res.status(400).json({ error: 'time_end must be a number' });
     }
 
     const finalTimeStart = time_start !== undefined ? time_start : null;

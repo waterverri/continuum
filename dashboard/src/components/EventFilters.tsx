@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { getTags } from '../api';
 import type { Event, Tag } from '../api';
+import { projectDaysToDate, projectDaysToDatetimeInput } from '../utils/datetime';
 
 export interface EventFilterOptions {
   searchTerm: string;
@@ -48,11 +49,6 @@ export function EventFilters({
     loadTags();
   }, [loadTags]);
 
-  const timeToDate = (timeValue: number): Date => {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() + timeValue);
-    return date;
-  };
 
   const getDateRange = () => {
     if (events.length === 0) return { min: '', max: '' };
@@ -64,8 +60,8 @@ export function EventFilters({
     const maxTime = Math.max(...eventsWithDates.map(e => e.time_end || e.time_start!));
     
     return {
-      min: timeToDate(minTime).toISOString().split('T')[0],
-      max: timeToDate(maxTime).toISOString().split('T')[0]
+      min: projectDaysToDatetimeInput(minTime, baseDate).split('T')[0],
+      max: projectDaysToDatetimeInput(maxTime, baseDate).split('T')[0]
     };
   };
 
@@ -206,9 +202,7 @@ export function filterEvents(
       }
 
       const timeToDate = (timeValue: number): Date => {
-        const date = new Date(baseDate);
-        date.setDate(date.getDate() + timeValue);
-        return date;
+        return projectDaysToDate(timeValue, baseDate);
       };
 
       const eventStartDate = timeToDate(event.time_start);

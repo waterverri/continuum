@@ -6,6 +6,11 @@ import { getProject } from '../accessors/projectAccessor';
 import { EventFilters, filterEvents, type EventFilterOptions } from './EventFilters';
 import { TagSelector } from './TagSelector';
 import type { Event, Document, EventDocument, Tag } from '../api';
+import { 
+  datetimeInputToProjectDays, 
+  projectDaysToDatetimeInput, 
+  formatProjectDateTime 
+} from '../utils/datetime';
 
 interface EventsWidgetProps {
   projectId: string;
@@ -102,26 +107,9 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   }, [loadEventTags]);
 
 
-  const timeToDate = (timeValue: number): Date => {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() + timeValue);
-    return date;
-  };
-
-  const dateToTime = (date: Date): number => {
-    const diffTime = date.getTime() - baseDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
   const formatDateDisplay = (timeValue?: number): string => {
-    if (!timeValue && timeValue !== 0) return 'Not set';
-    const date = timeToDate(timeValue);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
+    if (timeValue === null || timeValue === undefined) return 'Not set';
+    return formatProjectDateTime(timeValue, baseDate);
   };
 
   const resetFormData = () => {
@@ -156,8 +144,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: (formData.time_start && formData.time_start.trim()) ? dateToTime(new Date(formData.time_start)) : undefined,
-        time_end: (formData.time_end && formData.time_end.trim()) ? dateToTime(new Date(formData.time_end)) : undefined,
+        time_start: (formData.time_start && formData.time_start.trim()) ? datetimeInputToProjectDays(formData.time_start, baseDate) : undefined,
+        time_end: (formData.time_end && formData.time_end.trim()) ? datetimeInputToProjectDays(formData.time_end, baseDate) : undefined,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
@@ -193,8 +181,8 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
     setFormData({
       name: event.name,
       description: event.description || '',
-      time_start: event.time_start ? timeToDate(event.time_start).toISOString().split('T')[0] : '',
-      time_end: event.time_end ? timeToDate(event.time_end).toISOString().split('T')[0] : '',
+      time_start: event.time_start !== null && event.time_start !== undefined ? projectDaysToDatetimeInput(event.time_start, baseDate) : '',
+      time_end: event.time_end !== null && event.time_end !== undefined ? projectDaysToDatetimeInput(event.time_end, baseDate) : '',
       display_order: event.display_order,
       parent_event_id: event.parent_event_id || ''
     });
@@ -319,18 +307,18 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
           
           <div className="event-form__row">
             <input
-              type="date"
+              type="datetime-local"
               value={formData.time_start}
               onChange={(e) => setFormData(prev => ({ ...prev, time_start: e.target.value }))}
-              placeholder="Start date"
+              placeholder="Start datetime"
               className="event-form__input event-form__input--small"
               disabled={loading}
             />
             <input
-              type="date"
+              type="datetime-local"
               value={formData.time_end}
               onChange={(e) => setFormData(prev => ({ ...prev, time_end: e.target.value }))}
-              placeholder="End date"
+              placeholder="End datetime"
               className="event-form__input event-form__input--small"
               disabled={loading}
             />

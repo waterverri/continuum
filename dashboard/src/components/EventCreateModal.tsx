@@ -67,17 +67,17 @@ export function EventCreateModal({
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Start Date</label>
+                <label>Start DateTime</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={formData.time_start}
                   onChange={(e) => onFormDataChange((prev) => ({ ...prev, time_start: e.target.value }))}
                 />
               </div>
               <div className="form-group">
-                <label>End Date</label>
+                <label>End DateTime</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={formData.time_end}
                   onChange={(e) => onFormDataChange((prev) => ({ ...prev, time_end: e.target.value }))}
                 />

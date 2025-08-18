@@ -78,8 +78,8 @@ export function EventTimelineModal({
     state.setFormData({
       name: '',
       description: '',
-      time_start: operations.timeToDate(startTime).toISOString().split('T')[0],
-      time_end: operations.timeToDate(endTime).toISOString().split('T')[0],
+      time_start: operations.timeToDate(startTime).toISOString().slice(0, 16),
+      time_end: operations.timeToDate(endTime).toISOString().slice(0, 16),
       display_order: 0,
       parent_event_id: ''
     });

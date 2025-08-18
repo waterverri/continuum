@@ -4,6 +4,12 @@ import { getEventTimeline, getEvent, updateEvent, deleteEvent, getEventTags, cre
 import { getProject, updateProjectBaseDate } from '../accessors/projectAccessor';
 import type { Event, Document, EventDocument, Tag } from '../api';
 import type { EventFormData } from '../types/timeline';
+import { 
+  datetimeInputToProjectDays, 
+  projectDaysToDatetimeInput, 
+  formatProjectDateTime,
+  projectDaysToDate 
+} from '../utils/datetime';
 
 export interface UseTimelineOperationsProps {
   projectId: string;
@@ -70,25 +76,16 @@ export function useTimelineOperations({
 
   // Date conversion utilities
   const timeToDate = useCallback((timeValue: number): Date => {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() + timeValue);
-    return date;
+    return projectDaysToDate(timeValue, baseDate);
   }, [baseDate]);
 
   const formatDateDisplay = useCallback((timeValue?: number): string => {
-    if (!timeValue && timeValue !== 0) return 'Not set';
-    const date = timeToDate(timeValue);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
-  }, [timeToDate]);
+    if (timeValue === null || timeValue === undefined) return 'Not set';
+    return formatProjectDateTime(timeValue, baseDate);
+  }, [baseDate]);
 
   const dateToTime = useCallback((date: Date): number => {
-    const diffTime = date.getTime() - baseDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return datetimeInputToProjectDays(date.toISOString(), baseDate);
   }, [baseDate]);
 
   const loadEventTags = useCallback(async (eventList: Event[]) => {
@@ -165,10 +162,8 @@ export function useTimelineOperations({
       setLoading(true);
       const token = await getAccessToken();
       
-      const startDateObj = formData.time_start ? new Date(formData.time_start) : null;
-      const endDateObj = formData.time_end ? new Date(formData.time_end) : null;
-      const timeStartConverted = startDateObj ? dateToTime(startDateObj) : undefined;
-      const timeEndConverted = endDateObj ? dateToTime(endDateObj) : undefined;
+      const timeStartConverted = formData.time_start ? datetimeInputToProjectDays(formData.time_start, baseDate) : undefined;
+      const timeEndConverted = formData.time_end ? datetimeInputToProjectDays(formData.time_end, baseDate) : undefined;
       
       const eventData = {
         name: formData.name.trim(),
@@ -199,8 +194,8 @@ export function useTimelineOperations({
       const eventData = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        time_start: (formData.time_start && formData.time_start.trim()) ? dateToTime(new Date(formData.time_start)) : undefined,
-        time_end: (formData.time_end && formData.time_end.trim()) ? dateToTime(new Date(formData.time_end)) : undefined,
+        time_start: (formData.time_start && formData.time_start.trim()) ? datetimeInputToProjectDays(formData.time_start, baseDate) : undefined,
+        time_end: (formData.time_end && formData.time_end.trim()) ? datetimeInputToProjectDays(formData.time_end, baseDate) : undefined,
         display_order: formData.display_order,
         parent_event_id: formData.parent_event_id || undefined
       };
@@ -239,8 +234,8 @@ export function useTimelineOperations({
     const formData = {
       name: event.name,
       description: event.description || '',
-      time_start: event.time_start ? timeToDate(event.time_start).toISOString().split('T')[0] : '',
-      time_end: event.time_end ? timeToDate(event.time_end).toISOString().split('T')[0] : '',
+      time_start: event.time_start !== null && event.time_start !== undefined ? projectDaysToDatetimeInput(event.time_start, baseDate) : '',
+      time_end: event.time_end !== null && event.time_end !== undefined ? projectDaysToDatetimeInput(event.time_end, baseDate) : '',
       display_order: event.display_order,
       parent_event_id: event.parent_event_id || ''
     };

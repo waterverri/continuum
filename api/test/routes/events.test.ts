@@ -74,8 +74,8 @@ describe('Events API Routes', () => {
       const eventData = {
         name: 'Test Event',
         description: 'Test Description',
-        time_start: 100,
-        time_end: 200,
+        time_start: 100.5,
+        time_end: 200.75,
         display_order: 1
       };
 
@@ -101,8 +101,8 @@ describe('Events API Routes', () => {
     it('should validate time constraints', async () => {
       const eventData = {
         name: 'Test Event',
-        time_start: 200,
-        time_end: 100 // end before start
+        time_start: 200.5,
+        time_end: 100.25 // end before start
       };
 
       const response = await request(continuumApi)
@@ -130,8 +130,8 @@ describe('Events API Routes', () => {
       const updateData = {
         name: 'Updated Event',
         description: 'Updated Description',
-        time_start: 150,
-        time_end: 250
+        time_start: 150.25,
+        time_end: 250.75
       };
 
       const response = await request(continuumApi)
@@ -324,13 +324,14 @@ describe('Events API Routes', () => {
         expect([200, 400, 500]).toContain(response.status); // Auth passes, various validation responses
       });
 
-      it('should allow negative time values', async () => {
+      it('should allow negative time values for dates before base_date', async () => {
         const response = await request(continuumApi)
           .post(`/api/events/${mockProjectId}`)
           .set('Authorization', `Bearer ${mockToken}`)
           .send({
-            name: 'Test Event',
-            time_start: -100 // negative time now allowed
+            name: 'Historical Event',
+            time_start: -100.5, // negative time allowed for dates before base_date
+            time_end: -50.25 // fractional values allowed for datetime precision
           });
         
         expect([200, 201, 500]).toContain(response.status); // Auth passes, creation succeeds or business logic fails
