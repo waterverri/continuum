@@ -357,6 +357,53 @@
   border: 1px solid var(--color-border-light);
 }
 
+/* Collapse Boundary Indicators */
+.ruler-tick.collapse-boundary {
+  border-left: 2px solid var(--color-warning);
+}
+
+.ruler-tick.collapse-boundary::before {
+  background: var(--color-warning);
+  width: 2px;
+}
+
+.ruler-tick.collapse-boundary .ruler-label {
+  background: var(--color-warning-light);
+  border-color: var(--color-warning);
+  color: var(--color-warning-dark);
+  font-weight: var(--font-weight-semibold);
+}
+
+.collapse-indicator {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: var(--color-warning);
+  background: var(--color-background);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-full);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { 
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: translateX(-50%) scale(1.1);
+    opacity: 0.8;
+  }
+}
+
 /* Collapsed Time Segments */
 .collapsed-time-segment {
   position: absolute;

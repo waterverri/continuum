@@ -111,44 +111,135 @@ export function TimelineVisualization({
   const renderTimelineRuler = () => {
     const adjustedViewportRange = getAdjustedViewportRange();
     const originalViewportRange = viewport.maxTime - viewport.minTime;
-    
-    // Formulaic tick interval calculation
-    // Target: ~10-20 ticks visible at any zoom level for optimal readability
-    const targetTickCount = 15;
-    const rawInterval = originalViewportRange / targetTickCount;
-    
-    // Round to nice intervals using powers of 10 and common factors (1, 2, 5)
-    const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
-    const normalized = rawInterval / magnitude; // Now between 1 and 10
-    
-    let niceInterval;
-    if (normalized <= 1) niceInterval = 1;
-    else if (normalized <= 2) niceInterval = 2;
-    else if (normalized <= 5) niceInterval = 5;
-    else niceInterval = 10;
-    
-    const tickInterval = niceInterval * magnitude;
-    
-    const startTick = Math.floor(viewport.minTime / tickInterval) * tickInterval;
-    const endTick = Math.ceil(viewport.maxTime / tickInterval) * tickInterval;
     const ticks: React.ReactElement[] = [];
     const collapsedIndicators: React.ReactElement[] = [];
     
-    // Add regular ticks
-    for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
-      const adjustedTime = getAdjustedPosition(timeValue);
-      const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-      const transformOffset = isDragging ? (panOffset / 10) : 0;
-      const finalPosition = position + transformOffset;
+    // Get events with time
+    const eventsWithTime = events.filter(e => e.time_start != null);
+    
+    // If no events, fall back to static interval tickers
+    if (eventsWithTime.length === 0) {
+      const targetTickCount = 15;
+      const rawInterval = originalViewportRange / targetTickCount;
       
-      // Only show ticks that are visible
-      if (finalPosition > -10 && finalPosition < 110) {
-        ticks.push(
-          <div key={timeValue} className="ruler-tick" style={{ left: `${finalPosition}%` }}>
-            <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
-          </div>
-        );
+      // Round to nice intervals using powers of 10 and common factors (1, 2, 5)
+      const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
+      const normalized = rawInterval / magnitude;
+      
+      let niceInterval;
+      if (normalized <= 1) niceInterval = 1;
+      else if (normalized <= 2) niceInterval = 2;
+      else if (normalized <= 5) niceInterval = 5;
+      else niceInterval = 10;
+      
+      const tickInterval = niceInterval * magnitude;
+      const startTick = Math.floor(viewport.minTime / tickInterval) * tickInterval;
+      const endTick = Math.ceil(viewport.maxTime / tickInterval) * tickInterval;
+      
+      for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
+        const adjustedTime = getAdjustedPosition(timeValue);
+        const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const transformOffset = isDragging ? (panOffset / 10) : 0;
+        const finalPosition = position + transformOffset;
+        
+        if (finalPosition > -10 && finalPosition < 110) {
+          ticks.push(
+            <div key={timeValue} className="ruler-tick" style={{ left: `${finalPosition}%` }}>
+              <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
+            </div>
+          );
+        }
       }
+    } else {
+      // Event-based tickers: event start, end, midpoint, 2x, 3x
+      const tickSet = new Set<number>();
+      
+      eventsWithTime.forEach((event, index) => {
+        const eventStart = event.time_start!;
+        const eventEnd = event.time_end || event.time_start!;
+        const eventDuration = Math.max(1, eventEnd - eventStart);
+        
+        // Add event start and end
+        tickSet.add(eventStart);
+        tickSet.add(eventEnd);
+        
+        // Add midpoint
+        const midpoint = eventStart + eventDuration / 2;
+        tickSet.add(midpoint);
+        
+        // Add 2x and 3x positions after event end
+        const twoX = eventEnd + eventDuration;
+        const threeX = eventEnd + (eventDuration * 2);
+        tickSet.add(twoX);
+        tickSet.add(threeX);
+        
+        // Check if there's a gap that would be collapsible at 3x position
+        const nextEvent = eventsWithTime[index + 1];
+        if (nextEvent) {
+          const nextStart = nextEvent.time_start!;
+          const nextEnd = nextEvent.time_end || nextEvent.time_start!;
+          const nextDuration = Math.max(1, nextEnd - nextStart);
+          const averageDuration = (eventDuration + nextDuration) / 2;
+          const collapseThreshold = averageDuration * 3;
+          const gapDuration = nextStart - eventEnd;
+          
+          // Mark 3x tick as collapse boundary if gap exceeds threshold
+          if (gapDuration > collapseThreshold && threeX <= nextStart) {
+            // We'll add a special class to this tick later
+          }
+        }
+      });
+      
+      // Convert set to sorted array and create ticks
+      const sortedTicks = Array.from(tickSet).sort((a, b) => a - b);
+      
+      sortedTicks.forEach(timeValue => {
+        const adjustedTime = getAdjustedPosition(timeValue);
+        const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const transformOffset = isDragging ? (panOffset / 10) : 0;
+        const finalPosition = position + transformOffset;
+        
+        if (finalPosition > -10 && finalPosition < 110) {
+          // Check if this is a 3x collapse boundary
+          let isCollapseBoundary = false;
+          eventsWithTime.forEach((event, index) => {
+            const eventEnd = event.time_end || event.time_start!;
+            const eventDuration = Math.max(1, eventEnd - event.time_start!);
+            const threeX = eventEnd + (eventDuration * 2);
+            
+            if (Math.abs(timeValue - threeX) < 0.1) { // Close enough to 3x position
+              const nextEvent = eventsWithTime[index + 1];
+              if (nextEvent) {
+                const nextStart = nextEvent.time_start!;
+                const nextEnd = nextEvent.time_end || nextEvent.time_start!;
+                const nextDuration = Math.max(1, nextEnd - nextStart);
+                const averageDuration = (eventDuration + nextDuration) / 2;
+                const collapseThreshold = averageDuration * 3;
+                const gapDuration = nextStart - eventEnd;
+                
+                if (gapDuration > collapseThreshold && threeX <= nextStart) {
+                  isCollapseBoundary = true;
+                }
+              }
+            }
+          });
+          
+          ticks.push(
+            <div 
+              key={timeValue} 
+              className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
+              style={{ left: `${finalPosition}%` }}
+            >
+              <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
+              {isCollapseBoundary && (
+                <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
+                  ⚡
+                </div>
+              )}
+            </div>
+          );
+        }
+      });
     }
     
     // Add collapsed segment indicators

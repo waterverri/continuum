@@ -7,6 +7,7 @@ export interface CollapsedSegment {
   endTime: number;
   duration: number;
   isCollapsed: boolean;
+  collapseThreshold?: number;
 }
 
 export interface TimeSegment {
@@ -79,12 +80,12 @@ export function useTimelineCollapse({
           const collapseThreshold = averageSurroundingDuration * 3;
 
           if (gapDuration > collapseThreshold) {
-            // Create collapsible gap
+            // Create collapsible gap - START COLLAPSED by default
             const segmentId = `gap_${gapStart}_${gapEnd}`;
-            const isCollapsed = collapsedSegments.has(segmentId);
+            const isExpanded = collapsedSegments.has(segmentId); // Inverted logic - set contains expanded gaps
 
             segments.push({
-              type: isCollapsed ? 'collapsed' : 'gap',
+              type: isExpanded ? 'gap' : 'collapsed',
               startTime: gapStart,
               endTime: gapEnd,
               duration: gapDuration,
@@ -93,7 +94,8 @@ export function useTimelineCollapse({
                 startTime: gapStart,
                 endTime: gapEnd,
                 duration: gapDuration,
-                isCollapsed
+                isCollapsed: !isExpanded, // Inverted
+                collapseThreshold // Store the threshold for visual indication
               }
             });
           } else {
