@@ -357,6 +357,59 @@
   border: 1px solid var(--color-border-light);
 }
 
+/* Collapsed Time Segments */
+.collapsed-time-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(135deg, var(--color-background-light) 0%, var(--color-background-lighter) 100%);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  z-index: 3;
+}
+
+.collapsed-time-segment:hover {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-background-light) 100%);
+  border-color: var(--color-primary);
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.collapsed-segment-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xs);
+  text-align: center;
+  pointer-events: none;
+}
+
+.collapsed-segment-icon {
+  font-size: var(--font-size-xl);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.collapsed-segment-duration {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  background: var(--color-background);
+  padding: 1px var(--spacing-xxs);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-light);
+  white-space: nowrap;
+}
+
 .gantt-body {
   flex: 1;
   overflow-y: auto;

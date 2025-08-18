@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Event } from '../api';
 import type { Viewport } from '../hooks/useTimelineViewport';
+import { useTimelineCollapse } from '../hooks/useTimelineCollapse';
 
 export interface TimelineVisualizationProps {
   events: Event[];
@@ -47,6 +48,14 @@ export function TimelineVisualization({
   onEventDelete,
   onParentToggle
 }: TimelineVisualizationProps) {
+  
+  // Initialize timeline collapse functionality
+  const {
+    timeSegments,
+    toggleSegmentCollapse,
+    getAdjustedPosition,
+    getAdjustedViewportRange
+  } = useTimelineCollapse({ events, viewport });
   
   const getEventColor = (eventId: string) => {
     // Simple hash function to generate consistent colors
@@ -100,12 +109,13 @@ export function TimelineVisualization({
   };
 
   const renderTimelineRuler = () => {
-    const viewportRange = viewport.maxTime - viewport.minTime;
+    const adjustedViewportRange = getAdjustedViewportRange();
+    const originalViewportRange = viewport.maxTime - viewport.minTime;
     
     // Formulaic tick interval calculation
     // Target: ~10-20 ticks visible at any zoom level for optimal readability
     const targetTickCount = 15;
-    const rawInterval = viewportRange / targetTickCount;
+    const rawInterval = originalViewportRange / targetTickCount;
     
     // Round to nice intervals using powers of 10 and common factors (1, 2, 5)
     const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
@@ -121,10 +131,13 @@ export function TimelineVisualization({
     
     const startTick = Math.floor(viewport.minTime / tickInterval) * tickInterval;
     const endTick = Math.ceil(viewport.maxTime / tickInterval) * tickInterval;
-    const ticks = [];
+    const ticks: React.ReactElement[] = [];
+    const collapsedIndicators: React.ReactElement[] = [];
     
+    // Add regular ticks
     for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
-      const position = ((timeValue - viewport.minTime) / viewportRange) * 100;
+      const adjustedTime = getAdjustedPosition(timeValue);
+      const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
       const transformOffset = isDragging ? (panOffset / 10) : 0;
       const finalPosition = position + transformOffset;
       
@@ -138,11 +151,72 @@ export function TimelineVisualization({
       }
     }
     
-    return ticks;
+    // Add collapsed segment indicators
+    timeSegments.forEach(segment => {
+      if (segment.type === 'collapsed' && segment.collapsedSegment) {
+        const { id, startTime, endTime, duration } = segment.collapsedSegment;
+        const adjustedStart = getAdjustedPosition(startTime);
+        const adjustedEnd = getAdjustedPosition(endTime);
+        const adjustedStartPos = ((adjustedStart - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const adjustedEndPos = ((adjustedEnd - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const width = adjustedEndPos - adjustedStartPos;
+        
+        if (adjustedStartPos < 110 && adjustedEndPos > -10) {
+          collapsedIndicators.push(
+            <div 
+              key={`collapsed-${id}`} 
+              className="collapsed-time-segment"
+              style={{ 
+                left: `${adjustedStartPos}%`, 
+                width: `${width}%`,
+                transform: isDragging ? `translateX(${panOffset}px)` : 'none'
+              }}
+              onClick={() => toggleSegmentCollapse(id)}
+              title={`Collapsed ${Math.round(duration)} day gap. Click to expand.`}
+            >
+              <div className="collapsed-segment-content">
+                <span className="collapsed-segment-icon">⋯</span>
+                <span className="collapsed-segment-duration">{Math.round(duration)}d</span>
+              </div>
+            </div>
+          );
+        }
+      }
+    });
+    
+    return [...ticks, ...collapsedIndicators];
   };
 
   const renderGanttRow = (event: Event, level: number, isChild = false) => {
-    const position = getEventPosition(event);
+    const originalPosition = getEventPosition(event);
+    
+    // Calculate adjusted position using collapse functionality
+    const adjustedPosition = (() => {
+      if (!event.time_start) return originalPosition;
+      
+      const adjustedStart = getAdjustedPosition(event.time_start);
+      const adjustedEnd = getAdjustedPosition(event.time_end || event.time_start);
+      const adjustedViewportRange = getAdjustedViewportRange();
+      const adjustedViewportStart = getAdjustedPosition(viewport.minTime);
+      
+      const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
+      const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
+      
+      // During dragging, apply transform offset for smooth panning
+      const transformOffset = isDragging ? (panOffset / 10) : 0;
+      const finalLeft = startPercent + transformOffset;
+      const finalWidth = Math.max(0.5, endPercent - startPercent);
+      
+      // Check if event is visible
+      const visible = finalLeft < 110 && (finalLeft + finalWidth) > -10 && finalWidth > 0;
+      
+      return {
+        left: finalLeft,
+        width: finalWidth,
+        visible
+      };
+    })();
+    
     const duration = getEventDuration(event);
     const hasTime = event.time_start != null;
     const eventsByParent = getEventsByParent();
@@ -230,12 +304,12 @@ export function TimelineVisualization({
           onTouchEnd={onTouchEnd}
           title="Double-click/tap to create event. Pinch to zoom, drag to pan"
         >
-          {position.visible && (
+          {adjustedPosition.visible && (
             <div 
               className={`gantt-bar ${event.time_end ? 'has-duration' : 'instant'}`}
               style={{
-                left: `${position.left}%`,
-                width: `${position.width}%`,
+                left: `${adjustedPosition.left}%`,
+                width: `${adjustedPosition.width}%`,
                 backgroundColor: getEventColor(event.id),
                 borderColor: getEventColor(event.id)
               }}
@@ -243,7 +317,7 @@ export function TimelineVisualization({
               title={`${event.name}: ${formatDateDisplay(event.time_start)}${event.time_end ? ` - ${formatDateDisplay(event.time_end)}` : ''}`}
             >
               <div className="gantt-bar-content">
-                {position.width > 10 && (
+                {adjustedPosition.width > 10 && (
                   <span className="gantt-bar-label">{event.name}</span>
                 )}
               </div>
