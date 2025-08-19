@@ -7,7 +7,7 @@ export interface TimelineVisualizationProps {
   events: Event[];
   viewport: Viewport;
   isDragging: boolean;
-  panOffset: number;
+  panOffset: number; // keeping for compatibility
   zoomLevel: number;
   isCreatingEvent: boolean;
   collapsedParents: Set<string>;
@@ -83,9 +83,16 @@ export function TimelineVisualization({
   const {
     timeSegments,
     toggleSegmentCollapse,
-    getAdjustedPosition,
-    getAdjustedViewportRange
+    getAdjustedPosition
   } = useTimelineCollapse({ events, viewport, zoomLevel });
+
+  // Calculate zoomed and panned viewport (matching useTimelineViewport logic)
+  const baseViewportRange = viewport.maxTime - viewport.minTime;
+  const zoomedViewportRange = baseViewportRange / zoomLevel;
+  const zoomedViewportStart = viewport.minTime - (panOffset * zoomedViewportRange / 100);
+  const adjustedZoomedViewportStart = getAdjustedPosition(zoomedViewportStart);
+  const adjustedZoomedViewportEnd = getAdjustedPosition(zoomedViewportStart + zoomedViewportRange);
+  const adjustedZoomedViewportRange = adjustedZoomedViewportEnd - adjustedZoomedViewportStart;
 
   // Format date for ticker display (dd MMM yy format)
   const formatDateForTicker = (timeValue: number) => {
@@ -158,20 +165,17 @@ export function TimelineVisualization({
   };
 
   const renderTimelineRuler = () => {
-    const adjustedViewportRange = getAdjustedViewportRange();
-    const originalViewportRange = viewport.maxTime - viewport.minTime;
     const ticks: React.ReactElement[] = [];
     
     // Use actual timeline width for pixel calculations
-    
+
     // Clean debug output for timeline debugging
     console.log('=== PIXEL → TIME MAPPING (every 50px) ===');
-    console.log(`Zoom: ${zoomLevel.toFixed(2)}x | Timeline: ${timelineWidth}px | Range: ${adjustedViewportRange.toFixed(1)} time units`);
-    const adjustedViewportStart = getAdjustedPosition(viewport.minTime);
+    console.log(`Zoom: ${zoomLevel.toFixed(2)}x | Pan: ${panOffset.toFixed(2)} | Timeline: ${timelineWidth}px | Range: ${adjustedZoomedViewportRange.toFixed(1)} time units`);
     const pixelStep = 50;
     for (let pixel = 0; pixel <= timelineWidth; pixel += pixelStep) {
       const percentage = (pixel / timelineWidth) * 100;
-      const timeValue = adjustedViewportStart + (percentage / 100) * adjustedViewportRange;
+      const timeValue = adjustedZoomedViewportStart + (percentage / 100) * adjustedZoomedViewportRange;
       console.log(`${pixel}px → ${timeValue.toFixed(1)} time units`);
     }
     
@@ -180,8 +184,8 @@ export function TimelineVisualization({
     eventsWithTime.forEach(event => {
       const adjustedStart = getAdjustedPosition(event.time_start!);
       const adjustedEnd = getAdjustedPosition(event.time_end || event.time_start!);
-      const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
-      const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
+      const startPercent = ((adjustedStart - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
+      const endPercent = ((adjustedEnd - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
       const startPixel = (startPercent / 100) * timelineWidth;
       const endPixel = (endPercent / 100) * timelineWidth;
       
@@ -194,8 +198,8 @@ export function TimelineVisualization({
         const segmentData = segment.collapsedSegment;
         const adjustedStart = getAdjustedPosition(segmentData.startTime);
         const adjustedEnd = getAdjustedPosition(segmentData.endTime);
-        const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
-        const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
+        const startPercent = ((adjustedStart - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
+        const endPercent = ((adjustedEnd - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
         const startPixel = (startPercent / 100) * timelineWidth;
         const endPixel = (endPercent / 100) * timelineWidth;
         
@@ -206,7 +210,7 @@ export function TimelineVisualization({
     // If no events, fall back to static interval tickers
     if (eventsWithTime.length === 0) {
       const targetTickCount = 15;
-      const rawInterval = originalViewportRange / targetTickCount;
+      const rawInterval = zoomedViewportRange / targetTickCount;
       
       // Round to nice intervals using powers of 10 and common factors (1, 2, 5)
       const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
@@ -219,15 +223,13 @@ export function TimelineVisualization({
       else niceInterval = 10;
       
       const tickInterval = niceInterval * magnitude;
-      const startTick = Math.floor(viewport.minTime / tickInterval) * tickInterval;
-      const endTick = Math.ceil(viewport.maxTime / tickInterval) * tickInterval;
+      const startTick = Math.floor(zoomedViewportStart / tickInterval) * tickInterval;
+      const endTick = Math.ceil((zoomedViewportStart + zoomedViewportRange) / tickInterval) * tickInterval;
       
       for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
         const adjustedTime = getAdjustedPosition(timeValue);
-        const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
         const finalPosition = position;
-        
-        const pixelPosition = (finalPosition / 100) * timelineWidth;
         
         if (finalPosition > -10 && finalPosition < 110) {
           ticks.push(
@@ -285,13 +287,13 @@ export function TimelineVisualization({
       // Filter ticks based on pixel spacing
       sortedTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
-        const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
         const pixelPosition = (position / 100) * timelineWidth;
         
         // Check if this tick is too close to any existing tick
         const tooClose = filteredTicks.some(existingTick => {
           const existingAdjustedTime = getAdjustedPosition(existingTick);
-          const existingPosition = ((existingAdjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+          const existingPosition = ((existingAdjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
           const existingPixelPosition = (existingPosition / 100) * timelineWidth;
           const distance = Math.abs(pixelPosition - existingPixelPosition);
           return distance < minPixelSpacing;
@@ -306,10 +308,8 @@ export function TimelineVisualization({
       // First add all regular tickers
       filteredTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
-        const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
+        const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
         const finalPosition = position;
-        
-        const pixelPosition = (finalPosition / 100) * timelineWidth;
         
         if (finalPosition > -10 && finalPosition < 110) {
           // Check if this is a 3x collapse boundary
@@ -362,13 +362,11 @@ export function TimelineVisualization({
           const segmentMidpoint = segmentData.startTime + (segmentData.endTime - segmentData.startTime) / 2;
           
           const adjustedTime = getAdjustedPosition(segmentMidpoint);
-          const adjustedViewportStart = getAdjustedPosition(viewport.minTime);
-          const position = ((adjustedTime - adjustedViewportStart) / adjustedViewportRange) * 100;
+          const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
           const finalPosition = position;
           
           const isCollapsed = segment.type === 'collapsed';
-          const pixelPosition = (finalPosition / 100) * timelineWidth;
-          
+            
           if (finalPosition > -10 && finalPosition < 110) {
             ticks.push(
               <div 
@@ -402,26 +400,21 @@ export function TimelineVisualization({
   const renderGanttRow = (event: Event, level: number, isChild = false) => {
     const originalPosition = getEventPosition(event);
     
-    // Calculate adjusted position using collapse functionality
+    // Calculate adjusted position using collapse functionality with proper pan support
     const adjustedPosition = (() => {
       if (!event.time_start) return originalPosition;
       
       const adjustedStart = getAdjustedPosition(event.time_start);
       const adjustedEnd = getAdjustedPosition(event.time_end || event.time_start);
-      const adjustedViewportRange = getAdjustedViewportRange();
-      const adjustedViewportStart = getAdjustedPosition(viewport.minTime);
       
-      const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
-      const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
+      const startPercent = ((adjustedStart - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
+      const endPercent = ((adjustedEnd - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
       
       const finalLeft = startPercent;
       const finalWidth = Math.max(0.5, endPercent - startPercent);
       
       // Check if event is visible
       const visible = finalLeft < 110 && (finalLeft + finalWidth) > -10 && finalWidth > 0;
-      
-      const leftPixel = (finalLeft / 100) * timelineWidth;
-      const widthPixel = (finalWidth / 100) * timelineWidth;
       
       return {
         left: finalLeft,
