@@ -7,10 +7,11 @@
 
 .events-widget__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: var(--spacing-xs);
   gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .events-widget__header h4 {
@@ -18,10 +19,7 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
 }
 
 .events-widget__actions {
@@ -29,7 +27,8 @@
   align-items: center;
   gap: var(--spacing-xs);
   flex-wrap: wrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .events-widget__error {

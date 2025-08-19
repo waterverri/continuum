@@ -124,7 +124,10 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       </div>
       
       <div className="app-header__center">
-        <span>{isProjectDetailPage && currentProject ? currentProject.title : 'Continuum'}</span>
+        <span className="app-header__logo">Continuum</span>
+        {isProjectDetailPage && currentProject && (
+          <span className="app-header__project-title">— {currentProject.title}</span>
+        )}
       </div>
       
       <div className="app-header__right">

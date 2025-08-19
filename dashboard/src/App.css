@@ -140,10 +140,26 @@ html, body {
 
 .app-header__center {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-header__logo {
   font-size: 2rem;
   font-weight: 700;
   color: #212529;
   letter-spacing: -0.025em;
+}
+
+.app-header__project-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #6c757d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .app-header__right {
@@ -237,8 +253,13 @@ html, body {
     gap: 0.5rem;
   }
   
-  .app-header__center {
+  .app-header__logo {
     font-size: 1.5rem;
+  }
+  
+  .app-header__project-title {
+    font-size: 0.875rem;
+    max-width: 150px;
   }
   
   .app-header__back-link {

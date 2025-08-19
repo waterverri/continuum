@@ -321,6 +321,7 @@
   display: none;
 }
 
+.left-sidebar--collapsed .left-sidebar__create-section,
 .left-sidebar--collapsed .left-sidebar__filters,
 .left-sidebar--collapsed .left-sidebar__documents {
   display: none;
@@ -688,6 +689,7 @@
     transform: translateX(0);
   }
 
+  .left-sidebar--collapsed .left-sidebar__create-section,
   .left-sidebar--collapsed .left-sidebar__filters,
   .left-sidebar--collapsed .left-sidebar__documents {
     display: block; /* Override collapsed display for mobile */
