@@ -107,25 +107,53 @@ export function useTimelineViewport({
   
   // Zoom controls
   const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => prev * 1.5); // Proportional zoom in
-  }, []);
+    setZoomLevel(prev => {
+      const newZoom = prev * 1.5;
+      
+      // Calculate current center time and maintain it
+      const basePixelsPerDay = 50;
+      const oldPixelsPerTimeUnit = basePixelsPerDay * prev;
+      const newPixelsPerTimeUnit = basePixelsPerDay * newZoom;
+      const oldViewportTimeWidth = timelineWidth / oldPixelsPerTimeUnit;
+      const newViewportTimeWidth = timelineWidth / newPixelsPerTimeUnit;
+      
+      const currentCenterTime = viewportStartTime + (oldViewportTimeWidth / 2);
+      const newStartTime = currentCenterTime - (newViewportTimeWidth / 2);
+      
+      setViewportStartTime(newStartTime);
+      return newZoom;
+    });
+  }, [viewportStartTime, timelineWidth]);
 
   const handleZoomOut = useCallback(() => {
     setZoomLevel(prev => {
       const newZoom = prev / 1.5; // Proportional zoom out
-      // Reset to center when zooming out significantly
+      
+      // Calculate current center time and maintain it
+      const basePixelsPerDay = 50;
+      const oldPixelsPerTimeUnit = basePixelsPerDay * prev;
+      const newPixelsPerTimeUnit = basePixelsPerDay * newZoom;
+      const oldViewportTimeWidth = timelineWidth / oldPixelsPerTimeUnit;
+      const newViewportTimeWidth = timelineWidth / newPixelsPerTimeUnit;
+      
+      const currentCenterTime = viewportStartTime + (oldViewportTimeWidth / 2);
+      const newStartTime = currentCenterTime - (newViewportTimeWidth / 2);
+      
+      setViewportStartTime(newStartTime);
+      
+      // Only reset to events center when zooming out significantly (and user wants reset)
       if (newZoom <= 1 && prev > 1) {
-        setViewportStartTime(viewport.minTime);
+        setViewportManuallySet(false); // Allow auto-centering on events
       }
+      
       return newZoom;
     });
-  }, [viewport.minTime]);
+  }, [viewportStartTime, timelineWidth]);
 
   const handleZoomReset = useCallback(() => {
     setZoomLevel(1);
-    setViewportStartTime(viewport.minTime);
-    setViewportManuallySet(false); // Allow viewport to be recalculated
-  }, [viewport.minTime]);
+    setViewportManuallySet(false); // Allow viewport to be recalculated to center on events
+  }, []);
 
   const handleZoomToFit = useCallback(() => {
     // Calculate optimal zoom to fit all events
@@ -145,8 +173,7 @@ export function useTimelineViewport({
     const optimalZoom = timelineData.timeRange / paddedRange;
     setZoomLevel(Math.max(0.001, optimalZoom)); // No upper limit
     
-    // Reset to center and viewport manually set flag
-    setViewportStartTime(timelineData.minTime);
+    // Reset viewport manually set flag to allow auto-centering on events
     setViewportManuallySet(false);
     
     // Set viewport to show the fitted range
@@ -208,11 +235,24 @@ export function useTimelineViewport({
       
       setZoomLevel(prev => {
         const newZoom = Math.max(0.001, prev + deltaZoom); // Minimal floor to prevent divide-by-zero
-        // Reset to center when zooming out significantly
+        
+        // Calculate current center time and maintain it
+        const basePixelsPerDay = 50;
+        const oldPixelsPerTimeUnit = basePixelsPerDay * prev;
+        const newPixelsPerTimeUnit = basePixelsPerDay * newZoom;
+        const oldViewportTimeWidth = timelineWidth / oldPixelsPerTimeUnit;
+        const newViewportTimeWidth = timelineWidth / newPixelsPerTimeUnit;
+        
+        const currentCenterTime = viewportStartTime + (oldViewportTimeWidth / 2);
+        const newStartTime = currentCenterTime - (newViewportTimeWidth / 2);
+        
+        setViewportStartTime(newStartTime);
+        
+        // Reset to events center when zooming out significantly
         if (newZoom <= 1 && prev > 1) {
-          setViewportStartTime(viewport.minTime);
           setViewportManuallySet(false); // Allow viewport to be recalculated
         }
+        
         return newZoom;
       });
     } 
@@ -238,14 +278,28 @@ export function useTimelineViewport({
       
       setZoomLevel(prev => {
         const newZoom = Math.max(0.001, prev + deltaZoom); // Minimal floor to prevent divide-by-zero
+        
+        // Calculate current center time and maintain it
+        const basePixelsPerDay = 50;
+        const oldPixelsPerTimeUnit = basePixelsPerDay * prev;
+        const newPixelsPerTimeUnit = basePixelsPerDay * newZoom;
+        const oldViewportTimeWidth = timelineWidth / oldPixelsPerTimeUnit;
+        const newViewportTimeWidth = timelineWidth / newPixelsPerTimeUnit;
+        
+        const currentCenterTime = viewportStartTime + (oldViewportTimeWidth / 2);
+        const newStartTime = currentCenterTime - (newViewportTimeWidth / 2);
+        
+        setViewportStartTime(newStartTime);
+        
+        // Reset to events center when zooming out significantly
         if (newZoom <= 1 && prev > 1) {
-          setViewportStartTime(viewport.minTime);
           setViewportManuallySet(false); // Allow viewport to be recalculated
         }
+        
         return newZoom;
       });
     }
-  }, [zoomLevel]);
+  }, [zoomLevel, viewportStartTime, timelineWidth]);
   
   // Touch event handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -286,11 +340,22 @@ export function useTimelineViewport({
       const scale = currentDistance / touchState.initialDistance;
       const newZoom = Math.max(0.001, touchState.initialZoom * scale); // Minimal floor to prevent divide-by-zero
       
-      setZoomLevel(newZoom);
+      // Calculate current center time and maintain it
+      const basePixelsPerDay = 50;
+      const oldPixelsPerTimeUnit = basePixelsPerDay * zoomLevel;
+      const newPixelsPerTimeUnit = basePixelsPerDay * newZoom;
+      const oldViewportTimeWidth = timelineWidth / oldPixelsPerTimeUnit;
+      const newViewportTimeWidth = timelineWidth / newPixelsPerTimeUnit;
       
-      // Reset to center when zooming out significantly
+      const currentCenterTime = viewportStartTime + (oldViewportTimeWidth / 2);
+      const newStartTime = currentCenterTime - (newViewportTimeWidth / 2);
+      
+      setZoomLevel(newZoom);
+      setViewportStartTime(newStartTime);
+      
+      // Reset to events center when zooming out significantly
       if (newZoom <= 1 && touchState.initialZoom > 1) {
-        setViewportStartTime(viewport.minTime);
+        setViewportManuallySet(false); // Allow auto-centering on events
       }
     } else if (e.touches.length === 1 && !isCreatingEvent) {
       // Single finger pan
@@ -410,27 +475,54 @@ export function useTimelineViewport({
   // Update viewport when zoom changes (always) or when timeline data changes (if not manually panned)
   useEffect(() => {
     if (timelineData.timeRange > 0 && !isDragging) {
-      const viewportRange = timelineData.timeRange / zoomLevel;
+      // Calculate viewport width in time units
+      const basePixelsPerDay = 50;
+      const pixelsPerTimeUnit = basePixelsPerDay * zoomLevel;
+      const viewportTimeWidth = timelineWidth / pixelsPerTimeUnit;
       
       if (!viewportManuallySet) {
-        // First time or reset - center the viewport
+        // First time or reset - center viewport on the center point of all events
+        const eventsWithTime = events.filter(e => e.time_start != null);
+        
+        if (eventsWithTime.length > 0) {
+          // Calculate the center point of all events (disregarding collapse)
+          const eventTimes = eventsWithTime.flatMap(e => [
+            e.time_start!,
+            e.time_end || e.time_start!
+          ]);
+          const minEventTime = Math.min(...eventTimes);
+          const maxEventTime = Math.max(...eventTimes);
+          const eventsCenterTime = (minEventTime + maxEventTime) / 2;
+          
+          // Set viewport start time to center the events
+          const newStartTime = eventsCenterTime - (viewportTimeWidth / 2);
+          setViewportStartTime(newStartTime);
+        } else {
+          // No events - center on timeline data
+          const dataCenter = (timelineData.minTime + timelineData.maxTime) / 2;
+          const newStartTime = dataCenter - (viewportTimeWidth / 2);
+          setViewportStartTime(newStartTime);
+        }
+        
+        // Update viewport state for compatibility
+        const startTime = viewportStartTime;
         setViewport({
-          minTime: timelineData.minTime,
-          maxTime: timelineData.minTime + viewportRange
+          minTime: startTime,
+          maxTime: startTime + viewportTimeWidth
         });
       } else {
         // User has panned - maintain current center while adjusting for zoom
-        const currentCenter = (viewport.minTime + viewport.maxTime) / 2;
-        const newMinTime = currentCenter - viewportRange / 2;
-        const newMaxTime = currentCenter + viewportRange / 2;
+        const currentCenter = viewportStartTime + (viewportTimeWidth / 2);
+        const newStartTime = currentCenter - (viewportTimeWidth / 2);
+        setViewportStartTime(newStartTime);
         
         setViewport({
-          minTime: newMinTime,
-          maxTime: newMaxTime
+          minTime: newStartTime,
+          maxTime: newStartTime + viewportTimeWidth
         });
       }
     }
-  }, [timelineData, zoomLevel, isDragging, viewportManuallySet, viewport.minTime, viewport.maxTime]);
+  }, [timelineData, zoomLevel, isDragging, viewportManuallySet, events, timelineWidth, viewportStartTime]);
   
   return {
     // Viewport state
