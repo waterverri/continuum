@@ -109,7 +109,7 @@ export default function ProjectDetailPage() {
     operations.loadTags();
     loadEvents();
     loadProject();
-  }, []);
+  }, [projectId]);
 
   // Close preset dropdown when clicking outside
   useEffect(() => {

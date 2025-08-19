@@ -145,10 +145,10 @@ html, body {
   gap: 0.5rem;
 }
 
-.app-header__logo {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #212529;
+.app-header .app-header__logo {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  color: #212529 !important;
   letter-spacing: -0.025em;
 }
 
@@ -223,7 +223,7 @@ html, body {
   border-color: var(--color-primary);
 }
 
-.app-header span {
+.app-header__right span {
   font-weight: 500;
   color: #495057;
   font-size: 0.875rem;
@@ -253,8 +253,8 @@ html, body {
     gap: 0.5rem;
   }
   
-  .app-header__logo {
-    font-size: 1.5rem;
+  .app-header .app-header__logo {
+    font-size: 1.5rem !important;
   }
   
   .app-header__project-title {
