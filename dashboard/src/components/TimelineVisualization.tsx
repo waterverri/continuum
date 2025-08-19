@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import type { Event } from '../api';
 import type { Viewport } from '../hooks/useTimelineViewport';
 import { useTimelineCollapse } from '../hooks/useTimelineCollapse';
@@ -50,6 +50,34 @@ export function TimelineVisualization({
   onEventDelete,
   onParentToggle
 }: TimelineVisualizationProps) {
+  
+  // Timeline container ref for getting actual width
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [timelineWidth, setTimelineWidth] = useState(1000); // fallback width
+  
+  // Update timeline width when component mounts or resizes
+  useLayoutEffect(() => {
+    const updateWidth = () => {
+      if (timelineRef.current) {
+        const width = timelineRef.current.getBoundingClientRect().width;
+        if (width > 0) {
+          setTimelineWidth(width);
+        }
+      }
+    };
+    
+    updateWidth();
+    
+    // Listen for resize events
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (timelineRef.current) {
+      resizeObserver.observe(timelineRef.current);
+    }
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
   
   // Initialize timeline collapse functionality
   const {
@@ -134,12 +162,24 @@ export function TimelineVisualization({
     const originalViewportRange = viewport.maxTime - viewport.minTime;
     const ticks: React.ReactElement[] = [];
     
+    // Use actual timeline width for pixel calculations
+    
     console.log('=== RULER RENDER DEBUG ===');
     console.log('Viewport:', viewport);
     console.log('ZoomLevel:', zoomLevel);
     console.log('PanOffset:', panOffset);
     console.log('Original viewport range:', originalViewportRange);
     console.log('Adjusted viewport range:', adjustedViewportRange);
+    console.log('Timeline width (actual):', timelineWidth, 'px');
+    console.log('Pixels per time unit:', timelineWidth / adjustedViewportRange);
+    console.log('=== VIEWPORT MAPPING ===');
+    console.log('Time range:', `${viewport.minTime} to ${viewport.maxTime} (span: ${originalViewportRange})`);
+    console.log('Adjusted time range:', `${getAdjustedPosition(viewport.minTime)} to ${getAdjustedPosition(viewport.maxTime)} (span: ${adjustedViewportRange})`);
+    console.log('Screen coordinates: 0px to', timelineWidth + 'px');
+    console.log('=== SCREEN BOUNDARIES ===');
+    console.log('Visible region: -10% to 110% (screen bounds with margin)');
+    console.log('Visible pixels:', (-10/100 * timelineWidth).toFixed(1) + 'px to', (110/100 * timelineWidth).toFixed(1) + 'px');
+    console.log('Center line (50%):', (timelineWidth/2).toFixed(1) + 'px');
     console.log('Time segments:', timeSegments.length, timeSegments);
     
     // Get events with time
@@ -169,7 +209,8 @@ export function TimelineVisualization({
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
         const finalPosition = position;
         
-        console.log(`Static tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition}%`);
+        const pixelPosition = (finalPosition / 100) * timelineWidth;
+        console.log(`Static tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition.toFixed(2)}%, pixel=${pixelPosition.toFixed(1)}px`);
         
         if (finalPosition > -10 && finalPosition < 110) {
           ticks.push(
@@ -225,18 +266,22 @@ export function TimelineVisualization({
       const minPixelSpacing = 80; // Minimum 80px between tickers
       
       // Filter ticks based on pixel spacing
+      console.log('Filtering ticks for minimum pixel spacing:', minPixelSpacing, 'px');
       sortedTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-        const pixelPosition = (position / 100) * 1000; // Assume 1000px timeline width
+        const pixelPosition = (position / 100) * timelineWidth;
         
         // Check if this tick is too close to any existing tick
         const tooClose = filteredTicks.some(existingTick => {
           const existingAdjustedTime = getAdjustedPosition(existingTick);
           const existingPosition = ((existingAdjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-          const existingPixelPosition = (existingPosition / 100) * 1000;
-          return Math.abs(pixelPosition - existingPixelPosition) < minPixelSpacing;
+          const existingPixelPosition = (existingPosition / 100) * timelineWidth;
+          const distance = Math.abs(pixelPosition - existingPixelPosition);
+          return distance < minPixelSpacing;
         });
+        
+        console.log(`  Tick ${timeValue}: position=${position.toFixed(2)}%, pixel=${pixelPosition.toFixed(1)}px, ${tooClose ? 'FILTERED OUT (too close)' : 'INCLUDED'}`);
         
         if (!tooClose) {
           filteredTicks.push(timeValue);
@@ -251,7 +296,8 @@ export function TimelineVisualization({
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
         const finalPosition = position;
         
-        console.log(`Event tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition}%`);
+        const pixelPosition = (finalPosition / 100) * timelineWidth;
+        console.log(`Event tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition.toFixed(2)}%, pixel=${pixelPosition.toFixed(1)}px`);
         
         if (finalPosition > -10 && finalPosition < 110) {
           // Check if this is a 3x collapse boundary
@@ -310,12 +356,14 @@ export function TimelineVisualization({
           const finalPosition = position;
           
           const isCollapsed = segment.type === 'collapsed';
+          const pixelPosition = (finalPosition / 100) * timelineWidth;
           console.log(`${isCollapsed ? 'Collapsed' : 'Expanded'} segment: ${segmentData.id}`);
           console.log(`  Original range: ${segmentData.startTime} - ${segmentData.endTime} (duration: ${segmentData.duration})`);
           console.log(`  Midpoint: ${segmentMidpoint}`);
           console.log(`  Adjusted midpoint: ${adjustedTime}`);
           console.log(`  Adjusted viewport start: ${adjustedViewportStart}`);
-          console.log(`  Position calculation: (${adjustedTime} - ${adjustedViewportStart}) / ${adjustedViewportRange} * 100 = ${finalPosition}%`);
+          console.log(`  Position calculation: (${adjustedTime} - ${adjustedViewportStart}) / ${adjustedViewportRange} * 100 = ${finalPosition.toFixed(2)}%`);
+          console.log(`  Pixel position: ${pixelPosition.toFixed(1)}px`);
           
           if (finalPosition > -10 && finalPosition < 110) {
             ticks.push(
@@ -368,15 +416,18 @@ export function TimelineVisualization({
       // Check if event is visible
       const visible = finalLeft < 110 && (finalLeft + finalWidth) > -10 && finalWidth > 0;
       
+      const leftPixel = (finalLeft / 100) * timelineWidth;
+      const widthPixel = (finalWidth / 100) * timelineWidth;
+      
       console.log(`Event ${event.name} (${event.id.slice(0, 8)}...):`, {
         originalTime: `${event.time_start} - ${event.time_end || event.time_start}`,
         adjustedTime: `${adjustedStart} - ${adjustedEnd}`,
         adjustedViewportStart,
         adjustedViewportRange,
-        startPercent,
-        endPercent,
-        finalLeft,
-        finalWidth,
+        startPercent: `${startPercent.toFixed(2)}%`,
+        endPercent: `${endPercent.toFixed(2)}%`,
+        finalPosition: `left=${finalLeft.toFixed(2)}%, width=${finalWidth.toFixed(2)}%`,
+        pixelPosition: `left=${leftPixel.toFixed(1)}px, width=${widthPixel.toFixed(1)}px`,
         visible,
         originalPosition,
       });
@@ -514,6 +565,7 @@ export function TimelineVisualization({
             <div className="gantt-label">Events</div>
           </div>
           <div 
+            ref={timelineRef}
             className="gantt-timeline-header" 
             style={{ 
               cursor: isDragging ? 'grabbing' : (isCreatingEvent ? 'crosshair' : 'grab'),
