@@ -96,7 +96,7 @@ const AppHeader = ({ session }: { session: Session | null }) => {
   const { projectActions, currentProject } = useProjectActions();
   const { onToggleSidebar, onToggleRightSidebar } = projectActions;
   
-  const isProjectDetailPage = session && location.pathname.startsWith('/projects/');
+  const isProjectDetailPage = location.pathname.startsWith('/projects/');
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -105,7 +105,7 @@ const AppHeader = ({ session }: { session: Session | null }) => {
   return (
     <header className="app-header">
       <div className="app-header__left">
-        {isProjectDetailPage && (
+        {isProjectDetailPage && session && (
           <>
             <button 
               className="app-header__sidebar-toggle"
@@ -129,7 +129,7 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       </div>
       
       <div className="app-header__right">
-        {isProjectDetailPage && (
+        {isProjectDetailPage && session && (
           <button 
             className="app-header__sidebar-toggle"
             onClick={onToggleRightSidebar}
