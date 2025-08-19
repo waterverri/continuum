@@ -1,10 +1,5 @@
 import type { Event } from '../api';
 
-export interface TimelineViewport {
-  minTime: number;
-  maxTime: number;
-}
-
 export interface CollapsedSegment {
   id: string;
   startTime: number;
@@ -45,47 +40,45 @@ export interface TimelineElements {
 }
 
 export class TimelineCalculator {
-  private viewport: TimelineViewport;
+  private viewportStartTime: number;
   private zoomLevel: number;
-  private panOffset: number;
   private timelineWidth: number;
   private getAdjustedPosition: (time: number) => number;
   private formatDateDisplay: (timeValue?: number) => string;
 
   // Calculated viewport properties
-  private baseViewportRange!: number;
-  private zoomedViewportRange!: number;
-  private zoomedViewportStart!: number;
-  private adjustedZoomedViewportStart!: number;
-  private adjustedZoomedViewportEnd!: number;
-  private adjustedZoomedViewportRange!: number;
+  private viewportEndTime!: number;
+  private pixelsPerTimeUnit!: number;
 
   constructor(
-    viewport: TimelineViewport,
+    viewportStartTime: number,
     zoomLevel: number,
-    panOffset: number,
     timelineWidth: number,
     getAdjustedPosition: (time: number) => number,
     formatDateDisplay: (timeValue?: number) => string
   ) {
-    this.viewport = viewport;
+    this.viewportStartTime = viewportStartTime;
     this.zoomLevel = zoomLevel;
-    this.panOffset = panOffset;
     this.timelineWidth = timelineWidth;
     this.getAdjustedPosition = getAdjustedPosition;
     this.formatDateDisplay = formatDateDisplay;
 
-    // Calculate all viewport properties once
+    // Calculate viewport properties
     this.calculateViewportProperties();
   }
 
   private calculateViewportProperties(): void {
-    this.baseViewportRange = this.viewport.maxTime - this.viewport.minTime;
-    this.zoomedViewportRange = this.baseViewportRange / this.zoomLevel;
-    this.zoomedViewportStart = this.viewport.minTime - (this.panOffset * this.zoomedViewportRange / 100);
-    this.adjustedZoomedViewportStart = this.getAdjustedPosition(this.zoomedViewportStart);
-    this.adjustedZoomedViewportEnd = this.getAdjustedPosition(this.zoomedViewportStart + this.zoomedViewportRange);
-    this.adjustedZoomedViewportRange = this.adjustedZoomedViewportEnd - this.adjustedZoomedViewportStart;
+    // Define reasonable base scale: pixels per day
+    const basePixelsPerDay = 50; // At zoom 1x: 1 day = 50 pixels
+    
+    // Calculate pixels per time unit based on zoom level (zoom only affects this)
+    this.pixelsPerTimeUnit = basePixelsPerDay * this.zoomLevel;
+    
+    // Calculate viewport end time: start + (pixels / pixelsPerTimeUnit) ± collapsed adjustments
+    const baseTimeRange = this.timelineWidth / this.pixelsPerTimeUnit;
+    
+    // The actual viewport end time accounts for collapsed segments
+    this.viewportEndTime = this.viewportStartTime + baseTimeRange;
   }
 
   /**
@@ -93,55 +86,61 @@ export class TimelineCalculator {
    */
   timeToPixel(timeValue: number): number {
     const adjustedTime = this.getAdjustedPosition(timeValue);
-    const percentage = ((adjustedTime - this.adjustedZoomedViewportStart) / this.adjustedZoomedViewportRange) * 100;
-    return (percentage / 100) * this.timelineWidth;
+    const adjustedStartTime = this.getAdjustedPosition(this.viewportStartTime);
+    
+    // Calculate pixel position: (time - startTime) * pixelsPerTimeUnit
+    const pixelPosition = (adjustedTime - adjustedStartTime) * this.pixelsPerTimeUnit;
+    return pixelPosition;
   }
 
   /**
    * Convert pixel position to time value
    */
   pixelToTime(pixel: number): number {
-    const percentage = (pixel / this.timelineWidth) * 100;
-    const adjustedTime = this.adjustedZoomedViewportStart + (percentage / 100) * this.adjustedZoomedViewportRange;
+    // Calculate time: startTime + (pixel / pixelsPerTimeUnit)
+    const adjustedStartTime = this.getAdjustedPosition(this.viewportStartTime);
+    const timeValue = adjustedStartTime + (pixel / this.pixelsPerTimeUnit);
     
-    // Convert back from adjusted time to original time
-    // This is an approximation - exact inverse depends on collapse implementation
-    return adjustedTime;
+    // Note: This gives adjusted time. Converting back to original time
+    // would require inverse collapse calculation - keeping simple for now
+    return timeValue;
   }
 
   /**
    * Convert time value to percentage position
    */
   timeToPercentage(timeValue: number): number {
-    const adjustedTime = this.getAdjustedPosition(timeValue);
-    return ((adjustedTime - this.adjustedZoomedViewportStart) / this.adjustedZoomedViewportRange) * 100;
+    const pixelPosition = this.timeToPixel(timeValue);
+    return (pixelPosition / this.timelineWidth) * 100;
   }
 
   /**
    * Convert percentage to time value
    */
   percentageToTime(percentage: number): number {
-    return this.adjustedZoomedViewportStart + (percentage / 100) * this.adjustedZoomedViewportRange;
+    const pixelPosition = (percentage / 100) * this.timelineWidth;
+    return this.pixelToTime(pixelPosition);
   }
 
   /**
    * Get pixels per time unit
    */
   getPixelsPerTimeUnit(): number {
-    return this.timelineWidth / this.adjustedZoomedViewportRange;
+    return this.pixelsPerTimeUnit;
   }
 
   /**
    * Calculate position for a time range
    */
   calculatePosition(startTime: number, endTime?: number): PositionResult {
-    const start = this.timeToPercentage(startTime);
-    const end = this.timeToPercentage(endTime || startTime);
-    
-    const left = start;
-    const width = Math.max(0.5, end - start);
     const leftPixel = this.timeToPixel(startTime);
-    const widthPixel = Math.max(0.5 * this.timelineWidth / 100, this.timeToPixel(endTime || startTime) - leftPixel);
+    const rightPixel = this.timeToPixel(endTime || startTime);
+    
+    const left = (leftPixel / this.timelineWidth) * 100;
+    const right = (rightPixel / this.timelineWidth) * 100;
+    const width = Math.max(0.1, right - left); // Minimum 0.1% width
+    
+    const widthPixel = Math.max(1, rightPixel - leftPixel); // Minimum 1px width
     
     // Check visibility with margin
     const visible = left < 110 && (left + width) > -10 && width > 0;
@@ -192,7 +191,8 @@ export class TimelineCalculator {
 
   private generateStaticTicks(): Array<{ timeValue: number; position: PositionResult; label: string }> {
     const targetTickCount = 15;
-    const rawInterval = this.zoomedViewportRange / targetTickCount;
+    const timeRange = this.viewportEndTime - this.viewportStartTime;
+    const rawInterval = timeRange / targetTickCount;
     
     // Round to nice intervals
     const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
@@ -205,8 +205,8 @@ export class TimelineCalculator {
     else niceInterval = 10;
     
     const tickInterval = niceInterval * magnitude;
-    const startTick = Math.floor(this.zoomedViewportStart / tickInterval) * tickInterval;
-    const endTick = Math.ceil((this.zoomedViewportStart + this.zoomedViewportRange) / tickInterval) * tickInterval;
+    const startTick = Math.floor(this.viewportStartTime / tickInterval) * tickInterval;
+    const endTick = Math.ceil(this.viewportEndTime / tickInterval) * tickInterval;
     
     const ticks: Array<{ timeValue: number; position: PositionResult; label: string }> = [];
     
@@ -316,14 +316,12 @@ export class TimelineCalculator {
    */
   getDebugInfo(): object {
     return {
+      viewportStartTime: this.viewportStartTime,
+      viewportEndTime: this.viewportEndTime,
       zoomLevel: this.zoomLevel,
-      panOffset: this.panOffset,
       timelineWidth: this.timelineWidth,
-      baseViewportRange: this.baseViewportRange,
-      zoomedViewportRange: this.zoomedViewportRange,
-      zoomedViewportStart: this.zoomedViewportStart,
-      adjustedZoomedViewportRange: this.adjustedZoomedViewportRange,
-      pixelsPerTimeUnit: this.getPixelsPerTimeUnit()
+      pixelsPerTimeUnit: this.pixelsPerTimeUnit,
+      timeRange: this.viewportEndTime - this.viewportStartTime
     };
   }
 }

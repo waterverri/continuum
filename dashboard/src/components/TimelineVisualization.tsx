@@ -8,7 +8,7 @@ export interface TimelineVisualizationProps {
   events: Event[];
   viewport: Viewport;
   isDragging: boolean;
-  panOffset: number; // keeping for compatibility
+  viewportStartTime: number; // actual start time, not percentage
   zoomLevel: number;
   isCreatingEvent: boolean;
   collapsedParents: Set<string>;
@@ -31,7 +31,7 @@ export function TimelineVisualization({
   events,
   viewport,
   isDragging,
-  panOffset,
+  viewportStartTime,
   zoomLevel,
   isCreatingEvent,
   collapsedParents,
@@ -81,14 +81,13 @@ export function TimelineVisualization({
   // Create calculator without collapse adjustment first (bootstrap)
   const baseCalculator = useMemo(() => {
     return new TimelineCalculator(
-      viewport,
+      viewportStartTime,
       zoomLevel,
-      panOffset,
       timelineWidth,
       (time) => time, // no collapse adjustment yet
       formatDateDisplay
     );
-  }, [viewport, zoomLevel, panOffset, timelineWidth, formatDateDisplay]);
+  }, [viewportStartTime, zoomLevel, timelineWidth, formatDateDisplay]);
 
   // Initialize timeline collapse functionality with the calculator
   const {
@@ -100,14 +99,13 @@ export function TimelineVisualization({
   // Create final calculator with collapse adjustments
   const calculator = useMemo(() => {
     return new TimelineCalculator(
-      viewport,
+      viewportStartTime,
       zoomLevel,
-      panOffset,
       timelineWidth,
       getAdjustedPosition,
       formatDateDisplay
     );
-  }, [viewport, zoomLevel, panOffset, timelineWidth, getAdjustedPosition, formatDateDisplay]);
+  }, [viewportStartTime, zoomLevel, timelineWidth, getAdjustedPosition, formatDateDisplay]);
 
   // Convert timeSegments to calculator format
   const calculatorTimeSegments: CalculatorTimeSegment[] = useMemo(() => {

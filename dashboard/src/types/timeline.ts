@@ -32,7 +32,7 @@ export interface TouchState {
   isPointerDown: boolean;
   initialDistance: number;
   initialZoom: number;
-  initialPan: number;
+  initialViewportStartTime: number; // actual start time, not percentage
   touchStartTime: number;
   singleTouchStart: { x: number; y: number };
   lastTapTime: number;
@@ -41,7 +41,7 @@ export interface TouchState {
 
 export interface DragState {
   x: number;
-  panOffset: number;
+  viewportStartTime: number; // actual viewport start time
   viewport: Viewport;
 }
 

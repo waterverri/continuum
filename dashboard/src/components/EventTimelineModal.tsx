@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef, useState, useLayoutEffect } from 'react';
 import { EventFilters } from './EventFilters';
 import { TimelineControls } from './TimelineControls';
 import { TimelineVisualization } from './TimelineVisualization';
@@ -29,6 +29,33 @@ export function EventTimelineModal({
   onCloseAllModals, 
   onEventsChange 
 }: EventTimelineModalProps) {
+  // Timeline container ref for getting actual width
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [timelineWidth, setTimelineWidth] = useState(1000); // fallback width
+  
+  // Update timeline width when component mounts or resizes
+  useLayoutEffect(() => {
+    const updateWidth = () => {
+      if (timelineRef.current) {
+        const width = timelineRef.current.getBoundingClientRect().width;
+        if (width > 0) {
+          setTimelineWidth(width);
+        }
+      }
+    };
+
+    updateWidth();
+    
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (timelineRef.current) {
+      resizeObserver.observe(timelineRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Initialize state management hook
   const state = useTimelineState();
   
@@ -54,7 +81,8 @@ export function EventTimelineModal({
   const viewport = useTimelineViewport({
     timelineData: state.timelineData,
     events: state.events,
-    isCreatingEvent: state.isCreatingEvent
+    isCreatingEvent: state.isCreatingEvent,
+    timelineWidth
   });
 
   // Load initial data
@@ -140,7 +168,7 @@ export function EventTimelineModal({
           viewMode={state.viewMode}
           onViewModeChange={state.setViewMode}
           zoomLevel={viewport.zoomLevel}
-          panOffset={viewport.panOffset}
+          viewportStartTime={viewport.viewportStartTime}
           onZoomIn={viewport.handleZoomIn}
           onZoomOut={viewport.handleZoomOut}
           onZoomReset={viewport.handleZoomReset}
@@ -188,13 +216,13 @@ export function EventTimelineModal({
               <p>Try adjusting your filter criteria or clearing them to see more events.</p>
             </div>
           ) : (
-            <div className={`timeline-content ${state.viewMode}`}>
+            <div ref={timelineRef} className={`timeline-content ${state.viewMode}`}>
               {state.viewMode === 'gantt' ? (
                 <TimelineVisualization
                   events={state.filteredEvents}
                   viewport={viewport.viewport}
                   isDragging={viewport.isDragging}
-                  panOffset={viewport.panOffset}
+                  viewportStartTime={viewport.viewportStartTime}
                   zoomLevel={viewport.zoomLevel}
                   isCreatingEvent={state.isCreatingEvent}
                   collapsedParents={state.collapsedParents}

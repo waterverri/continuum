@@ -3,7 +3,7 @@ export interface TimelineControlsProps {
   viewMode: 'gantt' | 'list';
   onViewModeChange: (mode: 'gantt' | 'list') => void;
   zoomLevel: number;
-  panOffset: number;
+  viewportStartTime: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
@@ -19,7 +19,7 @@ export function TimelineControls({
   viewMode,
   onViewModeChange,
   zoomLevel,
-  panOffset,
+  viewportStartTime,
   onZoomIn,
   onZoomOut,
   onZoomReset,
@@ -102,7 +102,7 @@ export function TimelineControls({
             </div>
             <div className="pan-controls">
               <label title="Current pan position. Drag timeline to pan, pinch to zoom, or double-tap to create events">
-                {panOffset === 0 ? 'Centered' : `Pan: ${panOffset > 0 ? '+' : ''}${panOffset.toFixed(0)}px`}
+                {`Start Time: ${viewportStartTime.toFixed(1)}`}
               </label>
             </div>
           </>
