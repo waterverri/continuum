@@ -199,7 +199,6 @@ export function EventTimelineModal({
                   isCreatingEvent={state.isCreatingEvent}
                   collapsedParents={state.collapsedParents}
                   formatDateDisplay={operations.formatDateDisplay}
-                  getEventPosition={viewport.getEventPosition}
                   onMouseDown={viewport.handleMouseDown}
                   onMouseMove={viewport.handleMouseMove}
                   onMouseUp={viewport.handleMouseUp}

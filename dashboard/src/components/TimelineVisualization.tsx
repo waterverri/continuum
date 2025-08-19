@@ -1,7 +1,8 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React, { useRef, useLayoutEffect, useState, useMemo } from 'react';
 import type { Event } from '../api';
 import type { Viewport } from '../hooks/useTimelineViewport';
 import { useTimelineCollapse } from '../hooks/useTimelineCollapse';
+import { TimelineCalculator, type TimeSegment as CalculatorTimeSegment } from '../utils/timelineCalculator';
 
 export interface TimelineVisualizationProps {
   events: Event[];
@@ -12,7 +13,6 @@ export interface TimelineVisualizationProps {
   isCreatingEvent: boolean;
   collapsedParents: Set<string>;
   formatDateDisplay: (timeValue?: number) => string;
-  getEventPosition: (event: Event) => { left: number; width: number; visible: boolean };
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseMove: (e: React.MouseEvent) => void;
   onMouseUp: () => void;
@@ -36,7 +36,6 @@ export function TimelineVisualization({
   isCreatingEvent,
   collapsedParents,
   formatDateDisplay,
-  getEventPosition,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -86,32 +85,33 @@ export function TimelineVisualization({
     getAdjustedPosition
   } = useTimelineCollapse({ events, viewport, zoomLevel });
 
-  // Calculate zoomed and panned viewport (matching useTimelineViewport logic)
-  const baseViewportRange = viewport.maxTime - viewport.minTime;
-  const zoomedViewportRange = baseViewportRange / zoomLevel;
-  const zoomedViewportStart = viewport.minTime - (panOffset * zoomedViewportRange / 100);
-  const adjustedZoomedViewportStart = getAdjustedPosition(zoomedViewportStart);
-  const adjustedZoomedViewportEnd = getAdjustedPosition(zoomedViewportStart + zoomedViewportRange);
-  const adjustedZoomedViewportRange = adjustedZoomedViewportEnd - adjustedZoomedViewportStart;
+  // Create centralized timeline calculator
+  const calculator = useMemo(() => {
+    return new TimelineCalculator(
+      viewport,
+      zoomLevel,
+      panOffset,
+      timelineWidth,
+      getAdjustedPosition,
+      formatDateDisplay
+    );
+  }, [viewport, zoomLevel, panOffset, timelineWidth, getAdjustedPosition, formatDateDisplay]);
 
-  // Format date for ticker display (dd MMM yy format)
-  const formatDateForTicker = (timeValue: number) => {
-    // Use the existing formatDateDisplay which handles project base date correctly
-    const fullDate = formatDateDisplay(timeValue);
-    
-    // Convert to shorter format: parse the date and reformat
-    try {
-      const date = new Date(fullDate);
-      return date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: '2-digit'
-      });
-    } catch (error) {
-      // Fallback to original if parsing fails
-      return fullDate;
-    }
-  };
+  // Convert timeSegments to calculator format
+  const calculatorTimeSegments: CalculatorTimeSegment[] = useMemo(() => {
+    return timeSegments.map(segment => ({
+      type: segment.type === 'collapsed' ? 'collapsed' : 
+            segment.type === 'gap' ? 'expandable' : 'normal',
+      collapsedSegment: segment.collapsedSegment
+    }));
+  }, [timeSegments]);
+
+  // Calculate all timeline elements using the centralized calculator
+  const timelineElements = useMemo(() => {
+    return calculator.calculateAllElements(events, calculatorTimeSegments);
+  }, [calculator, events, calculatorTimeSegments]);
+
+  // Helper functions
   
   const getEventColor = (eventId: string) => {
     // Simple hash function to generate consistent colors
@@ -167,261 +167,92 @@ export function TimelineVisualization({
   const renderTimelineRuler = () => {
     const ticks: React.ReactElement[] = [];
     
-    // Use actual timeline width for pixel calculations
-
-    // Clean debug output for timeline debugging
-    console.log('=== PIXEL → TIME MAPPING (every 50px) ===');
-    console.log(`Zoom: ${zoomLevel.toFixed(2)}x | Pan: ${panOffset.toFixed(2)} | Timeline: ${timelineWidth}px | Range: ${adjustedZoomedViewportRange.toFixed(1)} time units`);
-    const pixelStep = 50;
-    for (let pixel = 0; pixel <= timelineWidth; pixel += pixelStep) {
-      const percentage = (pixel / timelineWidth) * 100;
-      const timeValue = adjustedZoomedViewportStart + (percentage / 100) * adjustedZoomedViewportRange;
-      console.log(`${pixel}px → ${timeValue.toFixed(1)} time units`);
-    }
-    
-    console.log('=== EVENTS START-END ===');
-    const eventsWithTime = events.filter(e => e.time_start != null);
-    eventsWithTime.forEach(event => {
-      const adjustedStart = getAdjustedPosition(event.time_start!);
-      const adjustedEnd = getAdjustedPosition(event.time_end || event.time_start!);
-      const startPercent = ((adjustedStart - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-      const endPercent = ((adjustedEnd - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-      const startPixel = (startPercent / 100) * timelineWidth;
-      const endPixel = (endPercent / 100) * timelineWidth;
-      
-      console.log(`${event.name}: time(${event.time_start}-${event.time_end || event.time_start}) → adjusted(${adjustedStart.toFixed(1)}-${adjustedEnd.toFixed(1)}) → pixel(${startPixel.toFixed(1)}-${endPixel.toFixed(1)})`);
-    });
-    
-    console.log('=== COLLAPSE RANGES ===');
-    timeSegments.forEach(segment => {
-      if (segment.collapsedSegment) {
-        const segmentData = segment.collapsedSegment;
-        const adjustedStart = getAdjustedPosition(segmentData.startTime);
-        const adjustedEnd = getAdjustedPosition(segmentData.endTime);
-        const startPercent = ((adjustedStart - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-        const endPercent = ((adjustedEnd - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-        const startPixel = (startPercent / 100) * timelineWidth;
-        const endPixel = (endPercent / 100) * timelineWidth;
-        
-        console.log(`${segment.type} ${segmentData.id}: time(${segmentData.startTime}-${segmentData.endTime}) → adjusted(${adjustedStart.toFixed(1)}-${adjustedEnd.toFixed(1)}) → pixel(${startPixel.toFixed(1)}-${endPixel.toFixed(1)})`);
-      }
-    });
-    
-    // If no events, fall back to static interval tickers
-    if (eventsWithTime.length === 0) {
-      const targetTickCount = 15;
-      const rawInterval = zoomedViewportRange / targetTickCount;
-      
-      // Round to nice intervals using powers of 10 and common factors (1, 2, 5)
-      const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
-      const normalized = rawInterval / magnitude;
-      
-      let niceInterval;
-      if (normalized <= 1) niceInterval = 1;
-      else if (normalized <= 2) niceInterval = 2;
-      else if (normalized <= 5) niceInterval = 5;
-      else niceInterval = 10;
-      
-      const tickInterval = niceInterval * magnitude;
-      const startTick = Math.floor(zoomedViewportStart / tickInterval) * tickInterval;
-      const endTick = Math.ceil((zoomedViewportStart + zoomedViewportRange) / tickInterval) * tickInterval;
-      
-      for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
-        const adjustedTime = getAdjustedPosition(timeValue);
-        const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-        const finalPosition = position;
-        
-        if (finalPosition > -10 && finalPosition < 110) {
-          ticks.push(
-            <div key={timeValue} className="ruler-tick" style={{ left: `${finalPosition}%` }}>
-              <span className="ruler-label">{formatDateDisplay(timeValue)}</span>
-            </div>
-          );
-        }
-      }
-    } else {
-      // Event-based tickers: event start, end, midpoint, 2x, 3x
-      const tickSet = new Set<number>();
-      
+    // Render regular ticks using centralized calculator
+    timelineElements.ticks.forEach(tick => {
+      // Check if this is a 3x collapse boundary
+      const eventsWithTime = events.filter(e => e.time_start != null);
+      let isCollapseBoundary = false;
       eventsWithTime.forEach((event, index) => {
-        const eventStart = event.time_start!;
         const eventEnd = event.time_end || event.time_start!;
-        const eventDuration = Math.max(1, eventEnd - eventStart);
-        
-        // Add event start and end
-        tickSet.add(eventStart);
-        tickSet.add(eventEnd);
-        
-        // Add midpoint
-        const midpoint = eventStart + eventDuration / 2;
-        tickSet.add(midpoint);
-        
-        // Add 2x and 3x positions after event end
-        const twoX = eventEnd + eventDuration;
+        const eventDuration = Math.max(1, eventEnd - event.time_start!);
         const threeX = eventEnd + (eventDuration * 2);
-        tickSet.add(twoX);
-        tickSet.add(threeX);
         
-        // Check if there's a gap that would be collapsible at 3x position
-        const nextEvent = eventsWithTime[index + 1];
-        if (nextEvent) {
-          const nextStart = nextEvent.time_start!;
-          const nextEnd = nextEvent.time_end || nextEvent.time_start!;
-          const nextDuration = Math.max(1, nextEnd - nextStart);
-          const averageDuration = (eventDuration + nextDuration) / 2;
-          const collapseThreshold = averageDuration * 3;
-          const gapDuration = nextStart - eventEnd;
-          
-          // Mark 3x tick as collapse boundary if gap exceeds threshold
-          if (gapDuration > collapseThreshold && threeX <= nextStart) {
-            // We'll add a special class to this tick later
-          }
-        }
-      });
-      
-      // Convert set to sorted array and filter for minimum pixel spacing
-      const sortedTicks = Array.from(tickSet).sort((a, b) => a - b);
-      const filteredTicks: number[] = [];
-      const minPixelSpacing = 80; // Minimum 80px between tickers
-      
-      // Filter ticks based on pixel spacing
-      sortedTicks.forEach(timeValue => {
-        const adjustedTime = getAdjustedPosition(timeValue);
-        const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-        const pixelPosition = (position / 100) * timelineWidth;
-        
-        // Check if this tick is too close to any existing tick
-        const tooClose = filteredTicks.some(existingTick => {
-          const existingAdjustedTime = getAdjustedPosition(existingTick);
-          const existingPosition = ((existingAdjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-          const existingPixelPosition = (existingPosition / 100) * timelineWidth;
-          const distance = Math.abs(pixelPosition - existingPixelPosition);
-          return distance < minPixelSpacing;
-        });
-        
-        if (!tooClose) {
-          filteredTicks.push(timeValue);
-        }
-      });
-      
-      
-      // First add all regular tickers
-      filteredTicks.forEach(timeValue => {
-        const adjustedTime = getAdjustedPosition(timeValue);
-        const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-        const finalPosition = position;
-        
-        if (finalPosition > -10 && finalPosition < 110) {
-          // Check if this is a 3x collapse boundary
-          let isCollapseBoundary = false;
-          eventsWithTime.forEach((event, index) => {
-            const eventEnd = event.time_end || event.time_start!;
-            const eventDuration = Math.max(1, eventEnd - event.time_start!);
-            const threeX = eventEnd + (eventDuration * 2);
+        if (Math.abs(tick.timeValue - threeX) < 0.1) {
+          const nextEvent = eventsWithTime[index + 1];
+          if (nextEvent) {
+            const nextStart = nextEvent.time_start!;
+            const nextEnd = nextEvent.time_end || nextEvent.time_start!;
+            const nextDuration = Math.max(1, nextEnd - nextStart);
+            const averageDuration = (eventDuration + nextDuration) / 2;
+            const collapseThreshold = averageDuration * 3;
+            const gapDuration = nextStart - eventEnd;
             
-            if (Math.abs(timeValue - threeX) < 0.1) { // Close enough to 3x position
-              const nextEvent = eventsWithTime[index + 1];
-              if (nextEvent) {
-                const nextStart = nextEvent.time_start!;
-                const nextEnd = nextEvent.time_end || nextEvent.time_start!;
-                const nextDuration = Math.max(1, nextEnd - nextStart);
-                const averageDuration = (eventDuration + nextDuration) / 2;
-                const collapseThreshold = averageDuration * 3;
-                const gapDuration = nextStart - eventEnd;
-                
-                if (gapDuration > collapseThreshold && threeX <= nextStart) {
-                  isCollapseBoundary = true;
-                }
-              }
+            if (gapDuration > collapseThreshold && threeX <= nextStart) {
+              isCollapseBoundary = true;
             }
-          });
-          
-          // Render regular ticker
-          ticks.push(
-            <div 
-              key={timeValue} 
-              className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
-              style={{ left: `${finalPosition}%` }}
-            >
-              <span className="ruler-label">{formatDateForTicker(timeValue)}</span>
-              {isCollapseBoundary && (
-                <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
-                  ⚡
-                </div>
-              )}
-            </div>
-          );
-        }
-      });
-      
-      // Then add collapse/expand buttons for collapsible segments
-      timeSegments.forEach(segment => {
-        // Show buttons for both collapsed AND expanded segments that can be collapsed
-        if (segment.collapsedSegment) {
-          const segmentData = segment.collapsedSegment;
-          const segmentMidpoint = segmentData.startTime + (segmentData.endTime - segmentData.startTime) / 2;
-          
-          const adjustedTime = getAdjustedPosition(segmentMidpoint);
-          const position = ((adjustedTime - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-          const finalPosition = position;
-          
-          const isCollapsed = segment.type === 'collapsed';
-            
-          if (finalPosition > -10 && finalPosition < 110) {
-            ticks.push(
-              <div 
-                key={`toggle-${segmentData.id}`}
-                className={`ruler-tick ${isCollapsed ? 'collapse-tick' : 'expand-tick'}`}
-                style={{ left: `${finalPosition}%` }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleSegmentCollapse(segmentData.id);
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <div className={isCollapsed ? 'collapse-button' : 'expand-button'}>
-                  <span className="collapse-icon">{isCollapsed ? '⋯' : '⤴'}</span>
-                  <span className="collapse-duration">{Math.round(segmentData.duration)}d</span>
-                </div>
-              </div>
-            );
           }
         }
       });
-    }
+      
+      ticks.push(
+        <div 
+          key={tick.timeValue} 
+          className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
+          style={{ left: `${tick.position.left}%` }}
+        >
+          <span className="ruler-label">{tick.label}</span>
+          {isCollapseBoundary && (
+            <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
+              ⚡
+            </div>
+          )}
+        </div>
+      );
+    });
+    
+    // Add collapse/expand buttons for collapsible segments
+    timelineElements.collapsedSegments.forEach(({ segment }) => {
+      const segmentData = timeSegments.find(ts => ts.collapsedSegment?.id === segment.id);
+      if (!segmentData) return;
+      
+      const isCollapsed = segmentData.type === 'collapsed';
+      const midpoint = segment.startTime + (segment.endTime - segment.startTime) / 2;
+      const midpointPosition = calculator.calculatePosition(midpoint);
+      
+      if (midpointPosition.visible) {
+        ticks.push(
+          <div 
+            key={`toggle-${segment.id}`}
+            className={`ruler-tick ${isCollapsed ? 'collapse-tick' : 'expand-tick'}`}
+            style={{ left: `${midpointPosition.left}%` }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleSegmentCollapse(segment.id);
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <div className={isCollapsed ? 'collapse-button' : 'expand-button'}>
+              <span className="collapse-icon">{isCollapsed ? '⋯' : '⤴'}</span>
+              <span className="collapse-duration">{Math.round(segment.duration)}d</span>
+            </div>
+          </div>
+        );
+      }
+    });
     
     return ticks;
   };
 
   const renderGanttRow = (event: Event, level: number, isChild = false) => {
-    const originalPosition = getEventPosition(event);
-    
-    // Calculate adjusted position using collapse functionality with proper pan support
-    const adjustedPosition = (() => {
-      if (!event.time_start) return originalPosition;
-      
-      const adjustedStart = getAdjustedPosition(event.time_start);
-      const adjustedEnd = getAdjustedPosition(event.time_end || event.time_start);
-      
-      const startPercent = ((adjustedStart - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-      const endPercent = ((adjustedEnd - adjustedZoomedViewportStart) / adjustedZoomedViewportRange) * 100;
-      
-      const finalLeft = startPercent;
-      const finalWidth = Math.max(0.5, endPercent - startPercent);
-      
-      // Check if event is visible
-      const visible = finalLeft < 110 && (finalLeft + finalWidth) > -10 && finalWidth > 0;
-      
-      return {
-        left: finalLeft,
-        width: finalWidth,
-        visible
-      };
-    })();
+    // Find the event position from our calculated elements
+    const eventWithPosition = timelineElements.events.find(e => e.id === event.id);
+    const adjustedPosition = eventWithPosition 
+      ? eventWithPosition.position 
+      : calculator.calculatePosition(event.time_start || 0, event.time_end);
     
     const duration = getEventDuration(event);
     const hasTime = event.time_start != null;
