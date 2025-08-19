@@ -164,26 +164,44 @@ export function TimelineVisualization({
     
     // Use actual timeline width for pixel calculations
     
-    console.log('=== RULER RENDER DEBUG ===');
-    console.log('Viewport:', viewport);
-    console.log('ZoomLevel:', zoomLevel);
-    console.log('PanOffset:', panOffset);
-    console.log('Original viewport range:', originalViewportRange);
-    console.log('Adjusted viewport range:', adjustedViewportRange);
-    console.log('Timeline width (actual):', timelineWidth, 'px');
-    console.log('Pixels per time unit:', timelineWidth / adjustedViewportRange);
-    console.log('=== VIEWPORT MAPPING ===');
-    console.log('Time range:', `${viewport.minTime} to ${viewport.maxTime} (span: ${originalViewportRange})`);
-    console.log('Adjusted time range:', `${getAdjustedPosition(viewport.minTime)} to ${getAdjustedPosition(viewport.maxTime)} (span: ${adjustedViewportRange})`);
-    console.log('Screen coordinates: 0px to', timelineWidth + 'px');
-    console.log('=== SCREEN BOUNDARIES ===');
-    console.log('Visible region: -10% to 110% (screen bounds with margin)');
-    console.log('Visible pixels:', (-10/100 * timelineWidth).toFixed(1) + 'px to', (110/100 * timelineWidth).toFixed(1) + 'px');
-    console.log('Center line (50%):', (timelineWidth/2).toFixed(1) + 'px');
-    console.log('Time segments:', timeSegments.length, timeSegments);
+    // Clean debug output for timeline debugging
+    console.log('=== PIXEL → TIME MAPPING (every 50px) ===');
+    console.log(`Zoom: ${zoomLevel.toFixed(2)}x | Timeline: ${timelineWidth}px | Range: ${adjustedViewportRange.toFixed(1)} time units`);
+    const adjustedViewportStart = getAdjustedPosition(viewport.minTime);
+    const pixelStep = 50;
+    for (let pixel = 0; pixel <= timelineWidth; pixel += pixelStep) {
+      const percentage = (pixel / timelineWidth) * 100;
+      const timeValue = adjustedViewportStart + (percentage / 100) * adjustedViewportRange;
+      console.log(`${pixel}px → ${timeValue.toFixed(1)} time units`);
+    }
     
-    // Get events with time
+    console.log('=== EVENTS START-END ===');
     const eventsWithTime = events.filter(e => e.time_start != null);
+    eventsWithTime.forEach(event => {
+      const adjustedStart = getAdjustedPosition(event.time_start!);
+      const adjustedEnd = getAdjustedPosition(event.time_end || event.time_start!);
+      const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
+      const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
+      const startPixel = (startPercent / 100) * timelineWidth;
+      const endPixel = (endPercent / 100) * timelineWidth;
+      
+      console.log(`${event.name}: time(${event.time_start}-${event.time_end || event.time_start}) → adjusted(${adjustedStart.toFixed(1)}-${adjustedEnd.toFixed(1)}) → pixel(${startPixel.toFixed(1)}-${endPixel.toFixed(1)})`);
+    });
+    
+    console.log('=== COLLAPSE RANGES ===');
+    timeSegments.forEach(segment => {
+      if (segment.collapsedSegment) {
+        const segmentData = segment.collapsedSegment;
+        const adjustedStart = getAdjustedPosition(segmentData.startTime);
+        const adjustedEnd = getAdjustedPosition(segmentData.endTime);
+        const startPercent = ((adjustedStart - adjustedViewportStart) / adjustedViewportRange) * 100;
+        const endPercent = ((adjustedEnd - adjustedViewportStart) / adjustedViewportRange) * 100;
+        const startPixel = (startPercent / 100) * timelineWidth;
+        const endPixel = (endPercent / 100) * timelineWidth;
+        
+        console.log(`${segment.type} ${segmentData.id}: time(${segmentData.startTime}-${segmentData.endTime}) → adjusted(${adjustedStart.toFixed(1)}-${adjustedEnd.toFixed(1)}) → pixel(${startPixel.toFixed(1)}-${endPixel.toFixed(1)})`);
+      }
+    });
     
     // If no events, fall back to static interval tickers
     if (eventsWithTime.length === 0) {
@@ -210,7 +228,6 @@ export function TimelineVisualization({
         const finalPosition = position;
         
         const pixelPosition = (finalPosition / 100) * timelineWidth;
-        console.log(`Static tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition.toFixed(2)}%, pixel=${pixelPosition.toFixed(1)}px`);
         
         if (finalPosition > -10 && finalPosition < 110) {
           ticks.push(
@@ -266,7 +283,6 @@ export function TimelineVisualization({
       const minPixelSpacing = 80; // Minimum 80px between tickers
       
       // Filter ticks based on pixel spacing
-      console.log('Filtering ticks for minimum pixel spacing:', minPixelSpacing, 'px');
       sortedTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
@@ -281,14 +297,11 @@ export function TimelineVisualization({
           return distance < minPixelSpacing;
         });
         
-        console.log(`  Tick ${timeValue}: position=${position.toFixed(2)}%, pixel=${pixelPosition.toFixed(1)}px, ${tooClose ? 'FILTERED OUT (too close)' : 'INCLUDED'}`);
-        
         if (!tooClose) {
           filteredTicks.push(timeValue);
         }
       });
       
-      console.log('Event-based tickers - filtered ticks:', filteredTicks.length);
       
       // First add all regular tickers
       filteredTicks.forEach(timeValue => {
@@ -297,7 +310,6 @@ export function TimelineVisualization({
         const finalPosition = position;
         
         const pixelPosition = (finalPosition / 100) * timelineWidth;
-        console.log(`Event tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition.toFixed(2)}%, pixel=${pixelPosition.toFixed(1)}px`);
         
         if (finalPosition > -10 && finalPosition < 110) {
           // Check if this is a 3x collapse boundary
@@ -343,7 +355,6 @@ export function TimelineVisualization({
       });
       
       // Then add collapse/expand buttons for collapsible segments
-      console.log('Adding collapse button tickers, segments:', timeSegments.length);
       timeSegments.forEach(segment => {
         // Show buttons for both collapsed AND expanded segments that can be collapsed
         if (segment.collapsedSegment) {
@@ -357,13 +368,6 @@ export function TimelineVisualization({
           
           const isCollapsed = segment.type === 'collapsed';
           const pixelPosition = (finalPosition / 100) * timelineWidth;
-          console.log(`${isCollapsed ? 'Collapsed' : 'Expanded'} segment: ${segmentData.id}`);
-          console.log(`  Original range: ${segmentData.startTime} - ${segmentData.endTime} (duration: ${segmentData.duration})`);
-          console.log(`  Midpoint: ${segmentMidpoint}`);
-          console.log(`  Adjusted midpoint: ${adjustedTime}`);
-          console.log(`  Adjusted viewport start: ${adjustedViewportStart}`);
-          console.log(`  Position calculation: (${adjustedTime} - ${adjustedViewportStart}) / ${adjustedViewportRange} * 100 = ${finalPosition.toFixed(2)}%`);
-          console.log(`  Pixel position: ${pixelPosition.toFixed(1)}px`);
           
           if (finalPosition > -10 && finalPosition < 110) {
             ticks.push(
@@ -418,19 +422,6 @@ export function TimelineVisualization({
       
       const leftPixel = (finalLeft / 100) * timelineWidth;
       const widthPixel = (finalWidth / 100) * timelineWidth;
-      
-      console.log(`Event ${event.name} (${event.id.slice(0, 8)}...):`, {
-        originalTime: `${event.time_start} - ${event.time_end || event.time_start}`,
-        adjustedTime: `${adjustedStart} - ${adjustedEnd}`,
-        adjustedViewportStart,
-        adjustedViewportRange,
-        startPercent: `${startPercent.toFixed(2)}%`,
-        endPercent: `${endPercent.toFixed(2)}%`,
-        finalPosition: `left=${finalLeft.toFixed(2)}%, width=${finalWidth.toFixed(2)}%`,
-        pixelPosition: `left=${leftPixel.toFixed(1)}px, width=${widthPixel.toFixed(1)}px`,
-        visible,
-        originalPosition,
-      });
       
       return {
         left: finalLeft,
