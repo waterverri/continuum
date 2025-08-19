@@ -96,9 +96,7 @@ const AppHeader = ({ session }: { session: Session | null }) => {
   const { projectActions, currentProject } = useProjectActions();
   const { onToggleSidebar, onToggleRightSidebar } = projectActions;
   
-  if (!session) return null;
-  
-  const isProjectDetailPage = location.pathname.startsWith('/projects/');
+  const isProjectDetailPage = session && location.pathname.startsWith('/projects/');
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -140,8 +138,12 @@ const AppHeader = ({ session }: { session: Session | null }) => {
             ⚙️
           </button>
         )}
-        <span>Logged in as: {session.user.email}</span>
-        <button onClick={handleSignOut}>Sign out</button>
+        {session && (
+          <>
+            <span>Logged in as: {session.user.email}</span>
+            <button onClick={handleSignOut}>Sign out</button>
+          </>
+        )}
       </div>
     </header>
   );
