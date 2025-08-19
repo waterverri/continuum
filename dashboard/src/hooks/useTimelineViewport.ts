@@ -481,27 +481,16 @@ export function useTimelineViewport({
       const viewportTimeWidth = timelineWidth / pixelsPerTimeUnit;
       
       if (!viewportManuallySet) {
-        // First time or reset - center viewport on the center point of all events
+        // First time or reset - start viewport at leftmost event start
         const eventsWithTime = events.filter(e => e.time_start != null);
         
         if (eventsWithTime.length > 0) {
-          // Calculate the center point of all events (disregarding collapse)
-          const eventTimes = eventsWithTime.flatMap(e => [
-            e.time_start!,
-            e.time_end || e.time_start!
-          ]);
-          const minEventTime = Math.min(...eventTimes);
-          const maxEventTime = Math.max(...eventTimes);
-          const eventsCenterTime = (minEventTime + maxEventTime) / 2;
-          
-          // Set viewport start time to center the events
-          const newStartTime = eventsCenterTime - (viewportTimeWidth / 2);
-          setViewportStartTime(newStartTime);
+          // Use leftmost event start as viewport start - simple and reliable
+          const leftmostEventStart = Math.min(...eventsWithTime.map(e => e.time_start!));
+          setViewportStartTime(leftmostEventStart);
         } else {
-          // No events - center on timeline data
-          const dataCenter = (timelineData.minTime + timelineData.maxTime) / 2;
-          const newStartTime = dataCenter - (viewportTimeWidth / 2);
-          setViewportStartTime(newStartTime);
+          // No events - start at timeline data beginning
+          setViewportStartTime(timelineData.minTime);
         }
         
         // Update viewport state for compatibility
@@ -522,7 +511,7 @@ export function useTimelineViewport({
         });
       }
     }
-  }, [timelineData, zoomLevel, isDragging, viewportManuallySet, events, timelineWidth, viewportStartTime]);
+  }, [timelineData, zoomLevel, isDragging, viewportManuallySet, events, timelineWidth]);
   
   return {
     // Viewport state
