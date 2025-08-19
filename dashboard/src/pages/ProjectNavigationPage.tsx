@@ -62,13 +62,11 @@ export default function ProjectNavigationPage() {
   }
 
   const handleDebugAuth = async () => {
-    console.log("Requesting auth context from database...");
-    const { data, error } = await supabase.rpc('debug_auth_context');
+    const { error } = await supabase.rpc('debug_auth_context');
     if (error) {
         console.error('Error debugging auth context:', error);
     } else {
-        console.log('Database returned auth context:', data);
-        alert('Check the browser console (F12) for the auth context from the database.');
+        alert('Auth context retrieved from database successfully.');
     }
 };
 

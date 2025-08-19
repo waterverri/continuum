@@ -132,13 +132,12 @@ export function DocumentEvolution({
     onClose();
   };
 
-  const handleDocumentMenu = (doc: Document, event?: React.MouseEvent) => {
+  const handleDocumentMenu = (_doc: Document, event?: React.MouseEvent) => {
     // Show document context menu
     if (event) {
       event.preventDefault();
     }
     // This would need to be implemented with a dropdown menu
-    console.log('Show menu for document:', doc.title);
   };
 
   const hasEvolution = evolutionSteps.length > 1;
