@@ -145,6 +145,40 @@ export function TimelineVisualization({
     return event.time_end - event.time_start;
   };
 
+  const formatEventDuration = (duration: number) => {
+    if (duration < 1) {
+      // Less than 1 day - show hours and minutes
+      const hours = Math.floor(duration * 24);
+      const minutes = Math.floor((duration * 24 * 60) % 60);
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else {
+        return `${minutes}m`;
+      }
+    } else if (duration < 30) {
+      // Less than 1 month (30 days) - show days with one decimal
+      return `${duration.toFixed(1)} days`;
+    } else if (duration < 365) {
+      // Less than 1 year - show months and days (no decimals)
+      const months = Math.floor(duration / 30);
+      const days = Math.floor(duration % 30);
+      if (days > 0) {
+        return `${months}mo ${days}d`;
+      } else {
+        return `${months}mo`;
+      }
+    } else {
+      // 1 year or more - show years and months
+      const years = Math.floor(duration / 365);
+      const months = Math.floor((duration % 365) / 30);
+      if (months > 0) {
+        return `${years}yr ${months}mo`;
+      } else {
+        return `${years}yr`;
+      }
+    }
+  };
+
   const getEventsByParent = () => {
     const parentMap = new Map<string | null, Event[]>();
     
@@ -210,7 +244,14 @@ export function TimelineVisualization({
           className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
           style={{ left: `${tick.position.left}%` }}
         >
-          <span className="ruler-label">{tick.label}</span>
+          <span className="ruler-label">
+            {tick.label.split('\n').map((line, index) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < tick.label.split('\n').length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </span>
           {isCollapseBoundary && (
             <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
               ⚡
@@ -327,7 +368,7 @@ export function TimelineVisualization({
                 </span>
               )}
               {duration && duration > 0 && (
-                <span className="event-duration">({duration} days)</span>
+                <span className="event-duration">({formatEventDuration(duration)})</span>
               )}
             </div>
           </div>

@@ -156,40 +156,33 @@ export function useTimelineViewport({
   }, []);
 
   const handleZoomToFit = useCallback(() => {
-    // Calculate optimal zoom to fit all events
+    // Calculate optimal zoom to fit all events exactly
     const eventsWithTime = events.filter(e => e.time_start != null);
     if (eventsWithTime.length === 0) return;
     
-    // Get event data range
+    // Get exact event data range
     const startTimes = eventsWithTime.map(e => e.time_start!);
     const endTimes = eventsWithTime.map(e => e.time_end || e.time_start!);
     const dataMinTime = Math.min(...startTimes);
     const dataMaxTime = Math.max(...endTimes);
     
     const dataRange = Math.max(1, dataMaxTime - dataMinTime); // Prevent division by zero
-    const paddedRange = dataRange * 1.4; // Add 40% padding for better visibility
     
-    // Calculate zoom to fit events with padding
-    const optimalZoom = timelineData.timeRange / paddedRange;
-    setZoomLevel(Math.max(0.001, optimalZoom)); // No upper limit
+    // Calculate zoom level so that the exact data range fills the viewport
+    const basePixelsPerDay = 50;
+    const optimalZoom = timelineWidth / (dataRange * basePixelsPerDay);
+    setZoomLevel(Math.max(0.001, optimalZoom));
     
-    // Reset viewport manually set flag to allow auto-centering on events
-    setViewportManuallySet(false);
+    // Set viewport start to leftmost event start time
+    setViewportStartTime(dataMinTime);
+    setViewportManuallySet(true); // Mark as manually set to prevent auto-centering
     
-    // Set viewport to show the fitted range
-    const dataCenter = (dataMinTime + dataMaxTime) / 2;
-    const newMinTime = dataCenter - paddedRange / 2;
-    const newMaxTime = dataCenter + paddedRange / 2;
-    
-    // Update viewport directly
-    setTimeout(() => {
-      setViewport({
-        minTime: newMinTime,
-        maxTime: newMaxTime
-      });
-      setViewportManuallySet(false); // Keep it as auto-managed
-    }, 10);
-  }, [events, timelineData.timeRange]);
+    // Update viewport state for compatibility
+    setViewport({
+      minTime: dataMinTime,
+      maxTime: dataMaxTime
+    });
+  }, [events, timelineWidth]);
   
   // Pan functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
