@@ -130,6 +130,13 @@ export class TimelineCalculator {
   }
 
   /**
+   * Get timeline width in pixels
+   */
+  getTimelineWidth(): number {
+    return this.timelineWidth;
+  }
+
+  /**
    * Calculate position for a time range
    */
   calculatePosition(startTime: number, endTime?: number): PositionResult {

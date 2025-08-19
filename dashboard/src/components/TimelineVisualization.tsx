@@ -213,35 +213,10 @@ export function TimelineVisualization({
     
     // Render regular ticks using centralized calculator
     timelineElements.ticks.forEach(tick => {
-      // Check if this is a 3x collapse boundary
-      const eventsWithTime = events.filter(e => e.time_start != null);
-      let isCollapseBoundary = false;
-      eventsWithTime.forEach((event, index) => {
-        const eventEnd = event.time_end || event.time_start!;
-        const eventDuration = Math.max(1, eventEnd - event.time_start!);
-        const threeX = eventEnd + (eventDuration * 2);
-        
-        if (Math.abs(tick.timeValue - threeX) < 0.1) {
-          const nextEvent = eventsWithTime[index + 1];
-          if (nextEvent) {
-            const nextStart = nextEvent.time_start!;
-            const nextEnd = nextEvent.time_end || nextEvent.time_start!;
-            const nextDuration = Math.max(1, nextEnd - nextStart);
-            const averageDuration = (eventDuration + nextDuration) / 2;
-            const collapseThreshold = averageDuration * 3;
-            const gapDuration = nextStart - eventEnd;
-            
-            if (gapDuration > collapseThreshold && threeX <= nextStart) {
-              isCollapseBoundary = true;
-            }
-          }
-        }
-      });
-      
       ticks.push(
         <div 
           key={tick.timeValue} 
-          className={`ruler-tick ${isCollapseBoundary ? 'collapse-boundary' : ''}`} 
+          className="ruler-tick" 
           style={{ left: `${tick.position.left}%` }}
         >
           <span className="ruler-label">
@@ -252,11 +227,6 @@ export function TimelineVisualization({
               </React.Fragment>
             ))}
           </span>
-          {isCollapseBoundary && (
-            <div className="collapse-indicator" title="Collapse boundary - gaps beyond this point can be collapsed">
-              ⚡
-            </div>
-          )}
         </div>
       );
     });

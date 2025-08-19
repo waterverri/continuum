@@ -79,38 +79,39 @@ export function useTimelineCollapse({
         const gapEnd = nextStart;
         const gapDuration = gapEnd - gapStart;
 
-        if (gapDuration > 0) {
-          // Calculate proper collapsible range with padding
-          const nextEnd = nextEvent.time_end || nextEvent.time_start!;
-          const nextDuration = Math.max(1, nextEnd - nextStart);
+        if (gapDuration > 0 && calculator) {
+          // Calculate gap pixel width using timeToPixel (zoom-aware, pan-independent)
+          const gapStartPixel = calculator.timeToPixel(gapStart);
+          const gapEndPixel = calculator.timeToPixel(gapEnd);
+          const gapPixelWidth = gapEndPixel - gapStartPixel;
           
-          // Define collapsible range: a.end + 2*a.duration to b.start - 2*b.duration
-          const collapsibleStart = currentEnd + (2 * currentDuration);
-          const collapsibleEnd = nextStart - (2 * nextDuration);
-          const collapsibleDuration = Math.max(0, collapsibleEnd - collapsibleStart);
+          // Get timeline width from calculator
+          const timelineWidth = calculator.getTimelineWidth();
           
-          // Only create collapsible segment if there's actually space to collapse
-          if (collapsibleDuration > 0) {
-            // Create collapsible gap - START COLLAPSED by default
-            const segmentId = `gap_${collapsibleStart}_${collapsibleEnd}`;
+          // Check if gap occupies more than 40% of viewport width
+          const shouldCollapse = gapPixelWidth > (timelineWidth * 0.4);
+          
+          if (shouldCollapse) {
+            // Create collapsible gap - entire gap becomes collapsible
+            const segmentId = `gap_${gapStart}_${gapEnd}`;
             const isExpanded = collapsedSegments.has(segmentId); // Inverted logic - set contains expanded gaps
 
             segments.push({
               type: isExpanded ? 'gap' : 'collapsed',
-              startTime: collapsibleStart,
-              endTime: collapsibleEnd,
-              duration: collapsibleDuration,
+              startTime: gapStart,
+              endTime: gapEnd,
+              duration: gapDuration,
               collapsedSegment: {
                 id: segmentId,
-                startTime: collapsibleStart,
-                endTime: collapsibleEnd,
-                duration: collapsibleDuration,
+                startTime: gapStart,
+                endTime: gapEnd,
+                duration: gapDuration,
                 isCollapsed: !isExpanded, // Inverted
-                collapseThreshold: collapsibleDuration // Store the original duration
+                collapseThreshold: gapPixelWidth // Store pixel width for reference
               }
             });
           } else {
-            // Regular gap - no space to collapse after padding
+            // Regular gap - doesn't meet 40% threshold
             segments.push({
               type: 'gap',
               startTime: gapStart,
@@ -118,12 +119,20 @@ export function useTimelineCollapse({
               duration: gapDuration
             });
           }
+        } else if (gapDuration > 0) {
+          // Fallback when calculator not available - treat as regular gap
+          segments.push({
+            type: 'gap',
+            startTime: gapStart,
+            endTime: gapEnd,
+            duration: gapDuration
+          });
         }
       }
     }
 
     return segments;
-  }, [events, collapsedSegments]);
+  }, [events, collapsedSegments, calculator]); // calculator changes with zoom, not pan
 
   // Toggle collapse state of a segment
   const toggleSegmentCollapse = useCallback((segmentId: string) => {
