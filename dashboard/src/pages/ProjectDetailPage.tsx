@@ -78,11 +78,11 @@ export default function ProjectDetailPage() {
       console.log('ProjectDetailPage: Loaded project:', project);
       setCurrentProject(project);
       // Update the app context with the current project
-      if (project?.id && project?.title) {
-        console.log('ProjectDetailPage: Setting app current project:', { id: project.id, title: project.title });
-        setAppCurrentProject({ id: project.id, title: project.title });
+      if (project?.id && project?.name) {
+        console.log('ProjectDetailPage: Setting app current project:', { id: project.id, title: project.name });
+        setAppCurrentProject({ id: project.id, title: project.name });
       } else {
-        console.log('ProjectDetailPage: Project missing id or title:', project);
+        console.log('ProjectDetailPage: Project missing id or name:', project);
       }
     } catch (error) {
       console.error('Failed to load project:', error);
