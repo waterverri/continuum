@@ -134,6 +134,14 @@ export function TimelineVisualization({
     const originalViewportRange = viewport.maxTime - viewport.minTime;
     const ticks: React.ReactElement[] = [];
     
+    console.log('=== RULER RENDER DEBUG ===');
+    console.log('Viewport:', viewport);
+    console.log('ZoomLevel:', zoomLevel);
+    console.log('PanOffset:', panOffset);
+    console.log('Original viewport range:', originalViewportRange);
+    console.log('Adjusted viewport range:', adjustedViewportRange);
+    console.log('Time segments:', timeSegments.length, timeSegments);
+    
     // Get events with time
     const eventsWithTime = events.filter(e => e.time_start != null);
     
@@ -160,6 +168,8 @@ export function TimelineVisualization({
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
         const finalPosition = position;
+        
+        console.log(`Static tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition}%`);
         
         if (finalPosition > -10 && finalPosition < 110) {
           ticks.push(
@@ -233,11 +243,15 @@ export function TimelineVisualization({
         }
       });
       
+      console.log('Event-based tickers - filtered ticks:', filteredTicks.length);
+      
       // First add all regular tickers
       filteredTicks.forEach(timeValue => {
         const adjustedTime = getAdjustedPosition(timeValue);
         const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
         const finalPosition = position;
+        
+        console.log(`Event tick ${timeValue}: original=${timeValue}, adjusted=${adjustedTime}, position=${finalPosition}%`);
         
         if (finalPosition > -10 && finalPosition < 110) {
           // Check if this is a 3x collapse boundary
@@ -291,12 +305,17 @@ export function TimelineVisualization({
           const segmentMidpoint = segmentData.startTime + (segmentData.endTime - segmentData.startTime) / 2;
           
           const adjustedTime = getAdjustedPosition(segmentMidpoint);
-          const position = ((adjustedTime - getAdjustedPosition(viewport.minTime)) / adjustedViewportRange) * 100;
-          const transformOffset = isDragging ? (panOffset / 10) : 0;
-          const finalPosition = position + transformOffset;
+          const adjustedViewportStart = getAdjustedPosition(viewport.minTime);
+          const position = ((adjustedTime - adjustedViewportStart) / adjustedViewportRange) * 100;
+          const finalPosition = position;
           
           const isCollapsed = segment.type === 'collapsed';
-          console.log(`${isCollapsed ? 'Collapse' : 'Expand'} button: segment ${segmentData.id}, position ${finalPosition}%`);
+          console.log(`${isCollapsed ? 'Collapsed' : 'Expanded'} segment: ${segmentData.id}`);
+          console.log(`  Original range: ${segmentData.startTime} - ${segmentData.endTime} (duration: ${segmentData.duration})`);
+          console.log(`  Midpoint: ${segmentMidpoint}`);
+          console.log(`  Adjusted midpoint: ${adjustedTime}`);
+          console.log(`  Adjusted viewport start: ${adjustedViewportStart}`);
+          console.log(`  Position calculation: (${adjustedTime} - ${adjustedViewportStart}) / ${adjustedViewportRange} * 100 = ${finalPosition}%`);
           
           if (finalPosition > -10 && finalPosition < 110) {
             ticks.push(
@@ -348,6 +367,19 @@ export function TimelineVisualization({
       
       // Check if event is visible
       const visible = finalLeft < 110 && (finalLeft + finalWidth) > -10 && finalWidth > 0;
+      
+      console.log(`Event ${event.name} (${event.id.slice(0, 8)}...):`, {
+        originalTime: `${event.time_start} - ${event.time_end || event.time_start}`,
+        adjustedTime: `${adjustedStart} - ${adjustedEnd}`,
+        adjustedViewportStart,
+        adjustedViewportRange,
+        startPercent,
+        endPercent,
+        finalLeft,
+        finalWidth,
+        visible,
+        originalPosition,
+      });
       
       return {
         left: finalLeft,

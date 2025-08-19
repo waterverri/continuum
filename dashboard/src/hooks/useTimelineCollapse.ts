@@ -154,32 +154,50 @@ export function useTimelineCollapse({
     let adjustedTime = originalTime;
     let cumulativeCompression = 0;
 
+    console.log(`\n=== getAdjustedPosition(${originalTime}) ===`);
+    console.log('Processing segments:', timeSegments.length);
+
     for (const segment of timeSegments) {
       if (segment.type === 'collapsed' && segment.collapsedSegment) {
         const { startTime, endTime, duration } = segment.collapsedSegment;
+        const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport, zoomLevel);
+        
+        console.log(`Collapsed segment: ${startTime}-${endTime} (duration: ${duration})`);
+        console.log(`Fixed collapsed time units: ${fixedCollapsedTimeUnits}`);
         
         if (originalTime > endTime) {
           // Time is after this collapsed segment, save everything except fixed button width
-          const savedTime = duration - getFixedCollapsedTimeUnits(viewport, zoomLevel);
-          cumulativeCompression += Math.max(0, savedTime);
+          const savedTime = duration - fixedCollapsedTimeUnits;
+          const actualSavedTime = Math.max(0, savedTime);
+          cumulativeCompression += actualSavedTime;
+          console.log(`Time ${originalTime} > segment end ${endTime}: saved ${actualSavedTime}, cumulative compression: ${cumulativeCompression}`);
         } else if (originalTime > startTime) {
           // Time is within collapsed segment, map it to compressed space
           const progressInSegment = (originalTime - startTime) / duration;
-          const fixedCollapsedTimeUnits = getFixedCollapsedTimeUnits(viewport, zoomLevel);
           const compressedOffset = progressInSegment * fixedCollapsedTimeUnits;
           adjustedTime = startTime - cumulativeCompression + compressedOffset;
+          console.log(`Time ${originalTime} within segment: progress=${progressInSegment}, compressed offset=${compressedOffset}, adjusted=${adjustedTime}`);
           return adjustedTime;
+        } else {
+          console.log(`Time ${originalTime} < segment start ${startTime}: no adjustment for this segment`);
         }
+      } else {
+        console.log(`Non-collapsed segment: ${segment.type}, ${segment.startTime}-${segment.endTime}`);
       }
     }
 
-    return originalTime - cumulativeCompression;
-  }, [timeSegments, zoomLevel]);
+    const result = originalTime - cumulativeCompression;
+    console.log(`Final adjustment: ${originalTime} - ${cumulativeCompression} = ${result}`);
+    return result;
+  }, [timeSegments, zoomLevel, viewport]);
 
   // Calculate adjusted viewport range accounting for collapsed segments
   const getAdjustedViewportRange = useCallback((): number => {
     const originalRange = viewport.maxTime - viewport.minTime;
     let compressionSavings = 0;
+
+    console.log(`\n=== getAdjustedViewportRange() ===`);
+    console.log(`Original viewport: ${viewport.minTime} - ${viewport.maxTime} (range: ${originalRange})`);
 
     for (const segment of timeSegments) {
       if (segment.type === 'collapsed' && segment.collapsedSegment) {
@@ -187,6 +205,8 @@ export function useTimelineCollapse({
         
         // Check if collapsed segment overlaps with viewport
         const segmentInViewport = startTime < viewport.maxTime && endTime > viewport.minTime;
+        
+        console.log(`Collapsed segment ${startTime}-${endTime}: overlaps viewport? ${segmentInViewport}`);
         
         if (segmentInViewport) {
           const overlapStart = Math.max(startTime, viewport.minTime);
@@ -198,11 +218,17 @@ export function useTimelineCollapse({
           const maxSavings = overlapDuration - fixedCollapsedTimeUnits;
           const overlapSavings = Math.max(0, maxSavings);
           compressionSavings += overlapSavings;
+          
+          console.log(`  Overlap: ${overlapStart}-${overlapEnd} (duration: ${overlapDuration})`);
+          console.log(`  Fixed collapsed units: ${fixedCollapsedTimeUnits}`);
+          console.log(`  Savings: ${overlapSavings}, total compression savings: ${compressionSavings}`);
         }
       }
     }
 
-    return originalRange - compressionSavings;
+    const result = originalRange - compressionSavings;
+    console.log(`Final adjusted range: ${originalRange} - ${compressionSavings} = ${result}`);
+    return result;
   }, [viewport, timeSegments, zoomLevel]);
 
   return {
