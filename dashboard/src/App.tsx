@@ -97,6 +97,9 @@ const AppHeader = ({ session }: { session: Session | null }) => {
   const { onToggleSidebar, onToggleRightSidebar } = projectActions;
   
   const isProjectDetailPage = location.pathname.startsWith('/projects/');
+  
+  // Extract project ID from URL as fallback
+  const projectIdFromUrl = isProjectDetailPage ? location.pathname.split('/projects/')[1] : null;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -123,8 +126,10 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       
       <div className="app-header__center">
         <span className="app-header__logo">Continuum</span>
-        {isProjectDetailPage && currentProject && (
-          <span className="app-header__project-title">— {currentProject.title}</span>
+        {isProjectDetailPage && (
+          <span className="app-header__project-title">
+            — {currentProject?.title || `Project ${projectIdFromUrl}`}
+          </span>
         )}
       </div>
       
