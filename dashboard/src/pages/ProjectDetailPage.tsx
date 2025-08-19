@@ -75,10 +75,14 @@ export default function ProjectDetailPage() {
     try {
       const { getProject } = await import('../accessors/projectAccessor');
       const project = await getProject(projectId);
+      console.log('ProjectDetailPage: Loaded project:', project);
       setCurrentProject(project);
       // Update the app context with the current project
       if (project?.id && project?.title) {
+        console.log('ProjectDetailPage: Setting app current project:', { id: project.id, title: project.title });
         setAppCurrentProject({ id: project.id, title: project.title });
+      } else {
+        console.log('ProjectDetailPage: Project missing id or title:', project);
       }
     } catch (error) {
       console.error('Failed to load project:', error);
