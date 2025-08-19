@@ -78,14 +78,26 @@ export function TimelineVisualization({
     };
   }, []);
   
-  // Initialize timeline collapse functionality
+  // Create calculator without collapse adjustment first (bootstrap)
+  const baseCalculator = useMemo(() => {
+    return new TimelineCalculator(
+      viewport,
+      zoomLevel,
+      panOffset,
+      timelineWidth,
+      (time) => time, // no collapse adjustment yet
+      formatDateDisplay
+    );
+  }, [viewport, zoomLevel, panOffset, timelineWidth, formatDateDisplay]);
+
+  // Initialize timeline collapse functionality with the calculator
   const {
     timeSegments,
     toggleSegmentCollapse,
     getAdjustedPosition
-  } = useTimelineCollapse({ events, viewport, zoomLevel });
+  } = useTimelineCollapse({ events, viewport, calculator: baseCalculator });
 
-  // Create centralized timeline calculator
+  // Create final calculator with collapse adjustments
   const calculator = useMemo(() => {
     return new TimelineCalculator(
       viewport,

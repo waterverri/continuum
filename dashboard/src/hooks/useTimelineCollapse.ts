@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { Event } from '../api';
-import { TimelineCalculator } from '../utils/timelineCalculator';
+import type { TimelineCalculator } from '../utils/timelineCalculator';
 
 export interface CollapsedSegment {
   id: string;
@@ -23,8 +23,7 @@ export interface TimeSegment {
 export interface UseTimelineCollapseProps {
   events: Event[];
   viewport: { minTime: number; maxTime: number };
-  zoomLevel?: number;
-  timelineWidth?: number;
+  calculator?: TimelineCalculator;
 }
 
 export interface UseTimelineCollapseResult {
@@ -41,8 +40,7 @@ const COLLAPSED_SEGMENT_PIXEL_WIDTH = 80;
 export function useTimelineCollapse({ 
   events, 
   viewport,
-  zoomLevel = 1,
-  timelineWidth = 1000
+  calculator
 }: UseTimelineCollapseProps): UseTimelineCollapseResult {
   
   const [collapsedSegments, setCollapsedSegments] = useState<Set<string>>(new Set());
@@ -142,17 +140,12 @@ export function useTimelineCollapse({
 
   // Calculate adjusted time position accounting for collapsed segments
   const getAdjustedPosition = useCallback((originalTime: number): number => {
-    // Create a temporary calculator to get pixels per time unit
-    const tempCalculator = new TimelineCalculator(
-      viewport,
-      zoomLevel,
-      0, // panOffset not needed for pixel calculation
-      timelineWidth,
-      (time) => time, // no adjustment needed for this calculation
-      (time) => String(time)
-    );
+    // Use the shared calculator instance - no more silos!
+    if (!calculator) {
+      return originalTime; // fallback if no calculator provided
+    }
     
-    const pixelsPerTimeUnit = tempCalculator.getPixelsPerTimeUnit();
+    const pixelsPerTimeUnit = calculator.getPixelsPerTimeUnit();
     const collapsedSegmentTimeUnits = COLLAPSED_SEGMENT_PIXEL_WIDTH / pixelsPerTimeUnit;
     
     let adjustedTime = originalTime;
@@ -179,21 +172,16 @@ export function useTimelineCollapse({
 
     const result = originalTime - cumulativeCompression;
     return result;
-  }, [timeSegments, zoomLevel, viewport, timelineWidth]);
+  }, [timeSegments, calculator]);
 
   // Calculate adjusted viewport range accounting for collapsed segments
   const getAdjustedViewportRange = useCallback((): number => {
-    // Create a temporary calculator to get pixels per time unit
-    const tempCalculator = new TimelineCalculator(
-      viewport,
-      zoomLevel,
-      0, // panOffset not needed for pixel calculation
-      timelineWidth,
-      (time) => time, // no adjustment needed for this calculation
-      (time) => String(time)
-    );
+    // Use the shared calculator instance - no more silos!
+    if (!calculator) {
+      return viewport.maxTime - viewport.minTime; // fallback if no calculator provided
+    }
     
-    const pixelsPerTimeUnit = tempCalculator.getPixelsPerTimeUnit();
+    const pixelsPerTimeUnit = calculator.getPixelsPerTimeUnit();
     const collapsedSegmentTimeUnits = COLLAPSED_SEGMENT_PIXEL_WIDTH / pixelsPerTimeUnit;
     
     const originalRange = viewport.maxTime - viewport.minTime;
@@ -222,7 +210,7 @@ export function useTimelineCollapse({
 
     const result = originalRange - compressionSavings;
     return result;
-  }, [viewport, timeSegments, zoomLevel, timelineWidth]);
+  }, [viewport, timeSegments, calculator]);
 
   return {
     collapsedSegments,
