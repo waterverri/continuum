@@ -12,12 +12,10 @@ import './styles/InvitationPage.css';
 // Context for project page actions
 const ProjectActionsContext = createContext<{
   setProjectActions: (actions: { 
-    onCreateDocument?: () => void; 
     onToggleSidebar?: () => void;
     onToggleRightSidebar?: () => void;
   }) => void;
   projectActions: { 
-    onCreateDocument?: () => void; 
     onToggleSidebar?: () => void;
     onToggleRightSidebar?: () => void;
   };
@@ -36,7 +34,6 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [projectActions, setProjectActions] = useState<{
-    onCreateDocument?: () => void;
     onToggleSidebar?: () => void;
     onToggleRightSidebar?: () => void;
   }>({});
@@ -97,7 +94,7 @@ function App() {
 const AppHeader = ({ session }: { session: Session | null }) => {
   const location = useLocation();
   const { projectActions, currentProject } = useProjectActions();
-  const { onCreateDocument, onToggleSidebar, onToggleRightSidebar } = projectActions;
+  const { onToggleSidebar, onToggleRightSidebar } = projectActions;
   
   if (!session) return null;
   
@@ -122,13 +119,6 @@ const AppHeader = ({ session }: { session: Session | null }) => {
             <Link to="/" className="app-header__back-link">
               ← Back to All Projects
             </Link>
-            <button 
-              className="app-header__icon-button"
-              onClick={onCreateDocument}
-              title="Create document"
-            >
-              +
-            </button>
           </>
         )}
       </div>

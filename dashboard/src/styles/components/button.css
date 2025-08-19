@@ -67,3 +67,8 @@
   padding: var(--spacing-lg) var(--spacing-2xl);
   font-size: var(--font-size-lg);
 }
+
+/* Button Layout */
+.btn--full-width {
+  width: 100%;
+}

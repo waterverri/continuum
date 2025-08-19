@@ -10,18 +10,26 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
 
 .events-widget__header h4 {
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .events-widget__actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .events-widget__error {

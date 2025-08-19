@@ -140,9 +140,10 @@ html, body {
 
 .app-header__center {
   flex: 0 0 auto;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 700;
   color: #212529;
+  letter-spacing: -0.025em;
 }
 
 .app-header__right {
@@ -237,7 +238,7 @@ html, body {
   }
   
   .app-header__center {
-    font-size: 1rem;
+    font-size: 1.5rem;
   }
   
   .app-header__back-link {

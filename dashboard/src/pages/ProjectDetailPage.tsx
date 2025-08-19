@@ -432,11 +432,6 @@ export default function ProjectDetailPage() {
   // Provide action handlers to the app header through context
   useEffect(() => {
     setProjectActions({
-      onCreateDocument: () => {
-        state.startCreate();
-        state.setSidebarOpen(false);
-        setRightSidebarMobileOpen(false);
-      },
       onToggleSidebar: () => state.setSidebarOpen(!state.sidebarOpen),
       onToggleRightSidebar: () => {
         // On mobile, toggle mobile open state; on desktop, toggle collapse
@@ -452,7 +447,7 @@ export default function ProjectDetailPage() {
     return () => {
       setProjectActions({});
     };
-  }, [setProjectActions, state.startCreate, state.setSidebarOpen, rightSidebarCollapsed, rightSidebarMobileOpen]);
+  }, [setProjectActions, state.setSidebarOpen, rightSidebarCollapsed, rightSidebarMobileOpen]);
 
   if (state.loading) return <div className="loading">Loading documents...</div>;
 
@@ -484,6 +479,20 @@ export default function ProjectDetailPage() {
           </div>
         </div>
         
+        {/* Create Document Button */}
+        <div className="left-sidebar__create-section">
+          <button 
+            className="btn btn--primary btn--full-width"
+            onClick={() => {
+              state.startCreate();
+              state.setSidebarOpen(false);
+              setRightSidebarMobileOpen(false);
+            }}
+            title="Create new document"
+          >
+            + Create Document
+          </button>
+        </div>
         
         {state.error && (
           <div className="error-message">
