@@ -209,18 +209,61 @@ export class TimelineCalculator {
     const endTick = Math.ceil(this.viewportEndTime / tickInterval) * tickInterval;
     
     const ticks: Array<{ timeValue: number; position: PositionResult; label: string }> = [];
+    const dateLabels = new Map<string, number>(); // Track date label usage
     
+    // First pass: collect all tick data and count date duplicates
+    const basicTicks = [];
     for (let timeValue = startTick; timeValue <= endTick; timeValue += tickInterval) {
       const position = this.calculatePosition(timeValue);
       
       if (position.visible) {
-        ticks.push({
-          timeValue,
-          position,
-          label: this.formatDateDisplay(timeValue)
-        });
+        const fullDate = this.formatDateDisplay(timeValue);
+        let dateLabel = fullDate;
+        
+        try {
+          const date = new Date(fullDate);
+          dateLabel = date.toLocaleDateString('en-US', {
+            day: '2-digit',
+            month: 'short',
+            year: '2-digit'
+          });
+        } catch (error) {
+          dateLabel = fullDate;
+        }
+        
+        // Count how many times this date appears
+        dateLabels.set(dateLabel, (dateLabels.get(dateLabel) || 0) + 1);
+        
+        basicTicks.push({ timeValue, position, dateLabel, fullDate });
       }
     }
+    
+    // Second pass: add time for repeated dates
+    basicTicks.forEach(tick => {
+      const isRepeated = dateLabels.get(tick.dateLabel)! > 1;
+      let finalLabel = tick.dateLabel;
+      
+      if (isRepeated) {
+        // Add time on second row for repeated dates
+        try {
+          const date = new Date(tick.fullDate);
+          const timeStr = date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+          finalLabel = `${tick.dateLabel}\n${timeStr}`;
+        } catch (error) {
+          finalLabel = tick.dateLabel;
+        }
+      }
+      
+      ticks.push({
+        timeValue: tick.timeValue,
+        position: tick.position,
+        label: finalLabel
+      });
+    });
     
     return ticks;
   }
@@ -267,34 +310,64 @@ export class TimelineCalculator {
       }
     });
     
-    // Convert to tick objects
+    // Convert to tick objects and detect repeated date labels
     const ticks: Array<{ timeValue: number; position: PositionResult; label: string }> = [];
+    const dateLabels = new Map<string, number>(); // Track date label usage
     
-    filteredTicks.forEach(timeValue => {
+    // First pass: generate basic labels and count duplicates
+    const basicTicks = filteredTicks.map(timeValue => {
       const position = this.calculatePosition(timeValue);
       
       if (position.visible) {
-        // Format date for ticker display (short format)
         const fullDate = this.formatDateDisplay(timeValue);
-        let label = fullDate;
+        let dateLabel = fullDate;
         
         try {
           const date = new Date(fullDate);
-          label = date.toLocaleDateString('en-US', {
+          dateLabel = date.toLocaleDateString('en-US', {
             day: '2-digit',
             month: 'short',
             year: '2-digit'
           });
         } catch (error) {
-          label = fullDate;
+          dateLabel = fullDate;
         }
         
-        ticks.push({
-          timeValue,
-          position,
-          label
-        });
+        // Count how many times this date appears
+        dateLabels.set(dateLabel, (dateLabels.get(dateLabel) || 0) + 1);
+        
+        return { timeValue, position, dateLabel, fullDate };
       }
+      return null;
+    }).filter(Boolean);
+    
+    // Second pass: add time for repeated dates
+    basicTicks.forEach(tick => {
+      if (!tick) return;
+      
+      const isRepeated = dateLabels.get(tick.dateLabel)! > 1;
+      let finalLabel = tick.dateLabel;
+      
+      if (isRepeated) {
+        // Add time on second row for repeated dates
+        try {
+          const date = new Date(tick.fullDate);
+          const timeStr = date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+          finalLabel = `${tick.dateLabel}\n${timeStr}`;
+        } catch (error) {
+          finalLabel = tick.dateLabel;
+        }
+      }
+      
+      ticks.push({
+        timeValue: tick.timeValue,
+        position: tick.position,
+        label: finalLabel
+      });
     });
     
     return ticks;
