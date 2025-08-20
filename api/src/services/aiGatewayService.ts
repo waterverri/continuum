@@ -83,6 +83,37 @@ export class AIGatewayService {
     return Math.ceil(text.length / 4);
   }
 
+  // Simple proxy method for direct AI requests
+  async makeProxyRequest(providerId: string, model: string, prompt: string, maxTokens: number): Promise<{
+    response: string;
+    inputTokens: number;
+    outputTokens: number;
+  }> {
+    const provider = await this.getProvider(providerId);
+    if (!provider) {
+      throw new Error(`AI provider ${providerId} not found or inactive`);
+    }
+
+    if (!provider.models.includes(model)) {
+      throw new Error(`Model ${model} not supported by provider ${providerId}`);
+    }
+
+    // Get API key for round-robin
+    const keyInfo = await this.getNextApiKey(provider.id);
+    if (!keyInfo) {
+      throw new Error(`No active API keys available for ${provider.name}`);
+    }
+
+    const request: AIRequest = { providerId, model, prompt, maxTokens };
+    const aiResponse = await this.routeToProvider(provider, request, keyInfo);
+    
+    return {
+      response: aiResponse.content,
+      inputTokens: aiResponse.tokensUsed.input,
+      outputTokens: aiResponse.tokensUsed.output
+    };
+  }
+
   calculateCost(provider: AIProvider, model: string, inputTokens: number, outputTokens: number): number {
     const modelPricing = provider.pricing[model];
     if (!modelPricing) {

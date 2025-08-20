@@ -19,14 +19,8 @@ export interface Document {
   event_id?: string; // For event-specific document versions
   event_documents?: EventDocument[]; // For document-event associations
   events?: Event; // For joined event data
-  // AI-related fields
+  // AI-related fields (only for prompt documents)
   ai_model?: string;
-  ai_response?: string;
-  ai_tokens_used?: number;
-  ai_cost_credits?: number;
-  ai_status?: 'pending' | 'processing' | 'completed' | 'failed';
-  ai_submitted_at?: string;
-  ai_completed_at?: string;
 }
 
 export interface Preset {
@@ -688,7 +682,7 @@ export const getUserCredits = async (accessToken: string): Promise<number> => {
 export const estimateAICost = async (
   providerId: string,
   model: string,
-  documentId: string,
+  prompt: string,
   accessToken: string
 ): Promise<CostEstimate> => {
   const response = await fetch(`${API_URL}/api/ai/estimate-cost`, {
@@ -697,7 +691,7 @@ export const estimateAICost = async (
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ providerId, model, documentId }),
+    body: JSON.stringify({ providerId, model, prompt }),
   });
 
   if (!response.ok) {
@@ -709,41 +703,36 @@ export const estimateAICost = async (
 };
 
 export const submitAIRequest = async (
-  documentId: string,
   providerId: string,
   model: string,
+  prompt: string,
   maxTokens?: number,
   accessToken?: string
-): Promise<void> => {
-  const response = await fetch(`${API_URL}/api/ai/submit`, {
+): Promise<{
+  response: string;
+  tokensUsed: number;
+  inputTokens: number;
+  outputTokens: number;
+  costCredits: number;
+}> => {
+  const response = await fetch(`${API_URL}/api/ai/proxy`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ documentId, providerId, model, maxTokens }),
+    body: JSON.stringify({ providerId, model, prompt, maxTokens }),
   });
 
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to submit AI request');
   }
-};
-
-export const getAIStatus = async (documentId: string, accessToken: string): Promise<AIStatus> => {
-  const response = await fetch(`${API_URL}/api/ai/status/${documentId}`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch AI status');
-  }
 
   return await response.json();
 };
+
+// getAIStatus removed - responses are now ephemeral
 
 export const addCredits = async (amount: number, accessToken: string): Promise<number> => {
   const response = await fetch(`${API_URL}/api/ai/credits/add`, {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Document, AIProvider, CostEstimate, AIStatus } from '../api';
-import { estimateAICost, submitAIRequest, getAIStatus, getUserCredits } from '../api';
+import type { Document, AIProvider, CostEstimate } from '../api';
+import { estimateAICost, submitAIRequest, getUserCredits } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
 interface PromptDocumentViewerProps {
@@ -19,8 +19,7 @@ export function PromptDocumentViewer({
   onResolve, 
   aiProviders,
   accessToken,
-  onCreateFromSelection,
-  onRefreshDocument
+  onCreateFromSelection
 }: PromptDocumentViewerProps) {
   const [selectedModel, setSelectedModel] = useState(document.ai_model || '');
   const [maxTokens, setMaxTokens] = useState(4000);
@@ -28,8 +27,8 @@ export function PromptDocumentViewer({
   const [isEstimating, setIsEstimating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userCredits, setUserCredits] = useState(0);
-  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [aiResponse, setAiResponse] = useState<string>('');
+  const [aiStatus, setAiStatus] = useState<'idle' | 'pending' | 'processing' | 'completed' | 'failed'>('idle');
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
@@ -44,35 +43,10 @@ export function PromptDocumentViewer({
   // Load initial data
   useEffect(() => {
     loadUserCredits();
-    if (document.ai_status) {
-      loadAIStatus();
-    }
+    // Reset response when document changes
+    setAiResponse('');
+    setAiStatus('idle');
   }, [document.id]);
-
-  // Set up polling for pending/processing requests
-  useEffect(() => {
-    if (aiStatus?.status === 'pending' || aiStatus?.status === 'processing') {
-      const interval = setInterval(() => {
-        loadAIStatus();
-      }, 3000);
-      setPollingInterval(interval);
-      return () => clearInterval(interval);
-    } else {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
-    }
-  }, [aiStatus?.status]);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, []);
 
   const loadUserCredits = async () => {
     try {
@@ -83,102 +57,81 @@ export function PromptDocumentViewer({
     }
   };
 
-  const loadAIStatus = async () => {
-    try {
-      const status = await getAIStatus(document.id, accessToken);
-      setAiStatus(status);
-      
-      // If completed or failed, refresh the document to get updated data
-      if ((status.status === 'completed' || status.status === 'failed') && 
-          (aiStatus?.status === 'pending' || aiStatus?.status === 'processing')) {
-        onRefreshDocument();
-      }
-    } catch (error) {
-      console.error('Failed to load AI status:', error);
-    }
-  };
-
   const handleEstimateCost = async () => {
     if (!selectedModel || !selectedProvider) return;
-
+    
     setIsEstimating(true);
     try {
-      const estimate = await estimateAICost(selectedProvider.id, selectedModel, document.id, accessToken);
+      // Get resolved content for cost estimation
+      const prompt = resolvedContent || document.content || '';
+      const estimate = await estimateAICost(selectedProvider.id, selectedModel, prompt, accessToken);
       setCostEstimate(estimate);
     } catch (error) {
-      console.error('Failed to estimate cost:', error);
-      alert('Failed to estimate cost. Please try again.');
+      console.error('Error estimating cost:', error);
     } finally {
       setIsEstimating(false);
     }
   };
 
-  const handleSubmitRequest = async () => {
-    if (!selectedModel || !selectedProvider || !costEstimate) return;
-
-    if (userCredits < costEstimate.estimatedMaxCost) {
-      alert('Insufficient credits for this request. Please add more credits.');
-      return;
-    }
-
+  const handleSubmit = async () => {
+    if (!selectedModel || !selectedProvider) return;
+    
     setIsSubmitting(true);
+    setAiStatus('processing');
+    setAiResponse(''); // Clear previous response
+    
     try {
-      await submitAIRequest(document.id, selectedProvider.id, selectedModel, maxTokens, accessToken);
-      setAiStatus({ status: 'pending' });
-      await loadUserCredits(); // Refresh credits after submission
+      // Get resolved content for AI request
+      const prompt = resolvedContent || document.content || '';
+      const result = await submitAIRequest(selectedProvider.id, selectedModel, prompt, maxTokens, accessToken);
+      
+      // Set ephemeral response
+      setAiResponse(result.response);
+      setAiStatus('completed');
+      
+      // Refresh credits
+      await loadUserCredits();
     } catch (error) {
-      console.error('Failed to submit AI request:', error);
-      alert(`Failed to submit AI request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error submitting AI request:', error);
+      setAiStatus('failed');
+      setAiResponse('');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleResponseTextSelection = () => {
-    try {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        setSelectedText('');
-        setSelectionRange(null);
-        return;
-      }
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
 
-      const range = selection.getRangeAt(0);
-      const selectedText = selection.toString().trim();
+    const range = selection.getRangeAt(0);
+    const selectedText = selection.toString().trim();
+    
+    if (selectedText.length === 0) return;
+
+    // Check if selection is within the response area
+    const isInResponse = responseRef.current && range.commonAncestorContainer && 
+        (responseRef.current.contains(range.commonAncestorContainer) || 
+         responseRef.current === range.commonAncestorContainer);
+    
+    if (selectedText && isInResponse && aiResponse) {
+      const startIndex = aiResponse.indexOf(selectedText);
       
-      // Check if selection is within the response content
-      const isInResponse = responseRef.current && range.commonAncestorContainer && 
-          (responseRef.current.contains(range.commonAncestorContainer) || 
-           responseRef.current === range.commonAncestorContainer);
-      
-      if (selectedText && isInResponse && document.ai_response) {
-        const startIndex = document.ai_response.indexOf(selectedText);
-        
-        if (startIndex !== -1) {
-          setSelectedText(selectedText);
-          setSelectionRange({
-            start: startIndex,
-            end: startIndex + selectedText.length
-          });
-        }
-      } else {
-        setSelectedText('');
-        setSelectionRange(null);
+      if (startIndex !== -1) {
+        setSelectedText(selectedText);
+        setSelectionRange({
+          start: startIndex,
+          end: startIndex + selectedText.length
+        });
+        setShowExtractModal(true);
       }
-    } catch (error) {
-      console.error('Error handling text selection:', error);
     }
   };
 
-  const handleExtractFromResponse = () => {
-    if (!selectedText || !selectionRange) return;
-    setShowExtractModal(true);
-  };
-
   const contentToDisplay = resolvedContent || document.content || '';
-  const hasResponse = document.ai_response && document.ai_response.trim();
+  const hasResponse = aiResponse && aiResponse.trim();
   const canSubmit = selectedModel && selectedProvider && contentToDisplay.trim() && 
-                   (!aiStatus || (aiStatus.status !== 'pending' && aiStatus.status !== 'processing'));
+                   (aiStatus !== 'pending' && aiStatus !== 'processing');
 
   return (
     <div className="document-viewer">
@@ -205,23 +158,21 @@ export function PromptDocumentViewer({
         </div>
       </div>
 
-      {/* AI Controls Section */}
+      {/* AI Configuration Section */}
       <div className="document-section">
-        <h4>AI Configuration</h4>
-        
-        <div className="ai-controls">
+        <div className="document-section__header">
+          <h4>AI Configuration</h4>
+        </div>
+        <div className="ai-config">
           <div className="form-group">
             <label className="form-label">
-              AI Model:
+              Model:
               <select
                 className="form-input"
                 value={selectedModel}
-                onChange={(e) => {
-                  setSelectedModel(e.target.value);
-                  setCostEstimate(null); // Reset cost estimate when model changes
-                }}
+                onChange={(e) => setSelectedModel(e.target.value)}
               >
-                <option value="">Select an AI model...</option>
+                <option value="">Select a model...</option>
                 {allModels.map(({ providerId, providerName, model }) => (
                   <option key={`${providerId}-${model}`} value={model}>
                     {providerName} - {model}
@@ -233,17 +184,14 @@ export function PromptDocumentViewer({
 
           <div className="form-group">
             <label className="form-label">
-              Max Output Tokens:
+              Max Tokens:
               <input
                 type="number"
                 className="form-input"
                 value={maxTokens}
-                onChange={(e) => {
-                  setMaxTokens(parseInt(e.target.value) || 4000);
-                  setCostEstimate(null); // Reset cost estimate when tokens change
-                }}
-                min="100"
-                max="32000"
+                onChange={(e) => setMaxTokens(Number(e.target.value))}
+                min={1}
+                max={8000}
               />
             </label>
           </div>
@@ -252,65 +200,62 @@ export function PromptDocumentViewer({
             <button
               className="btn btn--secondary"
               onClick={handleEstimateCost}
-              disabled={!selectedModel || isEstimating}
+              disabled={!selectedModel || !selectedProvider || isEstimating}
             >
               {isEstimating ? 'Estimating...' : 'Estimate Cost'}
             </button>
 
-            {costEstimate && (
-              <div className="cost-estimate">
-                <p>Input tokens: {costEstimate.inputTokens.toLocaleString()}</p>
-                <p>Estimated cost: {costEstimate.estimatedMaxCost.toLocaleString()} credits</p>
-                <p className="cost-estimate__dollars">
-                  (${(costEstimate.estimatedMaxCost / 10000).toFixed(4)})
-                </p>
-              </div>
-            )}
-
             <button
               className="btn btn--primary"
-              onClick={handleSubmitRequest}
-              disabled={!canSubmit || isSubmitting || !costEstimate}
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit to AI'}
+              {isSubmitting ? 'Processing...' : 'Submit Request'}
             </button>
           </div>
-        </div>
 
-        {/* AI Status */}
-        {aiStatus && (
-          <div className={`ai-status ai-status--${aiStatus.status}`}>
-            <h5>AI Status: {aiStatus.status}</h5>
-            {aiStatus.model && <p>Model: {aiStatus.model}</p>}
-            {aiStatus.tokensUsed && <p>Tokens used: {aiStatus.tokensUsed.toLocaleString()}</p>}
-            {aiStatus.costCredits && <p>Cost: {aiStatus.costCredits.toLocaleString()} credits</p>}
-            {aiStatus.submittedAt && <p>Submitted: {new Date(aiStatus.submittedAt).toLocaleString()}</p>}
-            {aiStatus.completedAt && <p>Completed: {new Date(aiStatus.completedAt).toLocaleString()}</p>}
-          </div>
-        )}
+          {costEstimate && (
+            <div className="cost-estimate">
+              <small>
+                Estimated cost: {costEstimate.estimatedMaxCost.toLocaleString()} credits
+                (Input: {costEstimate.inputTokens} tokens)
+              </small>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* AI Response Section */}
-      {hasResponse && (
+      {(hasResponse || aiStatus === 'processing' || aiStatus === 'failed') && (
         <div className="document-section">
           <div className="document-section__header">
             <h4>AI Response</h4>
-            {selectedText && (
-              <button 
-                className="btn btn--secondary btn--sm"
-                onClick={handleExtractFromResponse}
-              >
-                Extract Selection
-              </button>
-            )}
+            {aiStatus === 'processing' && <span className="status-indicator processing">Processing...</span>}
+            {aiStatus === 'completed' && <span className="status-indicator completed">Completed</span>}
+            {aiStatus === 'failed' && <span className="status-indicator failed">Failed</span>}
           </div>
-          <div 
-            className="document-content ai-response"
-            ref={responseRef}
-            onMouseUp={handleResponseTextSelection}
-          >
-            <pre>{document.ai_response}</pre>
-          </div>
+          
+          {aiStatus === 'processing' && (
+            <div className="loading-state">
+              <p>Processing your request...</p>
+            </div>
+          )}
+          
+          {aiStatus === 'failed' && (
+            <div className="error-state">
+              <p>Request failed. Please try again.</p>
+            </div>
+          )}
+
+          {hasResponse && (
+            <div 
+              className="ai-response-content"
+              ref={responseRef}
+              onMouseUp={handleResponseTextSelection}
+            >
+              <pre>{aiResponse}</pre>
+            </div>
+          )}
         </div>
       )}
 
