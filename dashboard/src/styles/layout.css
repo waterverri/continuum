@@ -47,16 +47,39 @@
 .left-sidebar__header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: var(--spacing-lg) var(--spacing-xl);
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-background-light);
   flex: 0 0 auto;
 }
 
+.left-sidebar__header-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .left-sidebar__header h2 {
   margin: 0;
   font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.credits-display {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.credits-display__label {
+  font-weight: var(--font-weight-medium);
+}
+
+.credits-display__amount {
+  color: var(--color-primary);
   font-weight: var(--font-weight-semibold);
 }
 

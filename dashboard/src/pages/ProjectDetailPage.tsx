@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Document, AIProvider } from '../api';
-import { getAIProviders } from '../api';
+import { getAIProviders, getUserCredits } from '../api';
 import { useProjectActions } from '../App';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
@@ -36,6 +36,7 @@ export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [aiProviders, setAiProviders] = useState<AIProvider[]>([]);
   const [accessToken, setAccessToken] = useState<string>('');
+  const [userCredits, setUserCredits] = useState<number>(0);
   
   // Get project actions context
   const { setProjectActions, setCurrentProject: setAppCurrentProject } = useProjectActions();
@@ -124,10 +125,14 @@ export default function ProjectDetailPage() {
     try {
       const token = await operations.getAccessToken();
       setAccessToken(token);
-      const providers = await getAIProviders(token);
+      const [providers, credits] = await Promise.all([
+        getAIProviders(token),
+        getUserCredits(token)
+      ]);
       setAiProviders(providers);
+      setUserCredits(credits);
     } catch (error) {
-      console.error('Failed to load AI providers:', error);
+      console.error('Failed to load AI providers and credits:', error);
     }
   };
 
@@ -481,7 +486,13 @@ export default function ProjectDetailPage() {
       {/* Left Sidebar - Documents Only */}
       <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${leftSidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
         <div className="left-sidebar__header">
-          <h2>Documents</h2>
+          <div className="left-sidebar__header-content">
+            <h2>Documents</h2>
+            <div className="credits-display">
+              <span className="credits-display__label">Credits:</span>
+              <span className="credits-display__amount">{userCredits.toLocaleString()}</span>
+            </div>
+          </div>
           <div className="left-sidebar__header-actions">
             <button 
               className="left-sidebar__collapse-toggle"
@@ -610,7 +621,12 @@ export default function ProjectDetailPage() {
                   onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
                     state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
                   }
-                  onRefreshDocument={() => state.selectedDocument && operations.loadDocuments()}
+                  onRefreshDocument={() => {
+                    if (state.selectedDocument) {
+                      operations.loadDocuments();
+                      loadAiProviders(); // Refresh credits after AI request
+                    }
+                  }}
                 />
               ) : (
                 <DocumentViewer
