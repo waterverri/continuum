@@ -11,6 +11,7 @@ export interface Document {
   document_type?: string;
   content?: string;
   is_composite: boolean;
+  is_prompt: boolean;
   components?: Record<string, string>;
   created_at: string;
   resolved_content?: string;

@@ -5,6 +5,7 @@ interface DocumentFormData {
   content: string;
   document_type: string;
   is_composite: boolean;
+  is_prompt: boolean;
   components: Record<string, string>;
   group_id?: string;
   ai_model?: string;
@@ -36,7 +37,7 @@ export function DocumentForm({
   aiProviders = []
 }: DocumentFormProps) {
   
-  const isPromptDocument = formData.document_type === 'prompt';
+  const isPromptDocument = formData.is_prompt;
   const allModels = aiProviders.flatMap(provider => 
     provider.models.map(model => ({ providerId: provider.id, providerName: provider.name, model }))
   );
@@ -91,14 +92,24 @@ export function DocumentForm({
             type="text"
             className="form-input"
             value={formData.document_type}
+            onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+            placeholder="e.g., character bio, plot summary, world building"
+          />
+        </label>
+      </div>
+      
+      <div className="form-group">
+        <label className="form-checkbox">
+          <input
+            type="checkbox"
+            checked={formData.is_prompt}
             onChange={(e) => setFormData({ 
               ...formData, 
-              document_type: e.target.value,
-              // Reset AI model when switching away from prompt type
-              ai_model: e.target.value === 'prompt' ? formData.ai_model : undefined
+              is_prompt: e.target.checked,
+              ai_model: e.target.checked ? formData.ai_model : undefined
             })}
-            placeholder="e.g., character, scene, location, prompt"
           />
+          <span>AI Prompt Document (enables AI model selection and response functionality)</span>
         </label>
       </div>
       

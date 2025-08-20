@@ -447,8 +447,10 @@ export default function ProjectDetailPage() {
         content: document.content || '',
         document_type: document.document_type || '',
         is_composite: document.is_composite,
+        is_prompt: document.is_prompt,
         components: document.components || {},
-        group_id: document.group_id
+        group_id: document.group_id,
+        ai_model: document.ai_model
       };
       operations.handleUpdateDocument(document.id, formData);
     }
@@ -611,7 +613,7 @@ export default function ProjectDetailPage() {
             )}
             
             {!state.isCreating && !state.isEditing && state.selectedDocument && (
-              state.selectedDocument.document_type === 'prompt' ? (
+              state.selectedDocument.is_prompt ? (
                 <PromptDocumentViewer
                   document={state.selectedDocument}
                   resolvedContent={state.resolvedContent}

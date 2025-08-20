@@ -137,8 +137,8 @@ router.post('/submit', async (req: RequestWithUser, res) => {
     }
 
     // Verify it's a prompt document
-    if (document.document_type !== 'prompt') {
-      return res.status(400).json({ error: 'Document must be of type "prompt"' });
+    if (!document.is_prompt) {
+      return res.status(400).json({ error: 'Document must be a prompt document (is_prompt = true)' });
     }
 
     // Check if there's already a pending/processing request

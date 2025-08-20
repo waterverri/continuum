@@ -6,8 +6,10 @@ interface DocumentFormData {
   content: string;
   document_type: string;
   is_composite: boolean;
+  is_prompt: boolean;
   components: Record<string, string>;
   group_id?: string;
+  ai_model?: string;
 }
 
 export function useProjectDetailState() {
@@ -36,8 +38,10 @@ export function useProjectDetailState() {
     content: '',
     document_type: '',
     is_composite: false,
+    is_prompt: false,
     components: {},
-    group_id: undefined
+    group_id: undefined,
+    ai_model: undefined
   });
 
   // Modal states
@@ -77,8 +81,10 @@ export function useProjectDetailState() {
       content: '',
       document_type: '',
       is_composite: false,
+      is_prompt: false,
       components: {},
-      group_id: undefined
+      group_id: undefined,
+      ai_model: undefined
     });
   }, []);
 
@@ -119,8 +125,10 @@ export function useProjectDetailState() {
       content: doc.content || '',
       document_type: doc.document_type || '',
       is_composite: doc.is_composite,
+      is_prompt: doc.is_prompt,
       components: doc.components || {},
-      group_id: doc.group_id
+      group_id: doc.group_id,
+      ai_model: doc.ai_model
     });
     setIsEditing(true);
     setResolvedContent(null);

@@ -6,6 +6,7 @@ COMMENT ON COLUMN public.profiles.credit_balance IS 'User credit balance for AI 
 
 -- Add AI-related columns to documents table for prompt document type
 ALTER TABLE public.documents 
+ADD COLUMN is_prompt BOOLEAN NOT NULL DEFAULT FALSE,
 ADD COLUMN ai_model TEXT NULL,
 ADD COLUMN ai_response TEXT NULL,
 ADD COLUMN ai_tokens_used INTEGER NULL,
@@ -15,6 +16,7 @@ ADD COLUMN ai_submitted_at TIMESTAMPTZ NULL,
 ADD COLUMN ai_completed_at TIMESTAMPTZ NULL;
 
 -- Add column comments for AI features
+COMMENT ON COLUMN public.documents.is_prompt IS 'System flag indicating this is a prompt document with AI functionality';
 COMMENT ON COLUMN public.documents.ai_model IS 'AI model used for prompt documents (e.g., grok-beta, gemini-pro, etc.)';
 COMMENT ON COLUMN public.documents.ai_response IS 'Response from AI model for prompt documents';
 COMMENT ON COLUMN public.documents.ai_tokens_used IS 'Total tokens consumed for the AI request';
@@ -75,8 +77,8 @@ COMMENT ON TABLE public.ai_requests IS 'Log of all AI requests for auditing and 
 ALTER TABLE public.documents 
 ADD CONSTRAINT check_ai_prompt_fields 
 CHECK (
-    (document_type != 'prompt' AND ai_model IS NULL AND ai_response IS NULL) OR
-    (document_type = 'prompt')
+    (is_prompt = FALSE AND ai_model IS NULL AND ai_response IS NULL) OR
+    (is_prompt = TRUE)
 );
 
 -- Function to deduct credits from user balance

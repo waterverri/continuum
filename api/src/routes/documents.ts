@@ -104,6 +104,8 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
       group_id, 
       document_type, 
       is_composite, 
+      is_prompt,
+      ai_model,
       components 
     } = req.body;
     const userToken = req.token!;
@@ -148,6 +150,8 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
         group_id,
         document_type,
         is_composite: is_composite || false,
+        is_prompt: is_prompt || false,
+        ai_model: is_prompt ? ai_model : null,
         components: is_composite ? components : null
       })
       .select()
@@ -178,6 +182,8 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
       group_id, 
       document_type, 
       is_composite, 
+      is_prompt,
+      ai_model,
       components 
     } = req.body;
     const userToken = req.token!;
@@ -208,6 +214,8 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
         group_id,
         document_type,
         is_composite: is_composite || false,
+        is_prompt: is_prompt || false,
+        ai_model: is_prompt ? ai_model : null,
         components: is_composite ? components : null
       })
       .eq('id', documentId)
