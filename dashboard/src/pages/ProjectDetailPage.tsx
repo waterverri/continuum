@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { Document } from '../api';
+import type { Document, AIProvider } from '../api';
+import { getAIProviders } from '../api';
 import { useProjectActions } from '../App';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
 import { useDocumentFilter } from '../hooks/useDocumentFilter';
 import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
+import { PromptDocumentViewer } from '../components/PromptDocumentViewer';
 import { DocumentList } from '../components/DocumentList';
 import { DocumentFilters } from '../components/DocumentFilters';
 import { DocumentPickerModal } from '../components/DocumentPickerModal';
@@ -32,6 +34,8 @@ import '../styles/ProjectDetailPage.css';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [aiProviders, setAiProviders] = useState<AIProvider[]>([]);
+  const [accessToken, setAccessToken] = useState<string>('');
   
   // Get project actions context
   const { setProjectActions, setCurrentProject: setAppCurrentProject } = useProjectActions();
@@ -113,7 +117,19 @@ export default function ProjectDetailPage() {
     operations.loadTags();
     loadEvents();
     loadProject();
+    loadAiProviders();
   }, [projectId]);
+
+  const loadAiProviders = async () => {
+    try {
+      const token = await operations.getAccessToken();
+      setAccessToken(token);
+      const providers = await getAIProviders(token);
+      setAiProviders(providers);
+    } catch (error) {
+      console.error('Failed to load AI providers:', error);
+    }
+  };
 
   // Close preset dropdown when clicking outside
   useEffect(() => {
@@ -579,18 +595,33 @@ export default function ProjectDetailPage() {
                 onOpenGroupSwitcher={openGroupSwitcher}
                 isCreating={state.isCreating}
                 documents={state.documents}
+                aiProviders={aiProviders}
               />
             )}
             
             {!state.isCreating && !state.isEditing && state.selectedDocument && (
-              <DocumentViewer
-                document={state.selectedDocument}
-                resolvedContent={state.resolvedContent}
-                onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-                onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
-                  state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
-                }
-              />
+              state.selectedDocument.document_type === 'prompt' ? (
+                <PromptDocumentViewer
+                  document={state.selectedDocument}
+                  resolvedContent={state.resolvedContent}
+                  onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+                  aiProviders={aiProviders}
+                  accessToken={accessToken}
+                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
+                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
+                  }
+                  onRefreshDocument={() => state.selectedDocument && operations.loadDocuments()}
+                />
+              ) : (
+                <DocumentViewer
+                  document={state.selectedDocument}
+                  resolvedContent={state.resolvedContent}
+                  onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
+                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
+                  }
+                />
+              )
             )}
             
             {!state.isCreating && !state.isEditing && !state.selectedDocument && (

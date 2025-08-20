@@ -1,4 +1,4 @@
-import type { Document } from '../api';
+import type { Document, AIProvider } from '../api';
 
 interface DocumentFormData {
   title: string;
@@ -7,6 +7,7 @@ interface DocumentFormData {
   is_composite: boolean;
   components: Record<string, string>;
   group_id?: string;
+  ai_model?: string;
 }
 
 interface DocumentFormProps {
@@ -19,6 +20,7 @@ interface DocumentFormProps {
   onOpenGroupSwitcher?: (componentKey: string, groupId: string) => void;
   isCreating: boolean;
   documents: Document[];
+  aiProviders?: AIProvider[];
 }
 
 export function DocumentForm({ 
@@ -30,8 +32,14 @@ export function DocumentForm({
   removeComponent,
   onOpenGroupSwitcher,
   isCreating,
-  documents
+  documents,
+  aiProviders = []
 }: DocumentFormProps) {
+  
+  const isPromptDocument = formData.document_type === 'prompt';
+  const allModels = aiProviders.flatMap(provider => 
+    provider.models.map(model => ({ providerId: provider.id, providerName: provider.name, model }))
+  );
   
   const getDocumentTitle = (reference: string) => {
     if (reference.startsWith('group:')) {
@@ -83,26 +91,71 @@ export function DocumentForm({
             type="text"
             className="form-input"
             value={formData.document_type}
-            onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
-            placeholder="e.g., character, scene, location"
+            onChange={(e) => setFormData({ 
+              ...formData, 
+              document_type: e.target.value,
+              // Reset AI model when switching away from prompt type
+              ai_model: e.target.value === 'prompt' ? formData.ai_model : undefined
+            })}
+            placeholder="e.g., character, scene, location, prompt"
           />
         </label>
       </div>
       
-      <div className="form-group">
-        <label className="form-checkbox">
-          <input
-            type="checkbox"
-            checked={formData.is_composite}
-            onChange={(e) => setFormData({ 
-              ...formData, 
-              is_composite: e.target.checked,
-              components: e.target.checked ? formData.components : {}
-            })}
-          />
-          <span>Composite Document (assembles content from other documents)</span>
-        </label>
-      </div>
+      {isPromptDocument && (
+        <div className="form-group">
+          <label className="form-label">
+            AI Model:
+            <select
+              className="form-input"
+              value={formData.ai_model || ''}
+              onChange={(e) => setFormData({ ...formData, ai_model: e.target.value })}
+              required
+            >
+              <option value="">Select an AI model...</option>
+              {allModels.map(({ providerId, providerName, model }) => (
+                <option key={`${providerId}-${model}`} value={model}>
+                  {providerName} - {model}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      
+      {!isPromptDocument && (
+        <div className="form-group">
+          <label className="form-checkbox">
+            <input
+              type="checkbox"
+              checked={formData.is_composite}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                is_composite: e.target.checked,
+                components: e.target.checked ? formData.components : {}
+              })}
+            />
+            <span>Composite Document (assembles content from other documents)</span>
+          </label>
+        </div>
+      )}
+      
+      {isPromptDocument && (
+        <div className="form-group">
+          <label className="form-checkbox">
+            <input
+              type="checkbox"
+              checked={formData.is_composite}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                is_composite: e.target.checked,
+                components: e.target.checked ? formData.components : {}
+              })}
+            />
+            <span>Composite Prompt (assembles prompt from other documents)</span>
+          </label>
+        </div>
+      )}
       
       {formData.is_composite && (
         <div className="components-section">

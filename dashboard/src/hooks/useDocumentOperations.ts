@@ -373,5 +373,6 @@ export function useDocumentOperations({
     handleDeletePreset,
     handleCreateDerivative,
     handleCreateFromSelection,
+    getAccessToken,
   };
 }

@@ -18,6 +18,14 @@ export interface Document {
   event_id?: string; // For event-specific document versions
   event_documents?: EventDocument[]; // For document-event associations
   events?: Event; // For joined event data
+  // AI-related fields
+  ai_model?: string;
+  ai_response?: string;
+  ai_tokens_used?: number;
+  ai_cost_credits?: number;
+  ai_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  ai_submitted_at?: string;
+  ai_completed_at?: string;
 }
 
 export interface Preset {
@@ -619,4 +627,138 @@ export const getEventTimeline = async (projectId: string, accessToken: string): 
   return await response.json();
 };
 
-// Document evolution functions removed - using simplified approach via direct Supabase queries
+// AI-related interfaces and functions
+export interface AIProvider {
+  id: string;
+  name: string;
+  endpoint_url: string;
+  models: string[];
+  pricing: Record<string, { input: number; output: number }>;
+  is_active: boolean;
+}
+
+export interface CostEstimate {
+  inputTokens: number;
+  estimatedMaxCost: number;
+  estimatedMaxTokens: number;
+}
+
+export interface AIStatus {
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  model?: string;
+  response?: string;
+  tokensUsed?: number;
+  costCredits?: number;
+  submittedAt?: string;
+  completedAt?: string;
+}
+
+// AI API functions
+export const getAIProviders = async (accessToken: string): Promise<AIProvider[]> => {
+  const response = await fetch(`${API_URL}/api/ai/providers`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch AI providers');
+  }
+
+  const data = await response.json();
+  return data.providers;
+};
+
+export const getUserCredits = async (accessToken: string): Promise<number> => {
+  const response = await fetch(`${API_URL}/api/ai/credits`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch user credits');
+  }
+
+  const data = await response.json();
+  return data.credits;
+};
+
+export const estimateAICost = async (
+  providerId: string,
+  model: string,
+  documentId: string,
+  accessToken: string
+): Promise<CostEstimate> => {
+  const response = await fetch(`${API_URL}/api/ai/estimate-cost`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ providerId, model, documentId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to estimate AI cost');
+  }
+
+  return await response.json();
+};
+
+export const submitAIRequest = async (
+  documentId: string,
+  providerId: string,
+  model: string,
+  maxTokens?: number,
+  accessToken?: string
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/ai/submit`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ documentId, providerId, model, maxTokens }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to submit AI request');
+  }
+};
+
+export const getAIStatus = async (documentId: string, accessToken: string): Promise<AIStatus> => {
+  const response = await fetch(`${API_URL}/api/ai/status/${documentId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch AI status');
+  }
+
+  return await response.json();
+};
+
+export const addCredits = async (amount: number, accessToken: string): Promise<number> => {
+  const response = await fetch(`${API_URL}/api/ai/credits/add`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ amount }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add credits');
+  }
+
+  const data = await response.json();
+  return data.newBalance;
+};
