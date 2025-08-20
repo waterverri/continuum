@@ -7,6 +7,18 @@ export interface AIRequest {
   maxTokens?: number;
 }
 
+export interface EnhancedAIRequest {
+  providerId: string;
+  model: string;
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; }>;
+  maxTokens?: number;
+  temperature?: number;
+  topP?: number;
+  tools?: Array<any>;
+  toolChoice?: string | any;
+  thinkingMode?: boolean;
+}
+
 export interface AIResponse {
   content: string;
   tokensUsed: {
@@ -83,19 +95,35 @@ export class AIGatewayService {
     return Math.ceil(text.length / 4);
   }
 
-  // Simple proxy method for direct AI requests
+  // Simple proxy method for direct AI requests (legacy support)
   async makeProxyRequest(providerId: string, model: string, prompt: string, maxTokens: number): Promise<{
     response: string;
     inputTokens: number;
     outputTokens: number;
   }> {
-    const provider = await this.getProvider(providerId);
+    return this.makeEnhancedProxyRequest({
+      providerId,
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens
+    });
+  }
+
+  // Enhanced proxy method with full LLM feature support
+  async makeEnhancedProxyRequest(request: EnhancedAIRequest): Promise<{
+    response: string;
+    inputTokens: number;
+    outputTokens: number;
+    thinking?: string;
+    toolCalls?: Array<any>;
+  }> {
+    const provider = await this.getProvider(request.providerId);
     if (!provider) {
-      throw new Error(`AI provider ${providerId} not found or inactive`);
+      throw new Error(`AI provider ${request.providerId} not found or inactive`);
     }
 
-    if (!provider.models.includes(model)) {
-      throw new Error(`Model ${model} not supported by provider ${providerId}`);
+    if (!provider.models.includes(request.model)) {
+      throw new Error(`Model ${request.model} not supported by provider ${request.providerId}`);
     }
 
     // Get API key for round-robin
@@ -104,13 +132,14 @@ export class AIGatewayService {
       throw new Error(`No active API keys available for ${provider.name}`);
     }
 
-    const request: AIRequest = { providerId, model, prompt, maxTokens };
-    const aiResponse = await this.routeToProvider(provider, request, keyInfo);
+    const aiResponse = await this.routeToProviderEnhanced(provider, request, keyInfo);
     
     return {
       response: aiResponse.content,
       inputTokens: aiResponse.tokensUsed.input,
-      outputTokens: aiResponse.tokensUsed.output
+      outputTokens: aiResponse.tokensUsed.output,
+      thinking: (aiResponse as any).thinking,
+      toolCalls: (aiResponse as any).toolCalls
     };
   }
 
@@ -381,6 +410,19 @@ export class AIGatewayService {
     }
   }
 
+  private async routeToProviderEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    switch (provider.id) {
+      case 'grok':
+        return this.callGrokAIEnhanced(provider, request, keyInfo);
+      case 'vertex':
+        return this.callVertexAIEnhanced(provider, request, keyInfo);
+      case 'openrouter':
+        return this.callOpenRouterEnhanced(provider, request, keyInfo);
+      default:
+        throw new Error(`Unsupported AI provider: ${provider.id}`);
+    }
+  }
+
   private async callGrokAI(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
 
     const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
@@ -502,5 +544,150 @@ export class AIGatewayService {
         parseInt(response.headers.get('x-ratelimit-remaining')!) : null,
       rateLimitResetAt: response.headers.get('x-ratelimit-reset') || null
     };
+  }
+
+  // Enhanced provider methods with full LLM feature support
+  private async callGrokAIEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const payload = {
+      model: request.model,
+      messages: request.messages,
+      max_tokens: request.maxTokens || 4000,
+      ...(request.temperature !== undefined && { temperature: request.temperature }),
+      ...(request.topP !== undefined && { top_p: request.topP }),
+      ...(request.tools && { tools: request.tools }),
+      ...(request.toolChoice && { tool_choice: request.toolChoice }),
+      stream: false
+    };
+
+    const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Grok AI request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const message = data.choices[0]?.message;
+    const content = message?.content || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.prompt_tokens || 0,
+        output: usage.completion_tokens || 0
+      },
+      costCredits: 0, // Will be calculated by caller
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries()),
+      rateLimitRemaining: response.headers.get('x-ratelimit-remaining') ? 
+        parseInt(response.headers.get('x-ratelimit-remaining')!) : null,
+      rateLimitResetAt: response.headers.get('x-ratelimit-reset') || null,
+      // Enhanced features
+      toolCalls: message?.tool_calls,
+      thinking: request.thinkingMode ? data.thinking : undefined
+    } as any;
+  }
+
+  private async callVertexAIEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    // Convert messages to Vertex AI format
+    const contents = request.messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : msg.role,
+      parts: [{ text: msg.content }]
+    }));
+
+    const payload = {
+      contents,
+      generationConfig: {
+        maxOutputTokens: request.maxTokens || 4000,
+        ...(request.temperature !== undefined && { temperature: request.temperature }),
+        ...(request.topP !== undefined && { topP: request.topP })
+      },
+      ...(request.tools && { tools: request.tools })
+    };
+
+    const response = await fetch(`${provider.endpoint_url}/projects/your-project/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vertex AI request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const candidate = data.candidates?.[0];
+    const content = candidate?.content?.parts?.[0]?.text || '';
+    const usage = data.usageMetadata || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.promptTokenCount || 0,
+        output: usage.candidatesTokenCount || 0
+      },
+      costCredits: 0, // Will be calculated by caller
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries())
+    };
+  }
+
+  private async callOpenRouterEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const payload = {
+      model: request.model,
+      messages: request.messages,
+      max_tokens: request.maxTokens || 4000,
+      ...(request.temperature !== undefined && { temperature: request.temperature }),
+      ...(request.topP !== undefined && { top_p: request.topP }),
+      ...(request.tools && { tools: request.tools }),
+      ...(request.toolChoice && { tool_choice: request.toolChoice }),
+      stream: false
+    };
+
+    const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://continuum.ai',
+        'X-Title': 'Continuum AI'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const message = data.choices[0]?.message;
+    const content = message?.content || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.prompt_tokens || 0,
+        output: usage.completion_tokens || 0
+      },
+      costCredits: 0, // Will be calculated by caller
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries()),
+      rateLimitRemaining: response.headers.get('x-ratelimit-remaining') ? 
+        parseInt(response.headers.get('x-ratelimit-remaining')!) : null,
+      rateLimitResetAt: response.headers.get('x-ratelimit-reset') || null,
+      // Enhanced features
+      toolCalls: message?.tool_calls
+    } as any;
   }
 }

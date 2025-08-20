@@ -83,7 +83,7 @@ export function PromptDocumentViewer({
     try {
       // Get resolved content for AI request
       const prompt = resolvedContent || document.content || '';
-      const result = await submitAIRequest(selectedProvider.id, selectedModel, prompt, maxTokens, accessToken);
+      const result = await submitAIRequest(selectedProvider.id, selectedModel, prompt, { maxTokens }, accessToken);
       
       // Set ephemeral response
       setAiResponse(result.response);

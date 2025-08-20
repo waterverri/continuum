@@ -682,16 +682,20 @@ export const getUserCredits = async (accessToken: string): Promise<number> => {
 export const estimateAICost = async (
   providerId: string,
   model: string,
-  prompt: string,
+  promptOrMessages: string | Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
   accessToken: string
 ): Promise<CostEstimate> => {
+  const body = typeof promptOrMessages === 'string' 
+    ? { providerId, model, prompt: promptOrMessages }
+    : { providerId, model, messages: promptOrMessages };
+
   const response = await fetch(`${API_URL}/api/ai/estimate-cost`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ providerId, model, prompt }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -705,8 +709,15 @@ export const estimateAICost = async (
 export const submitAIRequest = async (
   providerId: string,
   model: string,
-  prompt: string,
-  maxTokens?: number,
+  promptOrMessages: string | Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+    topP?: number;
+    tools?: Array<any>;
+    toolChoice?: string | any;
+    thinkingMode?: boolean;
+  },
   accessToken?: string
 ): Promise<{
   response: string;
@@ -714,14 +725,40 @@ export const submitAIRequest = async (
   inputTokens: number;
   outputTokens: number;
   costCredits: number;
+  thinking?: string;
+  toolCalls?: Array<any>;
 }> => {
+  const body = typeof promptOrMessages === 'string' 
+    ? { 
+        providerId, 
+        model, 
+        prompt: promptOrMessages,
+        maxTokens: options?.maxTokens,
+        temperature: options?.temperature,
+        topP: options?.topP,
+        tools: options?.tools,
+        toolChoice: options?.toolChoice,
+        thinkingMode: options?.thinkingMode
+      }
+    : { 
+        providerId, 
+        model, 
+        messages: promptOrMessages,
+        maxTokens: options?.maxTokens,
+        temperature: options?.temperature,
+        topP: options?.topP,
+        tools: options?.tools,
+        toolChoice: options?.toolChoice,
+        thinkingMode: options?.thinkingMode
+      };
+
   const response = await fetch(`${API_URL}/api/ai/proxy`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ providerId, model, prompt, maxTokens }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

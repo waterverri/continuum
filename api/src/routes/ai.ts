@@ -46,14 +46,21 @@ router.get('/credits', async (req: RequestWithUser, res) => {
 // POST /ai/estimate-cost - Estimate cost for AI request
 router.post('/estimate-cost', async (req: RequestWithUser, res) => {
   try {
-    const { providerId, model, prompt } = req.body;
+    const { providerId, model, messages, prompt } = req.body;
 
-    if (!providerId || !model || !prompt) {
-      return res.status(400).json({ error: 'Provider ID, model, and prompt are required' });
+    if (!providerId || !model || (!messages && !prompt)) {
+      return res.status(400).json({ error: 'Provider ID, model, and messages (or prompt) are required' });
     }
 
-    // Calculate input tokens from the prompt text
-    const inputTokens = aiGateway.calculateTokens(prompt);
+    // Calculate input tokens from messages or legacy prompt
+    let inputTokens: number;
+    if (messages) {
+      const combinedText = messages.map((m: any) => m.content).join(' ');
+      inputTokens = aiGateway.calculateTokens(combinedText);
+    } else {
+      // Legacy prompt support
+      inputTokens = aiGateway.calculateTokens(prompt);
+    }
     
     // Get provider pricing
     const providers = await aiGateway.getProviders();
@@ -85,7 +92,7 @@ router.post('/estimate-cost', async (req: RequestWithUser, res) => {
   }
 });
 
-// POST /ai/proxy - Simple AI proxy endpoint
+// POST /ai/proxy - AI proxy endpoint with structured message support
 router.post('/proxy', async (req: RequestWithUser, res) => {
   try {
     const userId = req.user?.id;
@@ -93,10 +100,21 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const { providerId, model, prompt, maxTokens = 4000 } = req.body;
+    const { 
+      providerId, 
+      model, 
+      messages,
+      prompt, // Legacy support
+      maxTokens = 4000,
+      temperature,
+      topP,
+      tools,
+      toolChoice,
+      thinkingMode = false
+    } = req.body;
 
-    if (!providerId || !model || !prompt) {
-      return res.status(400).json({ error: 'Provider ID, model, and prompt are required' });
+    if (!providerId || !model || (!messages && !prompt)) {
+      return res.status(400).json({ error: 'Provider ID, model, and messages (or prompt) are required' });
     }
 
     // Check user credits
@@ -111,7 +129,19 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
     }
 
     // Calculate input tokens and estimate cost
-    const inputTokens = aiGateway.calculateTokens(prompt);
+    let inputTokens: number;
+    let finalPrompt: string;
+    
+    if (messages) {
+      // Convert messages to prompt text for token calculation
+      finalPrompt = messages.map((m: any) => `${m.role}: ${m.content}`).join('\n');
+      inputTokens = aiGateway.calculateTokens(finalPrompt);
+    } else {
+      // Legacy prompt support
+      finalPrompt = prompt;
+      inputTokens = aiGateway.calculateTokens(prompt);
+    }
+    
     const providers = await aiGateway.getProviders();
     const provider = providers.find(p => p.id === providerId);
     
@@ -128,9 +158,19 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       return res.status(402).json({ error: 'Insufficient credits for this request' });
     }
 
-    // Make AI request through gateway
+    // Make AI request through gateway with enhanced parameters
     const startTime = Date.now();
-    const response = await aiGateway.makeProxyRequest(providerId, model, prompt, maxTokens);
+    const response = await aiGateway.makeEnhancedProxyRequest({
+      providerId,
+      model,
+      messages: messages || [{ role: 'user', content: prompt }],
+      maxTokens,
+      temperature,
+      topP,
+      tools,
+      toolChoice,
+      thinkingMode
+    });
     const endTime = Date.now();
 
     // Calculate actual cost
