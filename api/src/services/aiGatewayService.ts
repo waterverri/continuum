@@ -502,14 +502,25 @@ export class AIGatewayService {
   }
 
   private async callVertexAI(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    // Handle authentication for Vertex AI
+    let accessToken: string;
+    let projectId: string;
 
-    // For Vertex AI, the "API key" is actually a service account key or access token
-    // In a real implementation, you'd use the Google Cloud SDK with service account credentials
-    const response = await fetch(`${provider.endpoint_url}/projects/your-project-id/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
+    if (keyInfo.apiKey.startsWith('{')) {
+      // Service account JSON
+      accessToken = await this.generateGoogleAccessToken(keyInfo.apiKey);
+      projectId = this.extractProjectId(keyInfo.apiKey);
+    } else {
+      // Assume it's an access token
+      accessToken = keyInfo.apiKey;
+      projectId = 'your-project-id'; // TODO: Get from provider configuration
+    }
+
+    const response = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${keyInfo.apiKey}`
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify({
         contents: [{
@@ -636,6 +647,20 @@ export class AIGatewayService {
   }
 
   private async callVertexAIEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    // Handle authentication for Vertex AI
+    let accessToken: string;
+    let projectId: string;
+
+    if (keyInfo.apiKey.startsWith('{')) {
+      // Service account JSON
+      accessToken = await this.generateGoogleAccessToken(keyInfo.apiKey);
+      projectId = this.extractProjectId(keyInfo.apiKey);
+    } else {
+      // Assume it's an access token
+      accessToken = keyInfo.apiKey;
+      projectId = 'your-project-id'; // TODO: Get from provider configuration
+    }
+
     // Convert messages to Vertex AI format
     const contents = request.messages.map(msg => ({
       role: msg.role === 'assistant' ? 'model' : msg.role,
@@ -652,10 +677,10 @@ export class AIGatewayService {
       ...(request.tools && { tools: request.tools })
     };
 
-    const response = await fetch(`${provider.endpoint_url}/projects/your-project/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
+    const response = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -731,6 +756,78 @@ export class AIGatewayService {
     } as any;
   }
 
+  // Helper method to generate Google Cloud access token from service account JSON
+  private async generateGoogleAccessToken(serviceAccountJson: string): Promise<string> {
+    try {
+      const credentials = JSON.parse(serviceAccountJson);
+      const { client_email, private_key, project_id } = credentials;
+
+      if (!client_email || !private_key || !project_id) {
+        throw new Error('Invalid service account JSON: missing required fields');
+      }
+
+      // Create JWT assertion for Google OAuth2
+      const now = Math.floor(Date.now() / 1000);
+      const header = {
+        alg: 'RS256',
+        typ: 'JWT'
+      };
+      
+      const payload = {
+        iss: client_email,
+        scope: 'https://www.googleapis.com/auth/cloud-platform',
+        aud: 'https://oauth2.googleapis.com/token',
+        exp: now + 3600, // 1 hour expiry
+        iat: now
+      };
+
+      // Create JWT (simplified - in production, use a proper JWT library)
+      const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+      const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      
+      // Sign with private key (simplified - use crypto library in production)
+      const crypto = require('crypto');
+      const sign = crypto.createSign('RSA-SHA256');
+      sign.update(`${encodedHeader}.${encodedPayload}`);
+      const signature = sign.sign(private_key, 'base64url');
+      
+      const jwt = `${encodedHeader}.${encodedPayload}.${signature}`;
+
+      // Exchange JWT for access token
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+          assertion: jwt
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        throw new Error(`Token exchange failed: ${tokenResponse.statusText}`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      return tokenData.access_token;
+
+    } catch (error) {
+      console.error('Failed to generate Google access token:', error);
+      throw new Error('Invalid Google Cloud service account credentials');
+    }
+  }
+
+  // Helper method to extract project ID from service account JSON
+  private extractProjectId(serviceAccountJson: string): string {
+    try {
+      const credentials = JSON.parse(serviceAccountJson);
+      return credentials.project_id;
+    } catch (error) {
+      throw new Error('Invalid service account JSON');
+    }
+  }
+
   // Provider-specific model fetching methods
   private async fetchGrokModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
     const modelsEndpoint = provider.models_endpoint || '/models';
@@ -763,17 +860,78 @@ export class AIGatewayService {
   }
 
   private async fetchVertexModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
-    // For Vertex AI, we'll return the known models from pricing since they don't have a simple models endpoint
-    // In production, you'd use Google Cloud Discovery API or specific model endpoints
-    const knownModels = Object.keys(provider.pricing).map(modelId => ({
-      id: modelId,
-      name: modelId,
-      description: `Google ${modelId}`,
-      pricing: provider.pricing[modelId],
-      context_length: modelId.includes('1.5') ? 128000 : 32000
-    }));
+    try {
+      // Check if apiKey is JSON (service account) or access token
+      let accessToken: string;
+      let projectId: string;
 
-    return knownModels;
+      if (keyInfo.apiKey.startsWith('{')) {
+        // Service account JSON
+        accessToken = await this.generateGoogleAccessToken(keyInfo.apiKey);
+        projectId = this.extractProjectId(keyInfo.apiKey);
+      } else {
+        // Assume it's an access token
+        accessToken = keyInfo.apiKey;
+        // For access tokens, we need project ID from somewhere - use a default or configuration
+        projectId = 'your-project-id'; // TODO: Get from provider configuration
+      }
+
+      // Fetch available Vertex AI models
+      const response = await fetch(
+        `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Vertex AI API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.models && Array.isArray(data.models)) {
+        return data.models
+          .filter((model: any) => model.name && model.displayName)
+          .map((model: any) => ({
+            id: model.name.split('/').pop(), // Extract model ID from full name
+            name: model.displayName,
+            description: model.description || `Google ${model.displayName}`,
+            pricing: provider.pricing[model.name.split('/').pop()] || { input: 1, output: 3 },
+            context_length: this.getVertexContextLength(model.displayName)
+          }));
+      }
+
+      // Fallback to known models if API call doesn't return expected format
+      throw new Error('Unexpected API response format');
+
+    } catch (error) {
+      console.error('Failed to fetch Vertex AI models:', error);
+      
+      // Fallback to known models from pricing configuration
+      const knownModels = Object.keys(provider.pricing).map(modelId => ({
+        id: modelId,
+        name: modelId,
+        description: `Google ${modelId}`,
+        pricing: provider.pricing[modelId],
+        context_length: this.getVertexContextLength(modelId)
+      }));
+
+      return knownModels;
+    }
+  }
+
+  private getVertexContextLength(modelName: string): number {
+    if (modelName.includes('1.5') || modelName.includes('pro-002')) {
+      return 2000000; // Gemini 1.5 models have 2M context
+    } else if (modelName.includes('1.0') || modelName.includes('pro')) {
+      return 128000; // Gemini 1.0 Pro has 128k context
+    }
+    return 32000; // Default context length
   }
 
   private async fetchOpenRouterModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
