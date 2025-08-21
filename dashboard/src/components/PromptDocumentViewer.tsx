@@ -36,7 +36,7 @@ export function PromptDocumentViewer({
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
-  const responseRef = useRef<HTMLDivElement>(null);
+  const responseRef = useRef<HTMLTextAreaElement>(null);
 
   // const selectedProvider = aiProviders.find(p => p.id === selectedProviderId); // Not needed for dynamic models
   
@@ -122,8 +122,10 @@ export function PromptDocumentViewer({
       setAiResponse(result.response);
       setAiStatus('completed');
       
-      // Refresh credits
-      await loadUserCredits();
+      // Refresh credits after a small delay to ensure backend processing is complete
+      setTimeout(() => {
+        loadUserCredits();
+      }, 500);
     } catch (error) {
       console.error('Error submitting AI request:', error);
       setAiStatus('failed');
@@ -133,32 +135,25 @@ export function PromptDocumentViewer({
     }
   };
 
-  const handleResponseTextSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+  const handleExtractFromResponse = () => {
+    const textarea = responseRef.current;
+    if (!textarea || !aiResponse) return;
 
-    const range = selection.getRangeAt(0);
-    const selectedText = selection.toString().trim();
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
     
-    if (selectedText.length === 0) return;
-
-    // Check if selection is within the response area
-    const isInResponse = responseRef.current && range.commonAncestorContainer && 
-        (responseRef.current.contains(range.commonAncestorContainer) || 
-         responseRef.current === range.commonAncestorContainer);
-    
-    if (selectedText && isInResponse && aiResponse) {
-      const startIndex = aiResponse.indexOf(selectedText);
-      
-      if (startIndex !== -1) {
-        setSelectedText(selectedText);
-        setSelectionRange({
-          start: startIndex,
-          end: startIndex + selectedText.length
-        });
-        setShowExtractModal(true);
-      }
+    if (start === end) {
+      // No selection, select all
+      setSelectedText(aiResponse);
+      setSelectionRange({ start: 0, end: aiResponse.length });
+    } else {
+      // Use selected text
+      const selectedText = aiResponse.substring(start, end);
+      setSelectedText(selectedText);
+      setSelectionRange({ start, end });
     }
+    
+    setShowExtractModal(true);
   };
 
   const contentToDisplay = resolvedContent || document.content || '';
@@ -172,7 +167,16 @@ export function PromptDocumentViewer({
         <h3>{document.title}</h3>
         <div className="document-viewer__info">
           <span className="document-type">Type: {document.document_type}</span>
-          <span className="credit-balance">Credits: {userCredits.toLocaleString()}</span>
+          <span className="credit-balance">
+            Credits: {userCredits.toLocaleString()}
+            <button 
+              className="btn btn--link btn--xs" 
+              onClick={loadUserCredits}
+              style={{ marginLeft: '8px', fontSize: '0.8em' }}
+            >
+              🔄
+            </button>
+          </span>
         </div>
       </div>
 
@@ -300,9 +304,19 @@ export function PromptDocumentViewer({
         <div className="document-section">
           <div className="document-section__header">
             <h4>AI Response</h4>
-            {aiStatus === 'processing' && <span className="status-indicator processing">Processing...</span>}
-            {aiStatus === 'completed' && <span className="status-indicator completed">Completed</span>}
-            {aiStatus === 'failed' && <span className="status-indicator failed">Failed</span>}
+            <div className="document-section__actions">
+              {aiStatus === 'processing' && <span className="status-indicator processing">Processing...</span>}
+              {aiStatus === 'completed' && <span className="status-indicator completed">Completed</span>}
+              {aiStatus === 'failed' && <span className="status-indicator failed">Failed</span>}
+              {hasResponse && (
+                <button 
+                  className="btn btn--secondary btn--sm"
+                  onClick={handleExtractFromResponse}
+                >
+                  Extract Text
+                </button>
+              )}
+            </div>
           </div>
           
           {aiStatus === 'processing' && (
@@ -318,12 +332,15 @@ export function PromptDocumentViewer({
           )}
 
           {hasResponse && (
-            <div 
-              className="ai-response-content"
-              ref={responseRef}
-              onMouseUp={handleResponseTextSelection}
-            >
-              <pre>{aiResponse}</pre>
+            <div className="document-content">
+              <textarea
+                ref={responseRef}
+                value={aiResponse}
+                readOnly
+                className="form-input"
+                rows={Math.max(10, aiResponse.split('\n').length + 2)}
+                style={{ resize: 'vertical', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
+              />
             </div>
           )}
         </div>
