@@ -222,32 +222,12 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       return res.status(500).json({ error: 'No active API keys available for provider' });
     }
 
-    // Create a dummy document entry for the proxy request (required for logging schema)
-    // This is a simple proxy request, so we'll use a special document type
-    const { data: dummyDoc, error: docError } = await supabaseAdmin
-      .from('documents')
-      .insert({
-        title: `AI Proxy Request - ${new Date().toISOString()}`,
-        content: '',
-        document_type: 'ai_proxy',
-        user_id: userId,
-        project_id: null, // Proxy requests don't belong to specific projects
-        is_composite: false
-      })
-      .select('id')
-      .single();
-
-    if (docError || !dummyDoc) {
-      console.error('Error creating dummy document for logging:', docError);
-      return res.status(500).json({ error: 'Failed to initialize request logging' });
-    }
-
-    // Create AI request log entry
+    // Create AI request log entry (no document needed)
     const { data: aiRequest, error: requestError } = await supabaseAdmin
       .from('ai_requests')
       .insert({
         user_id: userId,
-        document_id: dummyDoc.id,
+        document_id: null, // Proxy requests don't need documents
         provider_id: providerId,
         model: model,
         input_tokens: inputTokens,
@@ -262,16 +242,14 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       return res.status(500).json({ error: 'Failed to initialize request logging' });
     }
 
-    // Create comprehensive LLM call log using proper function
+    // Create optimized LLM call log using updated function (no document_id needed)
     const { data: logId, error: logError } = await supabaseAdmin
       .rpc('log_llm_call', {
         p_user_id: userId,
-        p_document_id: dummyDoc.id,
         p_ai_request_id: aiRequest.id,
         p_provider_id: providerId,
         p_provider_key_id: keyInfo.keyId,
         p_model: model,
-        p_input_text: finalPrompt,
         p_input_tokens: inputTokens,
         p_max_output_tokens: maxTokens,
         p_request_metadata: {
@@ -289,9 +267,8 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
 
     if (logError || !logId) {
       console.error('Failed to create LLM call log:', logError);
-      // Continue with request even if logging fails, but clean up
+      // Clean up AI request if logging fails
       await supabaseAdmin.from('ai_requests').delete().eq('id', aiRequest.id);
-      await supabaseAdmin.from('documents').delete().eq('id', dummyDoc.id);
       return res.status(500).json({ error: 'Failed to initialize request logging' });
     }
 
@@ -345,10 +322,9 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
         })
         .eq('id', aiRequest.id);
 
-      // Update LLM call log with success data using proper function
+      // Update LLM call log with success data using optimized function
       await supabaseAdmin.rpc('update_llm_call_response', {
         p_log_id: logId,
-        p_output_text: response.response,
         p_output_tokens: response.outputTokens,
         p_finish_reason: 'completed',
         p_input_cost_credits: Math.ceil((response.inputTokens * pricing.input) / 1000000 * 10000),
@@ -359,9 +335,6 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
         p_rate_limit_remaining: null,
         p_rate_limit_reset_at: null
       });
-
-      // Clean up dummy document since it's just for logging
-      await supabaseAdmin.from('documents').delete().eq('id', dummyDoc.id);
 
       // Return response to frontend
       res.json({
@@ -398,8 +371,7 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
         })
         .eq('id', aiRequest.id);
 
-      // Clean up dummy document
-      await supabaseAdmin.from('documents').delete().eq('id', dummyDoc.id);
+      // No cleanup needed for optimized logging
 
       res.status(500).json({ error: 'AI request failed' });
     }

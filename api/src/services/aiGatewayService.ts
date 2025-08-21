@@ -276,12 +276,10 @@ export class AIGatewayService {
     const { data: logData, error: logError } = await supabaseAdmin
       .rpc('log_llm_call', {
         p_user_id: userId,
-        p_document_id: documentId,
         p_ai_request_id: aiRequest.id,
         p_provider_id: request.providerId,
         p_provider_key_id: keyInfo.keyId,
         p_model: request.model,
-        p_input_text: request.prompt,
         p_input_tokens: inputTokens,
         p_max_output_tokens: maxOutputTokens,
         p_request_metadata: {
@@ -355,7 +353,6 @@ export class AIGatewayService {
         await supabaseAdmin
           .rpc('update_llm_call_response', {
             p_log_id: logId,
-            p_output_text: response.content,
             p_output_tokens: response.tokensUsed.output,
             p_finish_reason: 'completed',
             p_input_cost_credits: this.calculateCost(provider, request.model, inputTokens, 0),
