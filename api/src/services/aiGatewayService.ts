@@ -516,7 +516,17 @@ export class AIGatewayService {
       projectId = 'your-project-id'; // TODO: Get from provider configuration
     }
 
-    const response = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
+    // Construct proper Vertex AI model endpoint
+    let modelEndpoint: string;
+    if (request.model.startsWith('projects/')) {
+      // Full model path provided
+      modelEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/${request.model}:generateContent`;
+    } else {
+      // Short model name, construct full path
+      modelEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${request.model}:generateContent`;
+    }
+
+    const response = await fetch(modelEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -677,7 +687,17 @@ export class AIGatewayService {
       ...(request.tools && { tools: request.tools })
     };
 
-    const response = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${request.model}:generateContent`, {
+    // Construct proper Vertex AI model endpoint
+    let modelEndpoint: string;
+    if (request.model.startsWith('projects/')) {
+      // Full model path provided
+      modelEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/${request.model}:generateContent`;
+    } else {
+      // Short model name, construct full path
+      modelEndpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${request.model}:generateContent`;
+    }
+
+    const response = await fetch(modelEndpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -897,13 +917,16 @@ export class AIGatewayService {
       if (data.models && Array.isArray(data.models)) {
         return data.models
           .filter((model: any) => model.name && model.displayName)
-          .map((model: any) => ({
-            id: model.name.split('/').pop(), // Extract model ID from full name
-            name: model.displayName,
-            description: model.description || `Google ${model.displayName}`,
-            pricing: provider.pricing[model.name.split('/').pop()] || { input: 1, output: 3 },
-            context_length: this.getVertexContextLength(model.displayName)
-          }));
+          .map((model: any) => {
+            const shortModelName = model.name.split('/').pop();
+            return {
+              id: model.name, // Use full model path as ID for API calls
+              name: model.displayName,
+              description: model.description || `Google ${model.displayName}`,
+              pricing: provider.pricing[shortModelName] || { input: 1, output: 3 },
+              context_length: this.getVertexContextLength(model.displayName)
+            };
+          });
       }
 
       // Fallback to known models if API call doesn't return expected format
@@ -913,13 +936,26 @@ export class AIGatewayService {
       console.error('Failed to fetch Vertex AI models:', error);
       
       // Fallback to known models from pricing configuration
-      const knownModels = Object.keys(provider.pricing).map(modelId => ({
-        id: modelId,
-        name: modelId,
-        description: `Google ${modelId}`,
-        pricing: provider.pricing[modelId],
-        context_length: this.getVertexContextLength(modelId)
-      }));
+      const knownModels = Object.keys(provider.pricing).map(modelId => {
+        // For fallback, construct proper model path if we have project ID
+        let fullModelId = modelId;
+        try {
+          if (keyInfo.apiKey.startsWith('{')) {
+            const projectId = this.extractProjectId(keyInfo.apiKey);
+            fullModelId = `projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}`;
+          }
+        } catch (e) {
+          // If we can't extract project ID, use short name
+        }
+        
+        return {
+          id: fullModelId,
+          name: modelId,
+          description: `Google ${modelId}`,
+          pricing: provider.pricing[modelId],
+          context_length: this.getVertexContextLength(modelId)
+        };
+      });
 
       return knownModels;
     }
