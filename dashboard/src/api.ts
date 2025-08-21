@@ -627,9 +627,17 @@ export interface AIProvider {
   id: string;
   name: string;
   endpoint_url: string;
-  models: string[];
+  models_endpoint: string | null;
   pricing: Record<string, { input: number; output: number }>;
   is_active: boolean;
+}
+
+export interface ProviderModel {
+  id: string;
+  name: string;
+  description?: string;
+  pricing?: { input: number; output: number };
+  context_length?: number;
 }
 
 export interface CostEstimate {
@@ -662,6 +670,21 @@ export const getAIProviders = async (accessToken: string): Promise<AIProvider[]>
 
   const data = await response.json();
   return data.providers;
+};
+
+export const getProviderModels = async (providerId: string, accessToken: string): Promise<ProviderModel[]> => {
+  const response = await fetch(`${API_URL}/api/ai/providers/${providerId}/models`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch provider models');
+  }
+
+  const data = await response.json();
+  return data.models;
 };
 
 export const getUserCredits = async (accessToken: string): Promise<number> => {

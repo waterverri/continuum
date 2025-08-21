@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Document, AIProvider, CostEstimate } from '../api';
-import { estimateAICost, submitAIRequest, getUserCredits } from '../api';
+import type { Document, AIProvider, ProviderModel, CostEstimate } from '../api';
+import { estimateAICost, submitAIRequest, getUserCredits, getProviderModels } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
 interface PromptDocumentViewerProps {
@@ -21,7 +21,11 @@ export function PromptDocumentViewer({
   accessToken,
   onCreateFromSelection
 }: PromptDocumentViewerProps) {
+  const [selectedProviderId, setSelectedProviderId] = useState('');
   const [selectedModel, setSelectedModel] = useState(document.ai_model || '');
+  const [availableModels, setAvailableModels] = useState<ProviderModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelSearchTerm, setModelSearchTerm] = useState('');
   const [maxTokens, setMaxTokens] = useState(4000);
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);
@@ -34,11 +38,14 @@ export function PromptDocumentViewer({
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const responseRef = useRef<HTMLDivElement>(null);
 
-  const allModels = aiProviders.flatMap(provider => 
-    provider.models.map(model => ({ providerId: provider.id, providerName: provider.name, model }))
+  // const selectedProvider = aiProviders.find(p => p.id === selectedProviderId); // Not needed for dynamic models
+  
+  // Filter models based on search term
+  const filteredModels = availableModels.filter(model =>
+    model.name.toLowerCase().includes(modelSearchTerm.toLowerCase()) ||
+    model.id.toLowerCase().includes(modelSearchTerm.toLowerCase()) ||
+    (model.description && model.description.toLowerCase().includes(modelSearchTerm.toLowerCase()))
   );
-
-  const selectedProvider = aiProviders.find(p => p.models.includes(selectedModel));
 
   // Load initial data
   useEffect(() => {
@@ -47,6 +54,16 @@ export function PromptDocumentViewer({
     setAiResponse('');
     setAiStatus('idle');
   }, [document.id]);
+
+  // Load models when provider changes
+  useEffect(() => {
+    if (selectedProviderId) {
+      loadProviderModels(selectedProviderId);
+    } else {
+      setAvailableModels([]);
+      setSelectedModel('');
+    }
+  }, [selectedProviderId]);
 
   const loadUserCredits = async () => {
     try {
@@ -57,14 +74,30 @@ export function PromptDocumentViewer({
     }
   };
 
+  const loadProviderModels = async (providerId: string) => {
+    setIsLoadingModels(true);
+    try {
+      const models = await getProviderModels(providerId, accessToken);
+      setAvailableModels(models);
+      // Clear selected model when provider changes
+      setSelectedModel('');
+      setModelSearchTerm('');
+    } catch (error) {
+      console.error('Failed to load provider models:', error);
+      setAvailableModels([]);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
   const handleEstimateCost = async () => {
-    if (!selectedModel || !selectedProvider) return;
+    if (!selectedModel || !selectedProviderId) return;
     
     setIsEstimating(true);
     try {
       // Get resolved content for cost estimation
       const prompt = resolvedContent || document.content || '';
-      const estimate = await estimateAICost(selectedProvider.id, selectedModel, prompt, accessToken);
+      const estimate = await estimateAICost(selectedProviderId, selectedModel, prompt, accessToken);
       setCostEstimate(estimate);
     } catch (error) {
       console.error('Error estimating cost:', error);
@@ -74,7 +107,7 @@ export function PromptDocumentViewer({
   };
 
   const handleSubmit = async () => {
-    if (!selectedModel || !selectedProvider) return;
+    if (!selectedModel || !selectedProviderId) return;
     
     setIsSubmitting(true);
     setAiStatus('processing');
@@ -83,7 +116,7 @@ export function PromptDocumentViewer({
     try {
       // Get resolved content for AI request
       const prompt = resolvedContent || document.content || '';
-      const result = await submitAIRequest(selectedProvider.id, selectedModel, prompt, { maxTokens }, accessToken);
+      const result = await submitAIRequest(selectedProviderId, selectedModel, prompt, { maxTokens }, accessToken);
       
       // Set ephemeral response
       setAiResponse(result.response);
@@ -130,7 +163,7 @@ export function PromptDocumentViewer({
 
   const contentToDisplay = resolvedContent || document.content || '';
   const hasResponse = aiResponse && aiResponse.trim();
-  const canSubmit = selectedModel && selectedProvider && contentToDisplay.trim() && 
+  const canSubmit = selectedModel && selectedProviderId && contentToDisplay.trim() && 
                    (aiStatus !== 'pending' && aiStatus !== 'processing');
 
   return (
@@ -166,21 +199,58 @@ export function PromptDocumentViewer({
         <div className="ai-config">
           <div className="form-group">
             <label className="form-label">
-              Model:
+              AI Provider:
               <select
                 className="form-input"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                value={selectedProviderId}
+                onChange={(e) => setSelectedProviderId(e.target.value)}
               >
-                <option value="">Select a model...</option>
-                {allModels.map(({ providerId, providerName, model }) => (
-                  <option key={`${providerId}-${model}`} value={model}>
-                    {providerName} - {model}
+                <option value="">Select a provider...</option>
+                {aiProviders.map(provider => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name}
                   </option>
                 ))}
               </select>
             </label>
           </div>
+
+          {selectedProviderId && (
+            <div className="form-group">
+              <label className="form-label">
+                Model:
+                {isLoadingModels ? (
+                  <div className="loading-indicator">Loading models...</div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Search models..."
+                      value={modelSearchTerm}
+                      onChange={(e) => setModelSearchTerm(e.target.value)}
+                    />
+                    <select
+                      className="form-input"
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      size={Math.min(filteredModels.length + 1, 8)}
+                    >
+                      <option value="">Select a model...</option>
+                      {filteredModels.map(model => (
+                        <option key={model.id} value={model.id}>
+                          {model.name} {model.description && `- ${model.description}`}
+                        </option>
+                      ))}
+                    </select>
+                    {filteredModels.length === 0 && modelSearchTerm && (
+                      <small className="text-muted">No models found matching "{modelSearchTerm}"</small>
+                    )}
+                  </>
+                )}
+              </label>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">
@@ -200,7 +270,7 @@ export function PromptDocumentViewer({
             <button
               className="btn btn--secondary"
               onClick={handleEstimateCost}
-              disabled={!selectedModel || !selectedProvider || isEstimating}
+              disabled={!selectedModel || !selectedProviderId || isEstimating}
             >
               {isEstimating ? 'Estimating...' : 'Estimate Cost'}
             </button>

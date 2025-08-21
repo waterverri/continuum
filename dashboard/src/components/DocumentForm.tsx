@@ -34,13 +34,13 @@ export function DocumentForm({
   onOpenGroupSwitcher,
   isCreating,
   documents,
+  // @ts-ignore: Keep aiProviders for interface compatibility
   aiProviders = []
 }: DocumentFormProps) {
   
   const isPromptDocument = formData.is_prompt;
-  const allModels = aiProviders.flatMap(provider => 
-    provider.models.map(model => ({ providerId: provider.id, providerName: provider.name, model }))
-  );
+  // Note: Model selection is now handled dynamically in PromptDocumentViewer
+  // DocumentForm only needs to set is_prompt flag
   
   const getDocumentTitle = (reference: string) => {
     if (reference.startsWith('group:')) {
@@ -106,7 +106,7 @@ export function DocumentForm({
             onChange={(e) => setFormData({ 
               ...formData, 
               is_prompt: e.target.checked,
-              ai_model: e.target.checked ? formData.ai_model : undefined
+              ai_model: undefined // AI model selection is handled in PromptDocumentViewer
             })}
           />
           <span>AI Prompt Document (enables AI model selection and response functionality)</span>
@@ -115,22 +115,9 @@ export function DocumentForm({
       
       {isPromptDocument && (
         <div className="form-group">
-          <label className="form-label">
-            AI Model:
-            <select
-              className="form-input"
-              value={formData.ai_model || ''}
-              onChange={(e) => setFormData({ ...formData, ai_model: e.target.value })}
-              required
-            >
-              <option value="">Select an AI model...</option>
-              {allModels.map(({ providerId, providerName, model }) => (
-                <option key={`${providerId}-${model}`} value={model}>
-                  {providerName} - {model}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="info-message">
+            <small>Model selection will be available after creating the prompt document.</small>
+          </div>
         </div>
       )}
       
