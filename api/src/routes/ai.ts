@@ -6,10 +6,10 @@ import { supabaseAdmin } from '../db/supabaseClient';
 const router = express.Router();
 const aiGateway = new AIGatewayService();
 
-// GET /ai/providers - Get available AI providers
+// GET /ai/providers - Get available AI providers (only those with active API keys)
 router.get('/providers', async (req: RequestWithUser, res) => {
   try {
-    const providers = await aiGateway.getProviders();
+    const providers = await aiGateway.getProvidersWithKeys();
     res.json({ providers });
   } catch (error) {
     console.error('Error fetching AI providers:', error);
@@ -75,7 +75,7 @@ router.post('/estimate-cost', async (req: RequestWithUser, res) => {
     }
     
     // Get provider pricing
-    const providers = await aiGateway.getProviders();
+    const providers = await aiGateway.getProvidersWithKeys();
     const provider = providers.find(p => p.id === providerId);
     
     if (!provider) {
@@ -174,7 +174,7 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       inputTokens = aiGateway.calculateTokens(prompt);
     }
     
-    const providers = await aiGateway.getProviders();
+    const providers = await aiGateway.getProvidersWithKeys();
     const provider = providers.find(p => p.id === providerId);
     
     if (!provider) {

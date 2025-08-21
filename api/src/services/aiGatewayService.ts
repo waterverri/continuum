@@ -82,6 +82,24 @@ export class AIGatewayService {
     return data || [];
   }
 
+  // Get only providers that have active API keys
+  async getProvidersWithKeys(): Promise<AIProvider[]> {
+    const { data, error } = await supabaseAdmin
+      .from('ai_providers')
+      .select(`
+        *,
+        ai_provider_keys!inner(id)
+      `)
+      .eq('is_active', true)
+      .eq('ai_provider_keys.is_active', true);
+
+    if (error) {
+      throw new Error(`Failed to fetch providers with keys: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
   async getProviderModels(providerId: string): Promise<ProviderModel[]> {
     const provider = await this.getProvider(providerId);
     if (!provider) {
@@ -96,10 +114,14 @@ export class AIGatewayService {
 
     try {
       switch (provider.id) {
+        case 'openai':
+          return this.fetchOpenAIModels(provider, keyInfo);
+        case 'anthropic':
+          return this.fetchAnthropicModels(provider, keyInfo);
         case 'grok':
           return this.fetchGrokModels(provider, keyInfo);
-        case 'vertex':
-          return this.fetchVertexModels(provider, keyInfo);
+        case 'togetherai':
+          return this.fetchTogetherAIModels(provider, keyInfo);
         case 'openrouter':
           return this.fetchOpenRouterModels(provider, keyInfo);
         default:
@@ -439,10 +461,14 @@ export class AIGatewayService {
 
   private async routeToProvider(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
     switch (provider.id) {
+      case 'openai':
+        return this.callOpenAI(provider, request, keyInfo);
+      case 'anthropic':
+        return this.callAnthropic(provider, request, keyInfo);
       case 'grok':
         return this.callGrokAI(provider, request, keyInfo);
-      case 'vertex':
-        return this.callVertexAI(provider, request, keyInfo);
+      case 'togetherai':
+        return this.callTogetherAI(provider, request, keyInfo);
       case 'openrouter':
         return this.callOpenRouter(provider, request, keyInfo);
       default:
@@ -452,15 +478,128 @@ export class AIGatewayService {
 
   private async routeToProviderEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
     switch (provider.id) {
+      case 'openai':
+        return this.callOpenAIEnhanced(provider, request, keyInfo);
+      case 'anthropic':
+        return this.callAnthropicEnhanced(provider, request, keyInfo);
       case 'grok':
         return this.callGrokAIEnhanced(provider, request, keyInfo);
-      case 'vertex':
-        return this.callVertexAIEnhanced(provider, request, keyInfo);
+      case 'togetherai':
+        return this.callTogetherAIEnhanced(provider, request, keyInfo);
       case 'openrouter':
         return this.callOpenRouterEnhanced(provider, request, keyInfo);
       default:
         throw new Error(`Unsupported AI provider: ${provider.id}`);
     }
+  }
+
+  // OpenAI API calls (OpenAI-compatible)
+  private async callOpenAI(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyInfo.apiKey}`
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: request.prompt }],
+        model: request.model,
+        max_tokens: request.maxTokens || 4000
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.prompt_tokens || 0,
+        output: usage.completion_tokens || 0
+      },
+      costCredits: 0,
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries()),
+      rateLimitRemaining: response.headers.get('x-ratelimit-remaining') ? 
+        parseInt(response.headers.get('x-ratelimit-remaining')!) : null,
+      rateLimitResetAt: response.headers.get('x-ratelimit-reset') || null
+    };
+  }
+
+  // Anthropic API calls (Claude-specific format)
+  private async callAnthropic(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const response = await fetch(`${provider.endpoint_url}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: request.model,
+        max_tokens: request.maxTokens || 4000,
+        messages: [{ role: 'user', content: request.prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.content[0]?.text || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.input_tokens || 0,
+        output: usage.output_tokens || 0
+      },
+      costCredits: 0,
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries())
+    };
+  }
+
+  // Together AI API calls (OpenAI-compatible)
+  private async callTogetherAI(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyInfo.apiKey}`
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: request.prompt }],
+        model: request.model,
+        max_tokens: request.maxTokens || 4000
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Together AI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.prompt_tokens || 0,
+        output: usage.completion_tokens || 0
+      },
+      costCredits: 0,
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries())
+    };
   }
 
   private async callGrokAI(provider: AIProvider, request: AIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
@@ -608,6 +747,146 @@ export class AIGatewayService {
   }
 
   // Enhanced provider methods with full LLM feature support
+  private async callOpenAIEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const payload = {
+      model: request.model,
+      messages: request.messages,
+      max_tokens: request.maxTokens || 4000,
+      ...(request.temperature !== undefined && { temperature: request.temperature }),
+      ...(request.topP !== undefined && { top_p: request.topP }),
+      ...(request.tools && { tools: request.tools }),
+      ...(request.toolChoice && { tool_choice: request.toolChoice }),
+      stream: false
+    };
+
+    const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const message = data.choices[0]?.message;
+    const content = message?.content || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.prompt_tokens || 0,
+        output: usage.completion_tokens || 0
+      },
+      costCredits: 0, // Will be calculated by caller
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries()),
+      rateLimitRemaining: response.headers.get('x-ratelimit-remaining') ? 
+        parseInt(response.headers.get('x-ratelimit-remaining')!) : null,
+      rateLimitResetAt: response.headers.get('x-ratelimit-reset') || null,
+      // Enhanced features
+      toolCalls: message?.tool_calls,
+      thinking: request.thinkingMode ? data.thinking : undefined
+    } as any;
+  }
+
+  private async callAnthropicEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const payload = {
+      model: request.model,
+      max_tokens: request.maxTokens || 4000,
+      messages: request.messages,
+      ...(request.temperature !== undefined && { temperature: request.temperature }),
+      ...(request.topP !== undefined && { top_p: request.topP }),
+      ...(request.tools && { tools: request.tools }),
+      ...(request.toolChoice && { tool_choice: request.toolChoice })
+    };
+
+    const response = await fetch(`${provider.endpoint_url}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.content[0]?.text || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.input_tokens || 0,
+        output: usage.output_tokens || 0
+      },
+      costCredits: 0, // Will be calculated by caller
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries()),
+      // Enhanced features
+      toolCalls: data.tool_calls,
+      thinking: request.thinkingMode ? data.thinking : undefined
+    } as any;
+  }
+
+  private async callTogetherAIEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
+    const payload = {
+      model: request.model,
+      messages: request.messages,
+      max_tokens: request.maxTokens || 4000,
+      ...(request.temperature !== undefined && { temperature: request.temperature }),
+      ...(request.topP !== undefined && { top_p: request.topP }),
+      ...(request.tools && { tools: request.tools }),
+      ...(request.toolChoice && { tool_choice: request.toolChoice }),
+      stream: false
+    };
+
+    const response = await fetch(`${provider.endpoint_url}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Together AI request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const message = data.choices[0]?.message;
+    const content = message?.content || '';
+    const usage = data.usage || {};
+
+    return {
+      content,
+      tokensUsed: {
+        input: usage.prompt_tokens || 0,
+        output: usage.completion_tokens || 0
+      },
+      costCredits: 0, // Will be calculated by caller
+      apiStatus: response.status,
+      apiHeaders: Object.fromEntries(response.headers.entries()),
+      rateLimitRemaining: response.headers.get('x-ratelimit-remaining') ? 
+        parseInt(response.headers.get('x-ratelimit-remaining')!) : null,
+      rateLimitResetAt: response.headers.get('x-ratelimit-reset') || null,
+      // Enhanced features
+      toolCalls: message?.tool_calls,
+      thinking: request.thinkingMode ? data.thinking : undefined
+    } as any;
+  }
+
   private async callGrokAIEnhanced(provider: AIProvider, request: EnhancedAIRequest, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<AIResponse> {
     const payload = {
       model: request.model,
@@ -849,6 +1128,107 @@ export class AIGatewayService {
   }
 
   // Provider-specific model fetching methods
+  private async fetchOpenAIModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
+    const modelsEndpoint = provider.models_endpoint || '/models';
+    const response = await fetch(`${provider.endpoint_url}${modelsEndpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch OpenAI models: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Parse OpenAI models response
+    if (data.data && Array.isArray(data.data)) {
+      return data.data
+        .filter((model: any) => model.id && !model.id.includes('whisper') && !model.id.includes('tts') && !model.id.includes('dall-e'))
+        .map((model: any) => ({
+          id: model.id,
+          name: model.id,
+          description: `OpenAI ${model.id}`,
+          pricing: provider.pricing[model.id] || { input: 5, output: 15 }, // Default pricing if not configured
+          context_length: this.getOpenAIContextLength(model.id)
+        }));
+    }
+
+    return [];
+  }
+
+  private async fetchAnthropicModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
+    // Anthropic doesn't have a public models API, so return configured models
+    const knownModels = Object.keys(provider.pricing).map(modelId => ({
+      id: modelId,
+      name: modelId,
+      description: `Anthropic ${modelId}`,
+      pricing: provider.pricing[modelId],
+      context_length: this.getAnthropicContextLength(modelId)
+    }));
+
+    return knownModels;
+  }
+
+  private async fetchTogetherAIModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
+    const modelsEndpoint = provider.models_endpoint || '/models';
+    const response = await fetch(`${provider.endpoint_url}${modelsEndpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Together AI models: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Parse Together AI models response
+    if (data && Array.isArray(data)) {
+      return data
+        .filter((model: any) => model.id && model.type === 'chat')
+        .map((model: any) => ({
+          id: model.id,
+          name: model.display_name || model.id,
+          description: model.description || `Together AI ${model.id}`,
+          pricing: provider.pricing[model.id] || { input: 1, output: 1 }, // Default pricing
+          context_length: model.context_length || 32000
+        }));
+    }
+
+    return [];
+  }
+
+  private getOpenAIContextLength(modelName: string): number {
+    if (modelName.includes('gpt-4o')) {
+      return 128000;
+    } else if (modelName.includes('gpt-4-turbo')) {
+      return 128000;
+    } else if (modelName.includes('gpt-4')) {
+      return 8192;
+    } else if (modelName.includes('gpt-3.5-turbo')) {
+      return 16385;
+    }
+    return 4096;
+  }
+
+  private getAnthropicContextLength(modelName: string): number {
+    if (modelName.includes('claude-3-5-sonnet')) {
+      return 200000;
+    } else if (modelName.includes('claude-3-opus')) {
+      return 200000;
+    } else if (modelName.includes('claude-3-haiku')) {
+      return 200000;
+    }
+    return 100000;
+  }
+
   private async fetchGrokModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
     const modelsEndpoint = provider.models_endpoint || '/models';
     const response = await fetch(`${provider.endpoint_url}${modelsEndpoint}`, {

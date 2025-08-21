@@ -42,12 +42,20 @@ COMMENT ON COLUMN public.ai_providers.pricing IS 'Pricing structure for input/ou
 
 -- Insert default AI providers (models will be fetched dynamically)
 INSERT INTO public.ai_providers (id, name, endpoint_url, models_endpoint, pricing) VALUES
+('openai', 'OpenAI', 'https://api.openai.com/v1', '/models',
+ '{"gpt-4o": {"input": 2.5, "output": 10}, "gpt-4o-mini": {"input": 0.15, "output": 0.6}, "gpt-4-turbo": {"input": 10, "output": 30}, "gpt-3.5-turbo": {"input": 0.5, "output": 1.5}}'::jsonb),
+('anthropic', 'Anthropic', 'https://api.anthropic.com', NULL,
+ '{"claude-3-5-sonnet-20241022": {"input": 3, "output": 15}, "claude-3-5-haiku-20241022": {"input": 1, "output": 5}, "claude-3-opus-20240229": {"input": 15, "output": 75}}'::jsonb),
 ('grok', 'Grok AI', 'https://api.x.ai/v1', '/models',
  '{"grok-beta": {"input": 5, "output": 15}, "grok-2": {"input": 5, "output": 15}}'::jsonb),
-('vertex', 'Google Vertex AI', 'https://us-central1-aiplatform.googleapis.com/v1', NULL,
- '{"gemini-pro": {"input": 1, "output": 3}, "gemini-pro-vision": {"input": 1, "output": 3}, "gemini-1.5-pro": {"input": 1, "output": 3}}'::jsonb),
+('togetherai', 'Together AI', 'https://api.together.xyz/v1', '/models',
+ '{"meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo": {"input": 0.18, "output": 0.18}, "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {"input": 0.88, "output": 0.88}, "mistralai/Mixtral-8x7B-Instruct-v0.1": {"input": 0.6, "output": 0.6}}'::jsonb),
 ('openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', '/models', 
  '{}'::jsonb); -- OpenRouter provides pricing in their model list API
+
+-- Vertex AI disabled due to incompatible API structure
+-- ('vertex', 'Google Vertex AI', 'https://us-central1-aiplatform.googleapis.com/v1', '/models',
+--  '{"gemini-1.5-pro": {"input": 1.25, "output": 5}, "gemini-1.5-flash": {"input": 0.075, "output": 0.3}, "gemini-1.0-pro": {"input": 0.5, "output": 1.5}}'::jsonb),
 
 -- Create table for AI request logs
 CREATE TABLE public.ai_requests (
