@@ -21,6 +21,9 @@ CREATE INDEX IF NOT EXISTS idx_llm_logs_request_started ON public.llm_call_logs 
 -- Add composite index for common query patterns
 CREATE INDEX IF NOT EXISTS idx_llm_logs_provider_model_date ON public.llm_call_logs (provider_id, model, request_started_at DESC);
 
+-- Drop the existing function first to avoid conflicts
+DROP FUNCTION IF EXISTS public.log_llm_call(UUID, UUID, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, JSONB);
+
 -- Update the log_llm_call function to remove document_id parameter
 CREATE OR REPLACE FUNCTION public.log_llm_call(
     p_user_id UUID,
@@ -65,6 +68,9 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.log_llm_call IS 'Creates a new LLM call log entry without document dependency and returns the log ID';
+
+-- Drop the existing function first to avoid conflicts
+DROP FUNCTION IF EXISTS public.update_llm_call_response(UUID, TEXT, INTEGER, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, JSONB, INTEGER, TIMESTAMPTZ);
 
 -- Update the update_llm_call_response function to remove output_text parameter
 CREATE OR REPLACE FUNCTION public.update_llm_call_response(
