@@ -30,27 +30,24 @@ CREATE TABLE public.ai_providers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     endpoint_url TEXT NOT NULL,
-    models JSONB NOT NULL DEFAULT '[]'::jsonb,
+    models_endpoint TEXT NULL, -- Endpoint to fetch available models
     pricing JSONB NOT NULL DEFAULT '{}'::jsonb,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE public.ai_providers IS 'Configuration for AI service providers and their models';
-COMMENT ON COLUMN public.ai_providers.models IS 'Array of supported model names';
+COMMENT ON TABLE public.ai_providers IS 'Configuration for AI service providers';
+COMMENT ON COLUMN public.ai_providers.models_endpoint IS 'API endpoint to fetch available models (null = use default /models)';
 COMMENT ON COLUMN public.ai_providers.pricing IS 'Pricing structure for input/output tokens per model';
 
--- Insert default AI providers
-INSERT INTO public.ai_providers (id, name, endpoint_url, models, pricing) VALUES
-('grok', 'Grok AI', 'https://api.x.ai/v1', 
- '["grok-beta"]'::jsonb,
- '{"grok-beta": {"input": 5, "output": 15}}'::jsonb),
-('vertex', 'Google Vertex AI', 'https://us-central1-aiplatform.googleapis.com/v1', 
- '["gemini-pro", "gemini-pro-vision"]'::jsonb,
- '{"gemini-pro": {"input": 1, "output": 3}, "gemini-pro-vision": {"input": 1, "output": 3}}'::jsonb),
-('openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', 
- '["anthropic/claude-3-sonnet", "openai/gpt-4-turbo", "meta-llama/llama-2-70b-chat"]'::jsonb,
- '{"anthropic/claude-3-sonnet": {"input": 3, "output": 15}, "openai/gpt-4-turbo": {"input": 10, "output": 30}, "meta-llama/llama-2-70b-chat": {"input": 1, "output": 1}}'::jsonb);
+-- Insert default AI providers (models will be fetched dynamically)
+INSERT INTO public.ai_providers (id, name, endpoint_url, models_endpoint, pricing) VALUES
+('grok', 'Grok AI', 'https://api.x.ai/v1', '/models',
+ '{"grok-beta": {"input": 5, "output": 15}, "grok-2": {"input": 5, "output": 15}}'::jsonb),
+('vertex', 'Google Vertex AI', 'https://us-central1-aiplatform.googleapis.com/v1', NULL,
+ '{"gemini-pro": {"input": 1, "output": 3}, "gemini-pro-vision": {"input": 1, "output": 3}, "gemini-1.5-pro": {"input": 1, "output": 3}}'::jsonb),
+('openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', '/models', 
+ '{}'::jsonb); -- OpenRouter provides pricing in their model list API
 
 -- Create table for AI request logs
 CREATE TABLE public.ai_requests (

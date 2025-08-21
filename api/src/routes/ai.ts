@@ -17,6 +17,18 @@ router.get('/providers', async (req: RequestWithUser, res) => {
   }
 });
 
+// GET /ai/providers/:providerId/models - Get available models for a provider
+router.get('/providers/:providerId/models', async (req: RequestWithUser, res) => {
+  try {
+    const { providerId } = req.params;
+    const models = await aiGateway.getProviderModels(providerId);
+    res.json({ models });
+  } catch (error) {
+    console.error(`Error fetching models for provider ${req.params.providerId}:`, error);
+    res.status(500).json({ error: 'Failed to fetch provider models' });
+  }
+});
+
 // GET /ai/credits - Get user credit balance
 router.get('/credits', async (req: RequestWithUser, res) => {
   try {
@@ -66,9 +78,11 @@ router.post('/estimate-cost', async (req: RequestWithUser, res) => {
     const providers = await aiGateway.getProviders();
     const provider = providers.find(p => p.id === providerId);
     
-    if (!provider || !provider.models.includes(model)) {
-      return res.status(400).json({ error: 'Invalid provider or model' });
+    if (!provider) {
+      return res.status(400).json({ error: 'Invalid provider' });
     }
+
+    // Note: Model validation is now done dynamically by provider APIs
 
     const pricing = provider.pricing[model];
     if (!pricing) {
@@ -145,9 +159,11 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
     const providers = await aiGateway.getProviders();
     const provider = providers.find(p => p.id === providerId);
     
-    if (!provider || !provider.models.includes(model)) {
-      return res.status(400).json({ error: 'Invalid provider or model' });
+    if (!provider) {
+      return res.status(400).json({ error: 'Invalid provider' });
     }
+
+    // Note: Model validation is now done dynamically by provider APIs
 
     const pricing = provider.pricing[model];
     const estimatedCost = Math.ceil(

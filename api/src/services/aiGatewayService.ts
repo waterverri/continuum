@@ -36,9 +36,17 @@ export interface AIProvider {
   id: string;
   name: string;
   endpoint_url: string;
-  models: string[];
+  models_endpoint: string | null;
   pricing: Record<string, { input: number; output: number }>;
   is_active: boolean;
+}
+
+export interface ProviderModel {
+  id: string;
+  name: string;
+  description?: string;
+  pricing?: { input: number; output: number };
+  context_length?: number;
 }
 
 export class AIGatewayService {
@@ -72,6 +80,40 @@ export class AIGatewayService {
     }
 
     return data || [];
+  }
+
+  async getProviderModels(providerId: string): Promise<ProviderModel[]> {
+    const provider = await this.getProvider(providerId);
+    if (!provider) {
+      throw new Error(`AI provider ${providerId} not found or inactive`);
+    }
+
+    // Get API key for the provider
+    const keyInfo = await this.getNextApiKey(provider.id);
+    if (!keyInfo) {
+      throw new Error(`No active API keys available for ${provider.name}`);
+    }
+
+    try {
+      switch (provider.id) {
+        case 'grok':
+          return this.fetchGrokModels(provider, keyInfo);
+        case 'vertex':
+          return this.fetchVertexModels(provider, keyInfo);
+        case 'openrouter':
+          return this.fetchOpenRouterModels(provider, keyInfo);
+        default:
+          throw new Error(`Model fetching not implemented for provider: ${provider.id}`);
+      }
+    } catch (error) {
+      console.error(`Failed to fetch models for ${providerId}:`, error);
+      // Fallback to cached pricing models if API fails
+      return Object.keys(provider.pricing).map(modelId => ({
+        id: modelId,
+        name: modelId,
+        pricing: provider.pricing[modelId]
+      }));
+    }
   }
 
   async getProvider(providerId: string): Promise<AIProvider | null> {
@@ -122,9 +164,8 @@ export class AIGatewayService {
       throw new Error(`AI provider ${request.providerId} not found or inactive`);
     }
 
-    if (!provider.models.includes(request.model)) {
-      throw new Error(`Model ${request.model} not supported by provider ${request.providerId}`);
-    }
+    // Check if model exists for the provider (skip validation for now since models are dynamic)
+    // Model validation will be handled by the provider API
 
     // Get API key for round-robin
     const keyInfo = await this.getNextApiKey(provider.id);
@@ -166,9 +207,8 @@ export class AIGatewayService {
       throw new Error(`AI provider ${request.providerId} not found or inactive`);
     }
 
-    if (!provider.models.includes(request.model)) {
-      throw new Error(`Model ${request.model} not supported by provider ${request.providerId}`);
-    }
+    // Check if model exists for the provider (skip validation for now since models are dynamic)
+    // Model validation will be handled by the provider API
 
     const inputTokens = this.calculateTokens(request.prompt);
     const maxOutputTokens = request.maxTokens || 4000;
@@ -689,5 +729,85 @@ export class AIGatewayService {
       // Enhanced features
       toolCalls: message?.tool_calls
     } as any;
+  }
+
+  // Provider-specific model fetching methods
+  private async fetchGrokModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
+    const modelsEndpoint = provider.models_endpoint || '/models';
+    const response = await fetch(`${provider.endpoint_url}${modelsEndpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Grok models: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Parse Grok AI models response
+    if (data.data && Array.isArray(data.data)) {
+      return data.data.map((model: any) => ({
+        id: model.id,
+        name: model.id,
+        description: model.description || `Grok AI ${model.id}`,
+        pricing: provider.pricing[model.id] || { input: 5, output: 15 }, // Default Grok pricing
+        context_length: model.context_length
+      }));
+    }
+
+    return [];
+  }
+
+  private async fetchVertexModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
+    // For Vertex AI, we'll return the known models from pricing since they don't have a simple models endpoint
+    // In production, you'd use Google Cloud Discovery API or specific model endpoints
+    const knownModels = Object.keys(provider.pricing).map(modelId => ({
+      id: modelId,
+      name: modelId,
+      description: `Google ${modelId}`,
+      pricing: provider.pricing[modelId],
+      context_length: modelId.includes('1.5') ? 128000 : 32000
+    }));
+
+    return knownModels;
+  }
+
+  private async fetchOpenRouterModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
+    const modelsEndpoint = provider.models_endpoint || '/models';
+    const response = await fetch(`${provider.endpoint_url}${modelsEndpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${keyInfo.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://continuum.ai',
+        'X-Title': 'Continuum AI'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch OpenRouter models: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Parse OpenRouter models response
+    if (data.data && Array.isArray(data.data)) {
+      return data.data.map((model: any) => ({
+        id: model.id,
+        name: model.name || model.id,
+        description: model.description,
+        pricing: model.pricing ? {
+          input: parseFloat(model.pricing.prompt) * 1000000, // Convert to per-million tokens
+          output: parseFloat(model.pricing.completion) * 1000000
+        } : { input: 0, output: 0 },
+        context_length: model.context_length
+      }));
+    }
+
+    return [];
   }
 }
