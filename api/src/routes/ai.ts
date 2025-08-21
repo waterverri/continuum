@@ -101,7 +101,9 @@ router.post('/estimate-cost', async (req: RequestWithUser, res) => {
     }
 
     if (!pricing || !pricing.input || !pricing.output) {
-      return res.status(400).json({ error: 'Pricing not available for this model' });
+      // Use default pricing for estimates when pricing unavailable
+      console.warn(`No pricing found for model ${model} from provider ${providerId}, using default pricing for estimate`);
+      pricing = { input: 10, output: 30 }; // Default pricing per million tokens
     }
 
     // Estimate maximum cost (input + estimated max output tokens)
@@ -113,7 +115,8 @@ router.post('/estimate-cost', async (req: RequestWithUser, res) => {
     res.json({
       inputTokens,
       estimatedMaxCost,
-      estimatedMaxTokens
+      estimatedMaxTokens,
+      note: !provider.pricing[model] ? 'Estimate based on default pricing - actual cost may vary' : undefined
     });
   } catch (error) {
     console.error('Error estimating AI cost:', error);
@@ -197,7 +200,12 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
     }
 
     if (!pricing || !pricing.input || !pricing.output) {
-      return res.status(400).json({ error: 'Pricing not available for this model' });
+      // For models without pricing, require minimum 1000 credits to proceed
+      if (profile.credit_balance < 1000) {
+        return res.status(402).json({ error: 'Insufficient credits. Model pricing unavailable - minimum 1000 credits required.' });
+      }
+      console.warn(`No pricing found for model ${model} from provider ${providerId}, using default pricing`);
+      pricing = { input: 10, output: 30 }; // Default pricing per million tokens
     }
 
     const estimatedCost = Math.ceil(
