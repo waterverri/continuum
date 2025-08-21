@@ -222,12 +222,11 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       return res.status(500).json({ error: 'No active API keys available for provider' });
     }
 
-    // Create AI request log entry (no document needed)
+    // Create AI request log entry (generic logging)
     const { data: aiRequest, error: requestError } = await supabaseAdmin
       .from('ai_requests')
       .insert({
         user_id: userId,
-        document_id: null, // Proxy requests don't need documents
         provider_id: providerId,
         model: model,
         input_tokens: inputTokens,
