@@ -21,8 +21,9 @@ CREATE INDEX IF NOT EXISTS idx_llm_logs_request_started ON public.llm_call_logs 
 -- Add composite index for common query patterns
 CREATE INDEX IF NOT EXISTS idx_llm_logs_provider_model_date ON public.llm_call_logs (provider_id, model, request_started_at DESC);
 
--- Drop the existing function first to avoid conflicts
+-- Drop all existing versions of log_llm_call function to avoid conflicts
 DROP FUNCTION IF EXISTS public.log_llm_call(UUID, UUID, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, JSONB);
+DROP FUNCTION IF EXISTS public.log_llm_call(UUID, UUID, UUID, TEXT, UUID, TEXT, TEXT, INTEGER, INTEGER, JSONB);
 
 -- Update the log_llm_call function to remove document_id parameter
 CREATE OR REPLACE FUNCTION public.log_llm_call(
@@ -67,10 +68,11 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.log_llm_call IS 'Creates a new LLM call log entry without document dependency and returns the log ID';
+COMMENT ON FUNCTION public.log_llm_call(UUID, UUID, TEXT, UUID, TEXT, INTEGER, INTEGER, JSONB) IS 'Creates a new LLM call log entry without document dependency and returns the log ID';
 
--- Drop the existing function first to avoid conflicts
+-- Drop all existing versions of update_llm_call_response function to avoid conflicts
 DROP FUNCTION IF EXISTS public.update_llm_call_response(UUID, TEXT, INTEGER, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, JSONB, INTEGER, TIMESTAMPTZ);
+DROP FUNCTION IF EXISTS public.update_llm_call_response(UUID, INTEGER, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, JSONB, INTEGER, TIMESTAMPTZ);
 
 -- Update the update_llm_call_response function to remove output_text parameter
 CREATE OR REPLACE FUNCTION public.update_llm_call_response(
@@ -107,7 +109,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.update_llm_call_response IS 'Updates LLM call log with response data without storing output text';
+COMMENT ON FUNCTION public.update_llm_call_response(UUID, INTEGER, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, JSONB, INTEGER, TIMESTAMPTZ) IS 'Updates LLM call log with response data without storing output text';
 
 -- Update table comments to reflect the optimization
 COMMENT ON TABLE public.llm_call_logs IS 'Optimized logging of LLM API calls for performance monitoring, billing, and analytics';
