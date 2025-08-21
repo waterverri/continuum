@@ -216,65 +216,196 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
       return res.status(402).json({ error: 'Insufficient credits for this request' });
     }
 
-    // Make AI request through gateway with enhanced parameters
-    const startTime = Date.now();
-    const response = await aiGateway.makeEnhancedProxyRequest({
-      providerId,
-      model,
-      messages: messages || [{ role: 'user', content: prompt }],
-      maxTokens,
-      temperature,
-      topP,
-      tools,
-      toolChoice,
-      thinkingMode
-    });
-    const endTime = Date.now();
-
-    // Calculate actual cost using the validated pricing
-    const actualCost = Math.ceil(
-      (response.inputTokens * pricing.input + response.outputTokens * pricing.output) / 1000000 * 10000
-    );
-
-    // Deduct credits
-    const { error: deductError } = await supabaseAdmin.rpc('deduct_user_credits', {
-      p_user_id: userId,
-      p_credits: actualCost
-    });
-
-    if (deductError) {
-      console.error('Error deducting credits:', deductError);
-      return res.status(500).json({ error: 'Failed to process payment' });
+    // Get API key info for proper logging
+    const keyInfo = await aiGateway.getNextApiKey(providerId);
+    if (!keyInfo) {
+      return res.status(500).json({ error: 'No active API keys available for provider' });
     }
 
-    // Log the request for analytics
-    await supabaseAdmin.from('llm_call_logs').insert({
-      user_id: userId,
-      provider_id: providerId,
-      model,
-      input_text: prompt,
-      input_tokens: response.inputTokens,
-      max_output_tokens: maxTokens,
-      output_text: response.response,
-      output_tokens: response.outputTokens,
-      finish_reason: 'completed',
-      cost_credits: actualCost,
-      latency_ms: endTime - startTime,
-      request_timestamp: new Date().toISOString(),
-      response_timestamp: new Date().toISOString()
-    });
+    // Create a dummy document entry for the proxy request (required for logging schema)
+    // This is a simple proxy request, so we'll use a special document type
+    const { data: dummyDoc, error: docError } = await supabaseAdmin
+      .from('documents')
+      .insert({
+        title: `AI Proxy Request - ${new Date().toISOString()}`,
+        content: '',
+        document_type: 'ai_proxy',
+        user_id: userId,
+        project_id: null, // Proxy requests don't belong to specific projects
+        is_composite: false
+      })
+      .select('id')
+      .single();
 
-    // Return response to frontend
-    res.json({
-      response: response.response,
-      tokensUsed: response.inputTokens + response.outputTokens,
-      inputTokens: response.inputTokens,
-      outputTokens: response.outputTokens,
-      costCredits: actualCost
-    });
+    if (docError || !dummyDoc) {
+      console.error('Error creating dummy document for logging:', docError);
+      return res.status(500).json({ error: 'Failed to initialize request logging' });
+    }
+
+    // Create AI request log entry
+    const { data: aiRequest, error: requestError } = await supabaseAdmin
+      .from('ai_requests')
+      .insert({
+        user_id: userId,
+        document_id: dummyDoc.id,
+        provider_id: providerId,
+        model: model,
+        input_tokens: inputTokens,
+        cost_credits: estimatedCost,
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+
+    if (requestError || !aiRequest) {
+      console.error('Error creating AI request log:', requestError);
+      return res.status(500).json({ error: 'Failed to initialize request logging' });
+    }
+
+    // Create comprehensive LLM call log using proper function
+    const { data: logId, error: logError } = await supabaseAdmin
+      .rpc('log_llm_call', {
+        p_user_id: userId,
+        p_document_id: dummyDoc.id,
+        p_ai_request_id: aiRequest.id,
+        p_provider_id: providerId,
+        p_provider_key_id: keyInfo.keyId,
+        p_model: model,
+        p_input_text: finalPrompt,
+        p_input_tokens: inputTokens,
+        p_max_output_tokens: maxTokens,
+        p_request_metadata: {
+          estimated_cost: estimatedCost,
+          key_name: keyInfo.keyName,
+          request_type: 'proxy',
+          request_timestamp: new Date().toISOString(),
+          temperature,
+          topP,
+          tools,
+          toolChoice,
+          thinkingMode
+        }
+      });
+
+    if (logError || !logId) {
+      console.error('Failed to create LLM call log:', logError);
+      // Continue with request even if logging fails, but clean up
+      await supabaseAdmin.from('ai_requests').delete().eq('id', aiRequest.id);
+      await supabaseAdmin.from('documents').delete().eq('id', dummyDoc.id);
+      return res.status(500).json({ error: 'Failed to initialize request logging' });
+    }
+
+    try {
+      // Make AI request through gateway with enhanced parameters
+      const startTime = Date.now();
+      const response = await aiGateway.makeEnhancedProxyRequest({
+        providerId,
+        model,
+        messages: messages || [{ role: 'user', content: prompt }],
+        maxTokens,
+        temperature,
+        topP,
+        tools,
+        toolChoice,
+        thinkingMode
+      });
+      const endTime = Date.now();
+
+      // Calculate actual cost using the validated pricing
+      const actualCost = Math.ceil(
+        (response.inputTokens * pricing.input + response.outputTokens * pricing.output) / 1000000 * 10000
+      );
+
+      // Deduct credits
+      const { error: deductError } = await supabaseAdmin.rpc('deduct_user_credits', {
+        p_user_id: userId,
+        p_credits: actualCost
+      });
+
+      if (deductError) {
+        console.error('Error deducting credits:', deductError);
+        // Log the error in LLM call log
+        await supabaseAdmin.rpc('log_llm_call_error', {
+          p_log_id: logId,
+          p_error_type: 'payment_error',
+          p_error_message: 'Failed to deduct credits',
+          p_error_details: { error: deductError }
+        });
+        return res.status(500).json({ error: 'Failed to process payment' });
+      }
+
+      // Update AI request with completion status
+      await supabaseAdmin
+        .from('ai_requests')
+        .update({
+          output_tokens: response.outputTokens,
+          cost_credits: actualCost,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', aiRequest.id);
+
+      // Update LLM call log with success data using proper function
+      await supabaseAdmin.rpc('update_llm_call_response', {
+        p_log_id: logId,
+        p_output_text: response.response,
+        p_output_tokens: response.outputTokens,
+        p_finish_reason: 'completed',
+        p_input_cost_credits: Math.ceil((response.inputTokens * pricing.input) / 1000000 * 10000),
+        p_output_cost_credits: Math.ceil((response.outputTokens * pricing.output) / 1000000 * 10000),
+        p_total_cost_credits: actualCost,
+        p_api_response_status: 200,
+        p_api_response_headers: null,
+        p_rate_limit_remaining: null,
+        p_rate_limit_reset_at: null
+      });
+
+      // Clean up dummy document since it's just for logging
+      await supabaseAdmin.from('documents').delete().eq('id', dummyDoc.id);
+
+      // Return response to frontend
+      res.json({
+        response: response.response,
+        tokensUsed: response.inputTokens + response.outputTokens,
+        inputTokens: response.inputTokens,
+        outputTokens: response.outputTokens,
+        costCredits: actualCost
+      });
+
+    } catch (requestError) {
+      console.error('Error during AI request:', requestError);
+      
+      // Log the error in LLM call log
+      await supabaseAdmin.rpc('log_llm_call_error', {
+        p_log_id: logId,
+        p_error_type: 'ai_request_error',
+        p_error_message: requestError instanceof Error ? requestError.message : 'Unknown AI request error',
+        p_error_details: {
+          stack: requestError instanceof Error ? requestError.stack : null,
+          provider: providerId,
+          model: model,
+          key_name: keyInfo.keyName
+        }
+      });
+
+      // Update AI request status to failed
+      await supabaseAdmin
+        .from('ai_requests')
+        .update({
+          status: 'failed',
+          error_message: requestError instanceof Error ? requestError.message : 'Unknown error',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', aiRequest.id);
+
+      // Clean up dummy document
+      await supabaseAdmin.from('documents').delete().eq('id', dummyDoc.id);
+
+      res.status(500).json({ error: 'AI request failed' });
+    }
   } catch (error) {
-    console.error('Error in AI proxy:', error);
-    res.status(500).json({ error: 'AI request failed' });
+    console.error('Error in AI proxy setup:', error);
+    res.status(500).json({ error: 'Failed to initialize AI request' });
   }
 });
 
