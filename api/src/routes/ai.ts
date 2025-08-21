@@ -84,8 +84,23 @@ router.post('/estimate-cost', async (req: RequestWithUser, res) => {
 
     // Note: Model validation is now done dynamically by provider APIs
 
-    const pricing = provider.pricing[model];
+    // Get pricing from provider configuration or fetch from dynamic models
+    let pricing = provider.pricing[model];
+    
     if (!pricing) {
+      // Try to get pricing from dynamic model data
+      try {
+        const models = await aiGateway.getProviderModels(providerId);
+        const modelData = models.find(m => m.id === model);
+        if (modelData?.pricing) {
+          pricing = modelData.pricing;
+        }
+      } catch (error) {
+        console.error('Failed to fetch dynamic model pricing:', error);
+      }
+    }
+
+    if (!pricing || !pricing.input || !pricing.output) {
       return res.status(400).json({ error: 'Pricing not available for this model' });
     }
 
@@ -165,7 +180,26 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
 
     // Note: Model validation is now done dynamically by provider APIs
 
-    const pricing = provider.pricing[model];
+    // Get pricing from provider configuration or fetch from dynamic models
+    let pricing = provider.pricing[model];
+    
+    if (!pricing) {
+      // Try to get pricing from dynamic model data
+      try {
+        const models = await aiGateway.getProviderModels(providerId);
+        const modelData = models.find(m => m.id === model);
+        if (modelData?.pricing) {
+          pricing = modelData.pricing;
+        }
+      } catch (error) {
+        console.error('Failed to fetch dynamic model pricing:', error);
+      }
+    }
+
+    if (!pricing || !pricing.input || !pricing.output) {
+      return res.status(400).json({ error: 'Pricing not available for this model' });
+    }
+
     const estimatedCost = Math.ceil(
       (inputTokens * pricing.input + maxTokens * pricing.output) / 1000000 * 10000
     );
@@ -189,7 +223,7 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
     });
     const endTime = Date.now();
 
-    // Calculate actual cost
+    // Calculate actual cost using the validated pricing
     const actualCost = Math.ceil(
       (response.inputTokens * pricing.input + response.outputTokens * pricing.output) / 1000000 * 10000
     );
