@@ -896,9 +896,10 @@ export class AIGatewayService {
         projectId = 'your-project-id'; // TODO: Get from provider configuration
       }
 
-      // Fetch available Vertex AI models
-      const response = await fetch(
-        `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models`,
+      // Use Google Cloud Discovery API to fetch available Vertex AI models
+      // This is specific to Google Cloud and different from OpenAI-compatible endpoints
+      const discoveryResponse = await fetch(
+        `https://discoveryengine.googleapis.com/v1/projects/${projectId}/locations/global/collections/default_collection/dataStores/default_data_store/models`,
         {
           method: 'GET',
           headers: {
@@ -908,29 +909,50 @@ export class AIGatewayService {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Vertex AI API error: ${response.status} ${response.statusText}`);
+      // If discovery API fails, try the Vertex AI Model Garden API
+      if (!discoveryResponse.ok) {
+        console.log(`Discovery API failed with ${discoveryResponse.status}: ${discoveryResponse.statusText}, trying Model Garden API...`);
+        
+        const modelGardenResponse = await fetch(
+          `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/models`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!modelGardenResponse.ok) {
+          console.log(`Model Garden API failed with ${modelGardenResponse.status}: ${modelGardenResponse.statusText}, trying publisher models...`);
+          
+          // Try the publisher models endpoint specifically for Google models
+          const publisherResponse = await fetch(
+            `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!publisherResponse.ok) {
+            throw new Error(`All Vertex AI model APIs failed. Last error: ${publisherResponse.status} ${publisherResponse.statusText}`);
+          }
+
+          const publisherData = await publisherResponse.json();
+          return this.parseVertexPublisherModels(publisherData, projectId, provider);
+        }
+
+        const modelGardenData = await modelGardenResponse.json();
+        return this.parseVertexModelGardenModels(modelGardenData, projectId, provider);
       }
 
-      const data = await response.json();
-      
-      if (data.models && Array.isArray(data.models)) {
-        return data.models
-          .filter((model: any) => model.name && model.displayName)
-          .map((model: any) => {
-            const shortModelName = model.name.split('/').pop();
-            return {
-              id: model.name, // Use full model path as ID for API calls
-              name: model.displayName,
-              description: model.description || `Google ${model.displayName}`,
-              pricing: provider.pricing[shortModelName] || { input: 1, output: 3 },
-              context_length: this.getVertexContextLength(model.displayName)
-            };
-          });
-      }
-
-      // Fallback to known models if API call doesn't return expected format
-      throw new Error('Unexpected API response format');
+      const discoveryData = await discoveryResponse.json();
+      return this.parseVertexDiscoveryModels(discoveryData, projectId, provider);
 
     } catch (error) {
       console.error('Failed to fetch Vertex AI models:', error);
@@ -968,6 +990,104 @@ export class AIGatewayService {
       return 128000; // Gemini 1.0 Pro has 128k context
     }
     return 32000; // Default context length
+  }
+
+  // Parse Google Cloud Discovery Engine response
+  private parseVertexDiscoveryModels(data: any, projectId: string, provider: AIProvider): ProviderModel[] {
+    if (data.models && Array.isArray(data.models)) {
+      return data.models
+        .filter((model: any) => model.name && model.displayName)
+        .map((model: any) => {
+          const shortModelName = model.name.split('/').pop();
+          return {
+            id: model.name, // Full path for API calls
+            name: model.displayName,
+            description: model.description || `Google ${model.displayName}`,
+            pricing: provider.pricing[shortModelName] || { input: 1, output: 3 },
+            context_length: this.getVertexContextLength(model.displayName)
+          };
+        });
+    }
+    return [];
+  }
+
+  // Parse Vertex AI Model Garden response
+  private parseVertexModelGardenModels(data: any, projectId: string, provider: AIProvider): ProviderModel[] {
+    if (data.models && Array.isArray(data.models)) {
+      return data.models
+        .filter((model: any) => model.name && model.displayName)
+        .map((model: any) => {
+          const shortModelName = model.name.split('/').pop();
+          return {
+            id: model.name, // Full path for API calls
+            name: model.displayName,
+            description: model.description || `Google ${model.displayName}`,
+            pricing: provider.pricing[shortModelName] || { input: 1, output: 3 },
+            context_length: this.getVertexContextLength(model.displayName)
+          };
+        });
+    }
+    return [];
+  }
+
+  // Parse Vertex AI Publisher models response (Google-specific models)
+  private parseVertexPublisherModels(data: any, projectId: string, provider: AIProvider): ProviderModel[] {
+    const models: ProviderModel[] = [];
+    
+    // Handle different response formats from Google's publisher API
+    if (data.models && Array.isArray(data.models)) {
+      // Standard models array format
+      data.models.forEach((model: any) => {
+        if (model.name && model.displayName) {
+          const shortModelName = model.name.split('/').pop();
+          models.push({
+            id: model.name, // Full path for API calls
+            name: model.displayName,
+            description: model.description || `Google ${model.displayName}`,
+            pricing: provider.pricing[shortModelName] || { input: 1, output: 3 },
+            context_length: this.getVertexContextLength(model.displayName)
+          });
+        }
+      });
+    } else if (data.publisherModels && Array.isArray(data.publisherModels)) {
+      // Alternative publisher models format
+      data.publisherModels.forEach((model: any) => {
+        if (model.name && model.displayName) {
+          const shortModelName = model.name.split('/').pop();
+          models.push({
+            id: model.name,
+            name: model.displayName,
+            description: model.description || `Google ${model.displayName}`,
+            pricing: provider.pricing[shortModelName] || { input: 1, output: 3 },
+            context_length: this.getVertexContextLength(model.displayName)
+          });
+        }
+      });
+    } else {
+      // Fallback: construct known Google models with proper paths
+      const knownGoogleModels = [
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-1.0-pro',
+        'gemini-1.0-pro-vision',
+        'text-bison',
+        'chat-bison',
+        'code-bison'
+      ];
+
+      knownGoogleModels.forEach(modelName => {
+        const fullPath = `projects/${projectId}/locations/us-central1/publishers/google/models/${modelName}`;
+        models.push({
+          id: fullPath,
+          name: modelName,
+          description: `Google ${modelName}`,
+          pricing: provider.pricing[modelName] || { input: 1, output: 3 },
+          context_length: this.getVertexContextLength(modelName)
+        });
+      });
+    }
+
+    return models;
   }
 
   private async fetchOpenRouterModels(provider: AIProvider, keyInfo: { keyId: string; apiKey: string; keyName: string }): Promise<ProviderModel[]> {
