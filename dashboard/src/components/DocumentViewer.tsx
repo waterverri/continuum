@@ -163,17 +163,12 @@ export function DocumentViewer({
           </div>
         )}
         
-        <p className="document-viewer__meta">
-          <strong>Type:</strong> {currentDocument.document_type || 'No type'} • 
-          <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
-        </p>
-        
-        {/* Inline Tag Manager */}
+        {/* Inline Tag Manager for the base selected document */}
         <div className="document-viewer__tags">
           <InlineTagManager
             projectId={projectId}
-            documentId={currentDocument.id}
-            currentTags={currentDocument.tags || []}
+            documentId={document.id}
+            currentTags={document.tags || []}
             onTagUpdate={onTagUpdate}
           />
         </div>
@@ -206,7 +201,13 @@ export function DocumentViewer({
       )}
       
       <div className="content-section">
-        <h4>Raw Content:</h4>
+        <div className="document-content-header">
+          <h4>Raw Content</h4>
+          <div className="document-content-meta">
+            <strong>Type:</strong> {currentDocument.document_type || 'No type'} • 
+            <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
+          </div>
+        </div>
         <div 
           ref={contentRef}
           className="content-display content-display--raw" 

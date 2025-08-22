@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Tag } from '../api';
-import { getTags, updateDocumentTags } from '../api';
+import { getTags, addTagsToDocument, removeTagFromDocument } from '../api';
 import { supabase } from '../supabaseClient';
 
 interface InlineTagManagerProps {
@@ -78,11 +78,10 @@ export function InlineTagManager({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
       
-      const newTagIds = [...currentTags.map(t => t.id), tag.id];
-      await updateDocumentTags(documentId, newTagIds, session.access_token);
+      await addTagsToDocument(projectId, documentId, [tag.id], session.access_token);
       
       if (onTagUpdate) {
-        onTagUpdate(documentId, newTagIds);
+        onTagUpdate(documentId, [...currentTags.map(t => t.id), tag.id]);
       }
       
       setInputValue('');
@@ -105,14 +104,13 @@ export function InlineTagManager({
       if (!session?.access_token) return;
       
       // Create new tag
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tags`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tags/${projectId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          project_id: projectId,
           name: tagName,
           color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
         })
@@ -122,14 +120,13 @@ export function InlineTagManager({
         throw new Error('Failed to create tag');
       }
       
-      const newTag = await response.json();
+      const { tag: newTag } = await response.json();
       
       // Add to document
-      const newTagIds = [...currentTags.map(t => t.id), newTag.id];
-      await updateDocumentTags(documentId, newTagIds, session.access_token);
+      await addTagsToDocument(projectId, documentId, [newTag.id], session.access_token);
       
       if (onTagUpdate) {
-        onTagUpdate(documentId, newTagIds);
+        onTagUpdate(documentId, [...currentTags.map(t => t.id), newTag.id]);
       }
       
       // Update available tags
@@ -150,10 +147,10 @@ export function InlineTagManager({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
       
-      const newTagIds = currentTags.filter(t => t.id !== tagId).map(t => t.id);
-      await updateDocumentTags(documentId, newTagIds, session.access_token);
+      await removeTagFromDocument(projectId, documentId, tagId, session.access_token);
       
       if (onTagUpdate) {
+        const newTagIds = currentTags.filter(t => t.id !== tagId).map(t => t.id);
         onTagUpdate(documentId, newTagIds);
       }
     } catch (error) {

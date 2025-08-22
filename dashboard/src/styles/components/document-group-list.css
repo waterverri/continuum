@@ -120,3 +120,20 @@
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* Document Content Headers */
+.document-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.document-content-header h4 {
+  margin: 0;
+}
+
+.document-content-meta {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
