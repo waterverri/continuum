@@ -1,0 +1,98 @@
+/* Project Tags Filter Styles */
+.project-tags-filter {
+  margin-bottom: 1rem;
+}
+
+.project-tags-filter__input-container {
+  position: relative;
+}
+
+.project-tags-filter__input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  background: var(--background-color);
+}
+
+.project-tags-filter__input:focus {
+  outline: none;
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.project-tags-filter__suggestions {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.project-tags-filter__section {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.project-tags-filter__section:last-child {
+  border-bottom: none;
+}
+
+.project-tags-filter__section-title {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--background-hover);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.project-tags-filter__suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #343a40;
+  transition: background-color 0.2s ease;
+}
+
+.project-tags-filter__suggestion:hover {
+  background: var(--background-hover);
+}
+
+.project-tags-filter__color {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+}
+
+.project-tags-filter__create {
+  width: 100%;
+  padding: 0.5rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--primary-600);
+  font-style: italic;
+  transition: background-color 0.2s ease;
+}
+
+.project-tags-filter__create:hover {
+  background: var(--primary-50);
+}
+
+.project-tags-filter__create:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

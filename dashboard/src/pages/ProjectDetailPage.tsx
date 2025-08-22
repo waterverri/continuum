@@ -10,7 +10,7 @@ import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { PromptDocumentViewer } from '../components/PromptDocumentViewer';
 import { DocumentGroupList } from '../components/DocumentGroupList';
-import { InlineTagManager } from '../components/InlineTagManager';
+import { ProjectTagsFilter } from '../components/ProjectTagsFilter';
 import { DocumentFilters } from '../components/DocumentFilters';
 import { DocumentPickerModal } from '../components/DocumentPickerModal';
 import { ComponentKeyInputModal } from '../components/ComponentKeyInputModal';
@@ -729,20 +729,15 @@ export default function ProjectDetailPage() {
             </div>
             
             <div className="widget__content">
-              {/* Tag Creation Interface */}
+              {/* Tag Filter and Create Interface */}
               {projectId && (
-                <div className="project-tags-create">
-                  <InlineTagManager
-                    projectId={projectId}
-                    documentId=""
-                    currentTags={[]}
-                    onTagUpdate={() => {
-                      operations.loadTags();
-                    }}
-                    createOnly={true}
-                    placeholder="Create new tag..."
-                  />
-                </div>
+                <ProjectTagsFilter
+                  projectId={projectId}
+                  tags={state.tags}
+                  onTagCreated={() => {
+                    operations.loadTags();
+                  }}
+                />
               )}
               
               {state.tags.length === 0 ? (
@@ -751,13 +746,13 @@ export default function ProjectDetailPage() {
                   <p>Use the button above to create your first tag.</p>
                 </div>
               ) : (
-                <div className="tags-grid">
+                <div className="tags-grid tags-grid--compact">
                   {state.tags.map(tag => {
                     const isInFilter = sidebarFilter.tagFilterConditions.some(condition => condition.tagId === tag.id);
                     return (
                       <button 
                         key={tag.id}
-                        className={`tag-badge tag-badge--clickable ${isInFilter ? 'tag-badge--filtered' : ''}`}
+                        className={`tag-badge tag-badge--compact tag-badge--clickable ${isInFilter ? 'tag-badge--filtered' : ''}`}
                         style={{ backgroundColor: tag.color, color: 'white' }}
                         onClick={() => {
                           if (isInFilter) {
@@ -791,6 +786,11 @@ export default function ProjectDetailPage() {
                   events={state.events}
                   onEventsChange={loadEvents}
                   onTimelineClick={() => state.openModal('showEventTimeline')}
+                  externalTagFilters={sidebarFilter.tagFilterConditions}
+                  onEventClick={(eventId) => {
+                    // Apply event filter to document selection
+                    sidebarFilter.setSelectedEventIds([eventId]);
+                  }}
                   onDocumentView={(document) => {
                     state.closeAllModals(); // Close all modals first
                     state.setSelectedDocument(document);

@@ -12,6 +12,8 @@ import {
   formatProjectDateTime 
 } from '../utils/datetime';
 
+import type { TagFilterCondition } from './TagFilterWidget';
+
 interface EventsWidgetProps {
   projectId: string;
   events: Event[];
@@ -20,6 +22,8 @@ interface EventsWidgetProps {
   onDocumentView?: (document: Document) => void;
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
+  externalTagFilters?: TagFilterCondition[];
+  onEventClick?: (eventId: string) => void;
 }
 
 interface EventFormData {
@@ -31,7 +35,7 @@ interface EventFormData {
   parent_event_id: string;
 }
 
-export function EventsWidget({ projectId, events, onEventsChange, onTimelineClick, onDocumentView, onDocumentEdit, onDocumentDelete }: EventsWidgetProps) {
+export function EventsWidget({ projectId, events, onEventsChange, onTimelineClick, onDocumentView, onDocumentEdit, onDocumentDelete, externalTagFilters = [], onEventClick }: EventsWidgetProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -238,9 +242,38 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
   const hasActiveFilters = filters.searchTerm || 
     filters.selectedTagIds.length > 0 || 
     filters.dateRange.startDate || 
-    filters.dateRange.endDate;
+    filters.dateRange.endDate ||
+    externalTagFilters.length > 0;
 
-  const filteredEvents = filterEvents(events, filters, eventTags, baseDate);
+  // Apply internal filtering first
+  const internallyFilteredEvents = filterEvents(events, filters, eventTags, baseDate);
+  
+  // Apply external tag filters
+  const applyExternalTagFilters = (events: Event[]): Event[] => {
+    if (externalTagFilters.length === 0) return events;
+    
+    return events.filter(event => {
+      const eventTagList = eventTags.get(event.id) || [];
+      const eventTagIds = eventTagList.map(t => t.id);
+      
+      return externalTagFilters.every(condition => {
+        const hasTag = eventTagIds.includes(condition.tagId);
+        
+        switch (condition.mode) {
+          case 'exist_all':
+          case 'exist_one':
+            return hasTag;
+          case 'not_exist_all':
+          case 'not_exist_one':
+            return !hasTag;
+          default:
+            return true;
+        }
+      });
+    });
+  };
+  
+  const filteredEvents = applyExternalTagFilters(internallyFilteredEvents);
   const sortedEvents = filteredEvents
     .sort((a, b) => (a.time_start || 0) - (b.time_start || 0));
 
@@ -381,14 +414,19 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
         ) : (
           <div className="event-cards">
             {sortedEvents.map((event) => (
-              <div key={event.id} className="event-card">
+              <div 
+                key={event.id} 
+                className={`event-card ${onEventClick ? 'event-card--clickable' : ''}`}
+                onClick={onEventClick ? () => onEventClick(event.id) : undefined}
+                style={{ cursor: onEventClick ? 'pointer' : 'default' }}
+              >
                 <div className="event-card__main">
                   <div className="event-card__header">
                     <h5 className="event-card__name">{event.name}</h5>
                     <div className="event-card__actions">
                       <button
                         className="event-card__action"
-                        onClick={() => loadEventDetails(event)}
+                        onClick={(e) => { e.stopPropagation(); loadEventDetails(event); }}
                         disabled={loading}
                         title="View details"
                       >
@@ -396,7 +434,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                       </button>
                       <button
                         className="event-card__action"
-                        onClick={() => handleTagsManagement(event)}
+                        onClick={(e) => { e.stopPropagation(); handleTagsManagement(event); }}
                         disabled={loading}
                         title="Manage tags"
                       >
@@ -404,7 +442,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                       </button>
                       <button
                         className="event-card__action"
-                        onClick={() => handleEdit(event)}
+                        onClick={(e) => { e.stopPropagation(); handleEdit(event); }}
                         disabled={loading}
                         title="Edit event"
                       >
@@ -412,7 +450,7 @@ export function EventsWidget({ projectId, events, onEventsChange, onTimelineClic
                       </button>
                       <button
                         className="event-card__action event-card__action--danger"
-                        onClick={() => handleDelete(event.id)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(event.id); }}
                         disabled={loading}
                         title="Delete event"
                       >

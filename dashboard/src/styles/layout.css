@@ -282,7 +282,11 @@
 .tags-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-sm);
+  gap: 0.375rem;
+}
+
+.tags-grid--compact {
+  gap: 0.25rem;
 }
 
 .presets-list {

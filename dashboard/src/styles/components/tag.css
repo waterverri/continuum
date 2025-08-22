@@ -39,6 +39,14 @@
   font-size: var(--font-size-xs);
 }
 
+.tag-badge--compact {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
 .tag-badge--more {
   background-color: var(--color-secondary) !important;
   color: white !important;

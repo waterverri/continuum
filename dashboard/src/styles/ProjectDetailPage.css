@@ -18,5 +18,6 @@
 @import './components/document-group-list.css';
 @import './components/inline-tag-manager.css';
 @import './components/tag-filter-widget.css';
+@import './components/project-tags-filter.css';
 @import './layout.css';
 

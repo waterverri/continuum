@@ -52,8 +52,10 @@ function DocumentGroupItem({
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Find the main document (first document in the group or the one without specific type)
-  const mainDocument = group.documents[0];
+  // Find the main document (group representative: where group_id == id OR group_id is null)
+  const mainDocument = group.documents.find(doc => 
+    doc.group_id === null || doc.group_id === doc.id
+  ) || group.documents[0]; // Fallback to first document if no representative found
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -228,7 +230,7 @@ export function DocumentGroupList({
     if (!group) {
       group = {
         groupId,
-        title: doc.title,
+        title: '', // Will be set after finding representative
         documents: [],
         availableTypes: []
       };
@@ -244,6 +246,14 @@ export function DocumentGroupList({
     
     return acc;
   }, []);
+
+  // Set group titles based on representative documents
+  documentGroups.forEach(group => {
+    const representative = group.documents.find(doc => 
+      doc.group_id === null || doc.group_id === doc.id
+    ) || group.documents[0]; // Fallback to first document
+    group.title = representative.title;
+  });
 
   if (documentGroups.length === 0) {
     return (

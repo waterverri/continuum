@@ -153,6 +153,17 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+.event-card--clickable {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.event-card--clickable:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+  transform: translateY(-1px);
+}
+
 .event-card__main {
   padding: var(--spacing-sm);
 }
