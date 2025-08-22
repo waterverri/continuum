@@ -10,6 +10,7 @@ import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { PromptDocumentViewer } from '../components/PromptDocumentViewer';
 import { DocumentGroupList } from '../components/DocumentGroupList';
+import { InlineTagManager } from '../components/InlineTagManager';
 import { DocumentFilters } from '../components/DocumentFilters';
 import { DocumentPickerModal } from '../components/DocumentPickerModal';
 import { ComponentKeyInputModal } from '../components/ComponentKeyInputModal';
@@ -641,8 +642,18 @@ export default function ProjectDetailPage() {
                     state.setSelectedDocument(document);
                     state.setResolvedContent(null);
                   }}
-                  onTagUpdate={() => {
-                    operations.loadDocuments();
+                  onTagUpdate={async () => {
+                    await operations.loadDocuments();
+                    // Force re-render by getting fresh document data
+                    if (state.selectedDocument) {
+                      // Since loadDocuments updates state.documents, we need to wait for the next render cycle
+                      setTimeout(() => {
+                        const updatedDoc = state.documents.find(d => d.id === state.selectedDocument!.id);
+                        if (updatedDoc) {
+                          state.setSelectedDocument(updatedDoc);
+                        }
+                      }, 0);
+                    }
                   }}
                   projectId={projectId || ''}
                 />
@@ -718,22 +729,54 @@ export default function ProjectDetailPage() {
             </div>
             
             <div className="widget__content">
+              {/* Tag Creation Interface */}
+              {projectId && (
+                <div className="project-tags-create">
+                  <InlineTagManager
+                    projectId={projectId}
+                    documentId=""
+                    currentTags={[]}
+                    onTagUpdate={() => {
+                      operations.loadTags();
+                    }}
+                    createOnly={true}
+                    placeholder="Create new tag..."
+                  />
+                </div>
+              )}
+              
               {state.tags.length === 0 ? (
                 <div className="empty-state">
                   <p>No tags created yet.</p>
-                  <p>Create tags to organize your documents.</p>
+                  <p>Use the button above to create your first tag.</p>
                 </div>
               ) : (
                 <div className="tags-grid">
-                  {state.tags.map(tag => (
-                    <span 
-                      key={tag.id}
-                      className="tag-badge"
-                      style={{ backgroundColor: tag.color, color: 'white' }}
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
+                  {state.tags.map(tag => {
+                    const isInFilter = sidebarFilter.tagFilterConditions.some(condition => condition.tagId === tag.id);
+                    return (
+                      <button 
+                        key={tag.id}
+                        className={`tag-badge tag-badge--clickable ${isInFilter ? 'tag-badge--filtered' : ''}`}
+                        style={{ backgroundColor: tag.color, color: 'white' }}
+                        onClick={() => {
+                          if (isInFilter) {
+                            // Remove from filter
+                            const newConditions = sidebarFilter.tagFilterConditions.filter(c => c.tagId !== tag.id);
+                            sidebarFilter.setTagFilterConditions(newConditions);
+                          } else {
+                            // Add to filter
+                            const newCondition = { tagId: tag.id, mode: 'exist_all' as const };
+                            sidebarFilter.setTagFilterConditions([...sidebarFilter.tagFilterConditions, newCondition]);
+                          }
+                        }}
+                        title={isInFilter ? 'Click to remove from filter' : 'Click to add to filter'}
+                      >
+                        {tag.name}
+                        {isInFilter && <span className="tag-badge__indicator"> ✓</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

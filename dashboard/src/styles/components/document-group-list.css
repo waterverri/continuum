@@ -137,3 +137,9 @@
   font-size: 0.875rem;
   color: var(--text-secondary);
 }
+
+.document-content-tags {
+  margin: 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}

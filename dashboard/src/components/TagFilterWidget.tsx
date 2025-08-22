@@ -25,8 +25,6 @@ export function TagFilterWidget({
 }: TagFilterWidgetProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedTagId, setSelectedTagId] = useState<string>('');
 
   const getAccessToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -55,18 +53,6 @@ export function TagFilterWidget({
     loadTags();
   }, [loadTags]);
 
-  const handleAddCondition = () => {
-    if (!selectedTagId) return;
-    
-    const newCondition: TagFilterCondition = {
-      tagId: selectedTagId,
-      mode: 'exist_all'
-    };
-    
-    onConditionsChange([...selectedConditions, newCondition]);
-    setSelectedTagId('');
-    setIsEditing(false);
-  };
 
   const handleRemoveCondition = (index: number) => {
     const newConditions = selectedConditions.filter((_, i) => i !== index);
@@ -107,10 +93,6 @@ export function TagFilterWidget({
 
   const getTagById = (tagId: string) => tags.find(tag => tag.id === tagId);
 
-  const availableTagsForSelection = tags.filter(tag => 
-    !selectedConditions.some(condition => condition.tagId === tag.id)
-  );
-
   if (loading || tags.length === 0) {
     return null;
   }
@@ -126,92 +108,45 @@ export function TagFilterWidget({
         {selectedConditions.length > 0 && (
           <div className="tag-filter-conditions">
             <h5>Active Filters:</h5>
-            {selectedConditions.map((condition, index) => {
-              const tag = getTagById(condition.tagId);
-              if (!tag) return null;
-              
-              return (
-                <div key={`${condition.tagId}-${index}`} className="tag-filter-condition">
-                  <div className="tag-filter-condition__tag">
-                    <span 
-                      className="tag-badge tag-badge--sm"
+            <div className="tag-filter-cards">
+              {selectedConditions.map((condition, index) => {
+                const tag = getTagById(condition.tagId);
+                if (!tag) return null;
+                
+                return (
+                  <div key={`${condition.tagId}-${index}`} className="tag-filter-card">
+                    <div 
+                      className="tag-filter-card__badge"
                       style={{ backgroundColor: tag.color, color: 'white' }}
                     >
-                      {tag.name}
-                    </span>
+                      <span className="tag-filter-card__name">{tag.name}</span>
+                      <button
+                        className="tag-filter-card__mode"
+                        onClick={() => handleModeChange(index, cycleMode(condition.mode))}
+                        title={getFilterModeTooltip(condition.mode)}
+                      >
+                        {getFilterModeIcon(condition.mode)}
+                      </button>
+                      <button
+                        className="tag-filter-card__remove"
+                        onClick={() => handleRemoveCondition(index)}
+                        title="Remove condition"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
-                  
-                  <button
-                    className="tag-filter-condition__mode"
-                    onClick={() => handleModeChange(index, cycleMode(condition.mode))}
-                    title={getFilterModeTooltip(condition.mode)}
-                  >
-                    {getFilterModeIcon(condition.mode)}
-                  </button>
-                  
-                  <button
-                    className="tag-filter-condition__remove"
-                    onClick={() => handleRemoveCondition(index)}
-                    title="Remove condition"
-                  >
-                    ×
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
         
-        {/* Add New Condition */}
-        {availableTagsForSelection.length > 0 && (
-          <div className="tag-filter-add">
-            {isEditing ? (
-              <div className="tag-filter-add__form">
-                <select 
-                  className="tag-filter-add__select"
-                  value={selectedTagId}
-                  onChange={(e) => setSelectedTagId(e.target.value)}
-                >
-                  <option value="">Select tag...</option>
-                  {availableTagsForSelection.map(tag => (
-                    <option key={tag.id} value={tag.id}>
-                      {tag.name}
-                    </option>
-                  ))}
-                </select>
-                <button 
-                  className="btn btn--xs btn--primary"
-                  onClick={handleAddCondition}
-                  disabled={!selectedTagId}
-                >
-                  Add
-                </button>
-                <button 
-                  className="btn btn--xs btn--secondary"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setSelectedTagId('');
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button 
-                className="tag-filter-add__btn"
-                onClick={() => setIsEditing(true)}
-                title="Add tag filter"
-              >
-                + Add Filter
-              </button>
-            )}
-          </div>
-        )}
         
         {selectedConditions.length === 0 && (
           <div className="tag-filter-empty">
             <p>No tag filters active</p>
-            <p>Add filters to refine document groups</p>
+            <p>Click tags in Project Tags to add filters</p>
           </div>
         )}
       </div>

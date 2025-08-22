@@ -163,15 +163,6 @@ export function DocumentViewer({
           </div>
         )}
         
-        {/* Inline Tag Manager for the base selected document */}
-        <div className="document-viewer__tags">
-          <InlineTagManager
-            projectId={projectId}
-            documentId={document.id}
-            currentTags={document.tags || []}
-            onTagUpdate={onTagUpdate}
-          />
-        </div>
         
         <div className="document-viewer__actions">
           {currentDocument.is_composite && (
@@ -208,6 +199,17 @@ export function DocumentViewer({
             <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
           </div>
         </div>
+        
+        {/* Inline Tag Manager */}
+        <div className="document-content-tags">
+          <InlineTagManager
+            projectId={projectId}
+            documentId={document.id}
+            currentTags={document.tags || []}
+            onTagUpdate={onTagUpdate}
+          />
+        </div>
+        
         <div 
           ref={contentRef}
           className="content-display content-display--raw" 

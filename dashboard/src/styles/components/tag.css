@@ -274,3 +274,29 @@
   color: var(--color-text-muted);
   font-style: italic;
 }
+
+.tag-badge--clickable {
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.tag-badge--clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tag-badge--filtered {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.tag-badge__indicator {
+  font-weight: bold;
+}
+
+.project-tags-create {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}

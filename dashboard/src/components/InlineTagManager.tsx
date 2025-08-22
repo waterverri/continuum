@@ -8,13 +8,17 @@ interface InlineTagManagerProps {
   documentId: string;
   currentTags: Tag[];
   onTagUpdate?: (documentId: string, tagIds: string[]) => void;
+  createOnly?: boolean;
+  placeholder?: string;
 }
 
 export function InlineTagManager({ 
   projectId, 
   documentId, 
   currentTags, 
-  onTagUpdate 
+  onTagUpdate,
+  createOnly = false,
+  placeholder = "Type tag name..."
 }: InlineTagManagerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -78,10 +82,17 @@ export function InlineTagManager({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
       
-      await addTagsToDocument(projectId, documentId, [tag.id], session.access_token);
-      
-      if (onTagUpdate) {
-        onTagUpdate(documentId, [...currentTags.map(t => t.id), tag.id]);
+      if (!createOnly) {
+        await addTagsToDocument(projectId, documentId, [tag.id], session.access_token);
+        
+        if (onTagUpdate) {
+          onTagUpdate(documentId, [...currentTags.map(t => t.id), tag.id]);
+        }
+      } else {
+        // For create-only mode, just trigger the update callback
+        if (onTagUpdate) {
+          onTagUpdate('', []); // Signal that tags list should be refreshed
+        }
       }
       
       setInputValue('');
@@ -122,11 +133,18 @@ export function InlineTagManager({
       
       const { tag: newTag } = await response.json();
       
-      // Add to document
-      await addTagsToDocument(projectId, documentId, [newTag.id], session.access_token);
-      
-      if (onTagUpdate) {
-        onTagUpdate(documentId, [...currentTags.map(t => t.id), newTag.id]);
+      // Add to document only if not create-only mode
+      if (!createOnly) {
+        await addTagsToDocument(projectId, documentId, [newTag.id], session.access_token);
+        
+        if (onTagUpdate) {
+          onTagUpdate(documentId, [...currentTags.map(t => t.id), newTag.id]);
+        }
+      } else {
+        // For create-only mode, just trigger the update callback
+        if (onTagUpdate) {
+          onTagUpdate('', []); // Signal that tags list should be refreshed
+        }
       }
       
       // Update available tags
@@ -178,7 +196,7 @@ export function InlineTagManager({
   return (
     <div className="inline-tag-manager">
       <div className="inline-tag-manager__tags">
-        {currentTags.map(tag => (
+        {!createOnly && currentTags.map(tag => (
           <div 
             key={tag.id} 
             className="inline-tag-badge"
@@ -205,7 +223,7 @@ export function InlineTagManager({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type tag name..."
+              placeholder={placeholder}
               autoFocus
               disabled={loading}
             />
@@ -240,12 +258,12 @@ export function InlineTagManager({
           </div>
         ) : (
           <button 
-            className="inline-tag-add-btn"
+            className={`inline-tag-add-btn ${createOnly ? 'inline-tag-add-btn--create-only' : ''}`}
             onClick={() => setIsEditing(true)}
             disabled={loading}
-            title="Add tag"
+            title={createOnly ? 'Create new tag' : 'Add tag'}
           >
-            +
+            {createOnly ? '+ Create Tag' : '+'}
           </button>
         )}
       </div>
