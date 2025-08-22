@@ -121,6 +121,13 @@ export default function ProjectDetailPage() {
     loadAiProviders();
   }, [projectId]);
 
+  // Auto-resolve composite documents when selected
+  useEffect(() => {
+    if (state.selectedDocument && state.selectedDocument.is_composite && !state.resolvedContent) {
+      operations.handleResolveDocument(state.selectedDocument);
+    }
+  }, [state.selectedDocument, state.resolvedContent, operations]);
+
   const loadAiProviders = async () => {
     try {
       const token = await operations.getAccessToken();
