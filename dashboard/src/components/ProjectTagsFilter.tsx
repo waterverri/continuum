@@ -6,15 +6,16 @@ interface ProjectTagsFilterProps {
   projectId: string;
   tags: Tag[];
   onTagCreated: () => void;
+  onFilterChange: (filteredTags: Tag[]) => void;
 }
 
 export function ProjectTagsFilter({ 
   projectId, 
   tags, 
-  onTagCreated 
+  onTagCreated,
+  onFilterChange
 }: ProjectTagsFilterProps) {
   const [inputValue, setInputValue] = useState('');
-  const [filteredTags, setFilteredTags] = useState<Tag[]>(tags);
   const [showCreateOption, setShowCreateOption] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,26 +23,31 @@ export function ProjectTagsFilter({
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Filter tags based on input
+  // Filter tags and notify parent when input changes
   useEffect(() => {
     if (inputValue.trim()) {
       const filtered = tags.filter(tag => 
         tag.name.toLowerCase().includes(inputValue.toLowerCase())
       );
-      setFilteredTags(filtered);
+      onFilterChange(filtered);
       
-      // Show create option if no exact match exists
+      // Show create option if no exact match exists  
       const exactMatch = tags.some(tag => 
         tag.name.toLowerCase() === inputValue.toLowerCase()
       );
       setShowCreateOption(!exactMatch && inputValue.trim().length > 0);
-      setShowSuggestions(true);
+      setShowSuggestions(showCreateOption); // Only show dropdown if there's a create option
     } else {
-      setFilteredTags(tags);
+      onFilterChange(tags);
       setShowCreateOption(false);
       setShowSuggestions(false);
     }
-  }, [inputValue, tags]);
+  }, [inputValue, tags, onFilterChange]);
+
+  // Update showSuggestions when showCreateOption changes
+  useEffect(() => {
+    setShowSuggestions(showCreateOption);
+  }, [showCreateOption]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -116,7 +122,7 @@ export function ProjectTagsFilter({
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (inputValue.trim()) {
+            if (showCreateOption) {
               setShowSuggestions(true);
             }
           }}
@@ -124,41 +130,17 @@ export function ProjectTagsFilter({
           disabled={loading}
         />
         
-        {showSuggestions && (filteredTags.length > 0 || showCreateOption) && (
+        {showSuggestions && showCreateOption && (
           <div ref={suggestionsRef} className="project-tags-filter__suggestions">
-            {filteredTags.length > 0 && (
-              <div className="project-tags-filter__section">
-                <div className="project-tags-filter__section-title">Existing Tags</div>
-                {filteredTags.slice(0, 5).map(tag => (
-                  <div
-                    key={tag.id}
-                    className="project-tags-filter__suggestion"
-                    onClick={() => {
-                      setInputValue('');
-                      setShowSuggestions(false);
-                    }}
-                  >
-                    <span 
-                      className="project-tags-filter__color"
-                      style={{ backgroundColor: tag.color }}
-                    ></span>
-                    {tag.name}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {showCreateOption && (
-              <div className="project-tags-filter__section">
-                <button
-                  className="project-tags-filter__create"
-                  onClick={handleCreateTag}
-                  disabled={loading}
-                >
-                  + Create "{inputValue}"
-                </button>
-              </div>
-            )}
+            <div className="project-tags-filter__section">
+              <button
+                className="project-tags-filter__create"
+                onClick={handleCreateTag}
+                disabled={loading}
+              >
+                + Create "{inputValue}"
+              </button>
+            </div>
           </div>
         )}
       </div>

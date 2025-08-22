@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { Document, AIProvider } from '../api';
+import type { Document, AIProvider, Tag } from '../api';
 import { getAIProviders, getUserCredits } from '../api';
 import { useProjectActions } from '../App';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
@@ -38,6 +38,7 @@ export default function ProjectDetailPage() {
   const [aiProviders, setAiProviders] = useState<AIProvider[]>([]);
   const [accessToken, setAccessToken] = useState<string>('');
   const [userCredits, setUserCredits] = useState<number>(0);
+  const [filteredTags, setFilteredTags] = useState<Tag[]>([]);
   
   // Get project actions context
   const { setProjectActions, setCurrentProject: setAppCurrentProject } = useProjectActions();
@@ -121,6 +122,11 @@ export default function ProjectDetailPage() {
     loadProject();
     loadAiProviders();
   }, [projectId]);
+
+  // Initialize filtered tags when tags change
+  useEffect(() => {
+    setFilteredTags(state.tags);
+  }, [state.tags]);
 
   // Auto-resolve composite documents when selected
   useEffect(() => {
@@ -737,6 +743,7 @@ export default function ProjectDetailPage() {
                   onTagCreated={() => {
                     operations.loadTags();
                   }}
+                  onFilterChange={setFilteredTags}
                 />
               )}
               
@@ -747,7 +754,7 @@ export default function ProjectDetailPage() {
                 </div>
               ) : (
                 <div className="tags-grid tags-grid--compact">
-                  {state.tags.map(tag => {
+                  {filteredTags.map(tag => {
                     const isInFilter = sidebarFilter.tagFilterConditions.some(condition => condition.tagId === tag.id);
                     return (
                       <button 
