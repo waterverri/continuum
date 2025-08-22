@@ -225,7 +225,17 @@ export function DocumentGroupList({
   // Group documents by group_id
   const documentGroups = documents.reduce<DocumentGroup[]>((acc, doc) => {
     const groupId = doc.group_id || null;
-    let group = acc.find(g => g.groupId === groupId);
+    
+    // For documents with null group_id (singletons), each document is its own group
+    // For documents with actual group_id, group them together
+    let group: DocumentGroup | undefined;
+    if (groupId === null) {
+      // Each null group_id document is its own singleton group - don't search for existing
+      group = undefined;
+    } else {
+      // For actual group_ids, find existing group
+      group = acc.find(g => g.groupId === groupId);
+    }
     
     if (!group) {
       group = {
