@@ -9,7 +9,7 @@ import { useDocumentFilter } from '../hooks/useDocumentFilter';
 import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { PromptDocumentViewer } from '../components/PromptDocumentViewer';
-import { DocumentList } from '../components/DocumentList';
+import { DocumentGroupList } from '../components/DocumentGroupList';
 import { DocumentFilters } from '../components/DocumentFilters';
 import { DocumentPickerModal } from '../components/DocumentPickerModal';
 import { ComponentKeyInputModal } from '../components/ComponentKeyInputModal';
@@ -22,7 +22,7 @@ import { PresetDashboardModal } from '../components/PresetDashboardModal';
 import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
 import { TagManager } from '../components/TagManager';
 import { TagSelector } from '../components/TagSelector';
-import { TagFilter } from '../components/TagFilter';
+import { TagFilterWidget } from '../components/TagFilterWidget';
 import { EventSelector } from '../components/EventSelector';
 import { EventsWidget } from '../components/EventsWidget';
 import { EventTimelineModal } from '../components/EventTimelineModal';
@@ -554,13 +554,6 @@ export default function ProjectDetailPage() {
             searchPlaceholder="Search documents..."
           />
           
-          {projectId && (
-            <TagFilter 
-              projectId={projectId}
-              selectedTagIds={sidebarFilter.selectedTagIds}
-              onTagSelectionChange={sidebarFilter.setSelectedTagIds}
-            />
-          )}
           
           <EventFilter
             events={state.events}
@@ -582,9 +575,8 @@ export default function ProjectDetailPage() {
         
         {/* Documents List - Takes Remaining Space */}
         <div className="left-sidebar__documents">
-          <DocumentList
+          <DocumentGroupList
             documents={sidebarFilter.filteredDocuments}
-            allDocuments={state.documents}
             selectedDocumentId={state.selectedDocument?.id}
             onDocumentClick={handleSidebarDocumentClick}
             onDocumentEdit={handleSidebarDocumentEdit}
@@ -594,7 +586,6 @@ export default function ProjectDetailPage() {
             onManageTags={(document) => openTagSelector(document.id)}
             onManageEvents={openEventSelector}
             onDocumentEvolution={openDocumentEvolution}
-            variant="sidebar"
             emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
           />
         </div>
@@ -640,11 +631,20 @@ export default function ProjectDetailPage() {
               ) : (
                 <DocumentViewer
                   document={state.selectedDocument}
+                  allDocuments={state.documents}
                   resolvedContent={state.resolvedContent}
                   onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
                   onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
                     state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
                   }
+                  onDocumentSelect={(document) => {
+                    state.setSelectedDocument(document);
+                    state.setResolvedContent(null);
+                  }}
+                  onTagUpdate={() => {
+                    operations.loadDocuments();
+                  }}
+                  projectId={projectId || ''}
                 />
               )
             )}
@@ -693,7 +693,19 @@ export default function ProjectDetailPage() {
         </div>
         
         <div className="right-sidebar__content">
-          {/* Tags Widget */}
+          {/* Tag Filter Widget */}
+          {projectId && (
+            <div className="widget">
+              <TagFilterWidget
+                projectId={projectId}
+                selectedConditions={sidebarFilter.tagFilterConditions}
+                onConditionsChange={sidebarFilter.setTagFilterConditions}
+                availableTags={state.tags}
+              />
+            </div>
+          )}
+          
+          {/* Tags Management Widget */}
           <div className="widget">
             <div className="widget__header">
               <h4>Project Tags ({state.tags.length})</h4>

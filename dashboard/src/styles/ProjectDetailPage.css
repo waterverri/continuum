@@ -15,5 +15,8 @@
 @import './components/project-settings-modal.css';
 @import './components/presets-widget.css';
 @import './components/prompt-document.css';
+@import './components/document-group-list.css';
+@import './components/inline-tag-manager.css';
+@import './components/tag-filter-widget.css';
 @import './layout.css';
 

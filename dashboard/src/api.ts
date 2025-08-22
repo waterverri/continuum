@@ -449,6 +449,22 @@ export const removeTagFromDocument = async (projectId: string, documentId: strin
   }
 };
 
+export const updateDocumentTags = async (documentId: string, tagIds: string[], accessToken: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/documents/${documentId}/tags`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tagIds }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update document tags');
+  }
+};
+
 export const getEventTags = async (projectId: string, eventId: string, accessToken: string): Promise<Tag[]> => {
   const response = await fetch(`${API_URL}/api/tags/${projectId}/events/${eventId}`, {
     headers: {

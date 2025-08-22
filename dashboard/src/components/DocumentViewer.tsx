@@ -1,21 +1,52 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Document } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
+import { InlineTagManager } from './InlineTagManager';
 
 interface DocumentViewerProps {
   document: Document;
+  allDocuments: Document[];
   resolvedContent: string | null;
   onResolve: () => void;
   onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string) => void;
+  onDocumentSelect?: (document: Document) => void;
+  onTagUpdate?: (documentId: string, tagIds: string[]) => void;
+  projectId: string;
 }
 
-export function DocumentViewer({ document, resolvedContent, onResolve, onCreateFromSelection }: DocumentViewerProps) {
+export function DocumentViewer({ 
+  document, 
+  allDocuments, 
+  resolvedContent, 
+  onResolve, 
+  onCreateFromSelection, 
+  onDocumentSelect,
+  onTagUpdate,
+  projectId 
+}: DocumentViewerProps) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const [showCreateButton, setShowCreateButton] = useState(false);
   const [showExtractModal, setShowExtractModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
+
+  // Get documents in the same group
+  const groupDocuments = document.group_id 
+    ? allDocuments.filter(doc => doc.group_id === document.group_id)
+    : [document];
+  
+  // Get available document types in this group
+  const availableTypes = [...new Set(groupDocuments.map(doc => doc.document_type).filter((type): type is string => Boolean(type)))];
+  
+  // Get current document based on active tab
+  const currentDocument = groupDocuments.find(doc => doc.document_type === activeTab) || document;
+  
+  // Update active tab when document changes
+  useEffect(() => {
+    setActiveTab(document.document_type || '');
+  }, [document.id, document.document_type]);
 
   const handleTextSelection = useCallback(() => {
     try {
@@ -110,27 +141,62 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
     <div className="document-viewer">
       <div className="document-viewer__header">
         <h3 className="document-viewer__title">{document.title}</h3>
+        
+        {/* Document Type Tabs */}
+        {availableTypes.length > 1 && (
+          <div className="document-viewer__tabs">
+            {availableTypes.map(type => (
+              <button
+                key={type}
+                className={`document-tab ${activeTab === type ? 'document-tab--active' : ''}`}
+                onClick={() => {
+                  setActiveTab(type);
+                  const targetDoc = groupDocuments.find(doc => doc.document_type === type);
+                  if (targetDoc && onDocumentSelect) {
+                    onDocumentSelect(targetDoc);
+                  }
+                }}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        )}
+        
         <p className="document-viewer__meta">
-          <strong>Type:</strong> {document.document_type || 'No type'} • 
-          <strong>Format:</strong> {document.is_composite ? 'Composite Document' : 'Static Document'}
+          <strong>Type:</strong> {currentDocument.document_type || 'No type'} • 
+          <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
         </p>
-        {document.is_composite && (
-          <button className="btn btn--primary" onClick={onResolve}>
-            🔗 Resolve Template
-          </button>
-        )}
-        {showCreateButton && selectedText && (
-          <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
-            📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
-          </button>
-        )}
+        
+        {/* Inline Tag Manager */}
+        <div className="document-viewer__tags">
+          <InlineTagManager
+            projectId={projectId}
+            documentId={currentDocument.id}
+            currentTags={currentDocument.tags || []}
+            onTagUpdate={onTagUpdate}
+          />
+        </div>
+        
+        <div className="document-viewer__actions">
+          {currentDocument.is_composite && (
+            <button className="btn btn--primary" onClick={onResolve}>
+              🔗 Resolve Template
+            </button>
+          )}
+          {showCreateButton && selectedText && (
+            <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
+              📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
+            </button>
+          )}
+        </div>
       </div>
       
-      {document.is_composite && Object.keys(document.components || {}).length > 0 && (
+      {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && (
         <div className="document-components">
           <h4>Components:</h4>
           <div className="components-list">
-            {Object.entries(document.components || {}).map(([key, docId]) => (
+            {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
               <div key={key} className="component-mapping">
                 <strong>{`{{${key}}}`}</strong> → {docId}
               </div>
@@ -148,11 +214,11 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
           onKeyUp={handleTextSelection}
           style={{ userSelect: 'text', cursor: 'text' }}
         >
-          {document.content || 'No content'}
+          {currentDocument.content || 'No content'}
         </div>
       </div>
       
-      {document.is_composite && resolvedContent && (
+      {currentDocument.is_composite && resolvedContent && (
         <div className="content-section">
           <h4>Resolved Content:</h4>
           <div 
@@ -169,7 +235,7 @@ export function DocumentViewer({ document, resolvedContent, onResolve, onCreateF
 
       {showExtractModal && (
         <ExtractTextModal
-          sourceDocument={document}
+          sourceDocument={currentDocument}
           selectedText={selectedText}
           onConfirm={handleExtractConfirm}
           onCancel={handleExtractCancel}

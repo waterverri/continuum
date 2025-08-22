@@ -1,0 +1,122 @@
+/* Document Group List Styles */
+.document-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.document-group-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.document-group-item:hover {
+  background: var(--background-hover);
+  border-color: var(--border-hover);
+}
+
+.document-group-item--selected {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+}
+
+.document-group-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.document-group-item__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.document-group-item__header h4 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-group-item__meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.group-types-indicator {
+  font-weight: 500;
+  color: var(--primary-600);
+}
+
+.group-count {
+  color: var(--text-tertiary);
+}
+
+.document-group-item__tags {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.document-group-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+/* Document Viewer Tabs */
+.document-viewer__tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.document-tab {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.document-tab:hover {
+  color: var(--text-primary);
+  background: var(--background-hover);
+}
+
+.document-tab--active {
+  color: var(--primary-600);
+  border-bottom-color: var(--primary-600);
+  background: var(--primary-50);
+}
+
+.document-viewer__tags {
+  margin: 1rem 0;
+}
+
+.document-viewer__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
