@@ -162,6 +162,22 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
       return res.status(500).json({ error: 'Failed to create document' });
     }
     
+    // Create initial history entry for document creation
+    try {
+      const userId = req.user?.id;
+      if (userId && document) {
+        await userSupabase.rpc('create_document_history_entry', {
+          p_document_id: document.id,
+          p_change_type: 'create',
+          p_change_description: `Document "${title}" created`,
+          p_user_id: userId
+        });
+      }
+    } catch (historyError) {
+      console.error('Error creating initial history entry:', historyError);
+      // Don't fail the creation if history creation fails
+    }
+    
     res.status(201).json({ document });
   } catch (error) {
     console.error('Error in POST /documents/:projectId:', error);
@@ -204,6 +220,52 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
     
     // Create user-authenticated client for RLS
     const userSupabase = createUserSupabaseClient(userToken);
+    
+    // First get the current document state to compare changes
+    const { data: currentDoc, error: currentError } = await userSupabase
+      .from('documents')
+      .select('*')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (currentError || !currentDoc) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Create history entry before update
+    try {
+      const userId = req.user?.id;
+      if (userId) {
+        let changeType = 'update_content';
+        let changeDescription = 'Document updated';
+        
+        // Determine specific change type
+        if (title !== undefined && title !== currentDoc.title) {
+          changeType = 'update_title';
+          changeDescription = `Title changed from "${currentDoc.title}" to "${title}"`;
+        } else if (document_type !== undefined && document_type !== currentDoc.document_type) {
+          changeType = 'update_type';
+          changeDescription = `Type changed from "${currentDoc.document_type || 'none'}" to "${document_type || 'none'}"`;
+        } else if (group_id !== undefined && group_id !== currentDoc.group_id) {
+          changeType = 'move_group';
+          changeDescription = `Moved to different group`;
+        } else if (is_composite !== undefined && JSON.stringify(components) !== JSON.stringify(currentDoc.components)) {
+          changeType = 'update_components';
+          changeDescription = 'Component structure updated';
+        }
+        
+        await userSupabase.rpc('create_document_history_entry', {
+          p_document_id: documentId,
+          p_change_type: changeType,
+          p_change_description: changeDescription,
+          p_user_id: userId
+        });
+      }
+    } catch (historyError) {
+      console.error('Error creating history entry:', historyError);
+      // Don't fail the update if history creation fails
+    }
     
     // Update the document
     const { data: document, error } = await userSupabase
@@ -250,6 +312,30 @@ router.delete('/:projectId/:documentId', async (req: RequestWithUser, res: Respo
     
     // Create user-authenticated client for RLS
     const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Get document info before deletion for history entry
+    const { data: documentToDelete } = await userSupabase
+      .from('documents')
+      .select('title')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    // Create history entry before deletion
+    try {
+      const userId = req.user?.id;
+      if (userId && documentToDelete) {
+        await userSupabase.rpc('create_document_history_entry', {
+          p_document_id: documentId,
+          p_change_type: 'delete',
+          p_change_description: `Document "${documentToDelete.title}" deleted`,
+          p_user_id: userId
+        });
+      }
+    } catch (historyError) {
+      console.error('Error creating deletion history entry:', historyError);
+      // Don't fail the deletion if history creation fails
+    }
     
     const { error } = await userSupabase
       .from('documents')
@@ -446,6 +532,354 @@ router.get('/:projectId/groups/:groupId/resolve', async (req: RequestWithUser, r
     }
   } catch (error) {
     console.error('Error in GET /documents/:projectId/groups/:groupId/resolve:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/documents/:documentId/tags
+ * Update all tags for a document (replaces existing tags)
+ * Note: This endpoint exists for completeness but frontend uses individual add/remove operations
+ */
+router.put('/:documentId/tags', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const { tagIds } = req.body;
+    const userToken = req.token!;
+    
+    // Validate tagIds
+    if (!Array.isArray(tagIds)) {
+      return res.status(400).json({ error: 'tagIds must be an array' });
+    }
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify document exists and get its project_id
+    const { data: document, error: docError } = await userSupabase
+      .from('documents')
+      .select('id, project_id')
+      .eq('id', documentId)
+      .single();
+    
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    const { project_id: projectId } = document;
+    
+    // If tagIds is not empty, verify all tags exist and belong to the project
+    if (tagIds.length > 0) {
+      const { data: tags, error: tagsError } = await userSupabase
+        .from('tags')
+        .select('id')
+        .eq('project_id', projectId)
+        .in('id', tagIds);
+      
+      if (tagsError) {
+        console.error('Error verifying tags:', tagsError);
+        return res.status(500).json({ error: 'Failed to verify tags' });
+      }
+      
+      if (!tags || tags.length !== tagIds.length) {
+        return res.status(400).json({ error: 'One or more tags not found or do not belong to this project' });
+      }
+    }
+    
+    // Remove all existing tags for this document
+    const { error: deleteError } = await userSupabase
+      .from('document_tags')
+      .delete()
+      .eq('document_id', documentId);
+    
+    if (deleteError) {
+      console.error('Error removing existing tags:', deleteError);
+      return res.status(500).json({ error: 'Failed to remove existing tags' });
+    }
+    
+    // Add new tag associations if any
+    if (tagIds.length > 0) {
+      const associations = tagIds.map(tagId => ({
+        document_id: documentId,
+        tag_id: tagId
+      }));
+      
+      const { error: insertError } = await userSupabase
+        .from('document_tags')
+        .insert(associations);
+      
+      if (insertError) {
+        console.error('Error creating document-tag associations:', insertError);
+        return res.status(500).json({ error: 'Failed to update document tags' });
+      }
+    }
+    
+    res.json({ 
+      message: `Document tags updated successfully`,
+      tagCount: tagIds.length
+    });
+  } catch (error) {
+    console.error('Error in PUT /documents/:documentId/tags:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/documents/:projectId/:documentId/history
+ * Get the complete history for a document
+ */
+router.get('/:projectId/:documentId/history', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, documentId } = req.params;
+    const { limit = '50', offset = '0' } = req.query;
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify document exists and user has access
+    const { data: document, error: docError } = await userSupabase
+      .from('documents')
+      .select('id, title')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Get document history
+    const { data: history, error: historyError } = await userSupabase
+      .from('document_history')
+      .select(`
+        id,
+        title,
+        content,
+        document_type,
+        group_id,
+        is_composite,
+        components,
+        event_id,
+        change_type,
+        change_description,
+        user_id,
+        created_at,
+        previous_version_id,
+        profiles!document_history_user_id_fkey(display_name)
+      `)
+      .eq('document_id', documentId)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit as string))
+      .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+    
+    if (historyError) {
+      console.error('Error fetching document history:', historyError);
+      return res.status(500).json({ error: 'Failed to fetch document history' });
+    }
+    
+    // Get total count for pagination
+    const { count, error: countError } = await userSupabase
+      .from('document_history')
+      .select('id', { count: 'exact' })
+      .eq('document_id', documentId)
+      .eq('project_id', projectId);
+    
+    if (countError) {
+      console.error('Error counting document history:', countError);
+    }
+    
+    res.json({
+      document: {
+        id: document.id,
+        title: document.title
+      },
+      history: history || [],
+      pagination: {
+        total: count || 0,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string)
+      }
+    });
+  } catch (error) {
+    console.error('Error in GET /documents/:projectId/:documentId/history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/documents/:projectId/:documentId/history
+ * Create a history entry for the current document state
+ */
+router.post('/:projectId/:documentId/history', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, documentId } = req.params;
+    const { change_type, change_description } = req.body;
+    const userToken = req.token!;
+    const userId = req.user?.id;
+    
+    if (!change_type) {
+      return res.status(400).json({ error: 'change_type is required' });
+    }
+    
+    // Valid change types
+    const validChangeTypes = [
+      'create', 'update_content', 'update_title', 'update_type', 
+      'update_components', 'move_group', 'link_event', 'unlink_event', 'delete'
+    ];
+    
+    if (!validChangeTypes.includes(change_type)) {
+      return res.status(400).json({ 
+        error: `Invalid change_type. Must be one of: ${validChangeTypes.join(', ')}` 
+      });
+    }
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify document exists and user has access
+    const { data: document, error: docError } = await userSupabase
+      .from('documents')
+      .select('id')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Call the database function to create history entry
+    const { data, error } = await userSupabase
+      .rpc('create_document_history_entry', {
+        p_document_id: documentId,
+        p_change_type: change_type,
+        p_change_description: change_description || null,
+        p_user_id: userId
+      });
+    
+    if (error) {
+      console.error('Error creating document history entry:', error);
+      return res.status(500).json({ error: 'Failed to create history entry' });
+    }
+    
+    res.status(201).json({
+      message: 'History entry created successfully',
+      historyId: data
+    });
+  } catch (error) {
+    console.error('Error in POST /documents/:projectId/:documentId/history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/documents/:projectId/:documentId/rollback/:historyId
+ * Rollback a document to a specific history version
+ */
+router.post('/:projectId/:documentId/rollback/:historyId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, documentId, historyId } = req.params;
+    const userToken = req.token!;
+    const userId = req.user?.id;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify document exists and user has access
+    const { data: document, error: docError } = await userSupabase
+      .from('documents')
+      .select('id, title')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Verify history entry exists and belongs to this document
+    const { data: historyEntry, error: historyError } = await userSupabase
+      .from('document_history')
+      .select('id, created_at, change_description')
+      .eq('id', historyId)
+      .eq('document_id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (historyError || !historyEntry) {
+      return res.status(404).json({ error: 'History entry not found' });
+    }
+    
+    // Call the database function to rollback
+    const { data, error } = await userSupabase
+      .rpc('rollback_document_to_version', {
+        p_document_id: documentId,
+        p_history_id: historyId,
+        p_user_id: userId
+      });
+    
+    if (error) {
+      console.error('Error rolling back document:', error);
+      return res.status(500).json({ error: 'Failed to rollback document' });
+    }
+    
+    // Get the updated document to return
+    const { data: updatedDocument, error: fetchError } = await userSupabase
+      .from('documents')
+      .select('*')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (fetchError || !updatedDocument) {
+      console.error('Error fetching updated document:', fetchError);
+      return res.status(500).json({ error: 'Rollback completed but failed to fetch updated document' });
+    }
+    
+    res.json({
+      message: 'Document rolled back successfully',
+      rolledBackFrom: historyEntry.created_at,
+      document: updatedDocument
+    });
+  } catch (error) {
+    console.error('Error in POST /documents/:projectId/:documentId/rollback/:historyId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/documents/:projectId/:documentId/history/:historyId
+ * Get details of a specific history entry
+ */
+router.get('/:projectId/:documentId/history/:historyId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, documentId, historyId } = req.params;
+    const userToken = req.token!;
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Get the specific history entry
+    const { data: historyEntry, error } = await userSupabase
+      .from('document_history')
+      .select(`
+        *,
+        profiles!document_history_user_id_fkey(display_name, avatar_url)
+      `)
+      .eq('id', historyId)
+      .eq('document_id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (error || !historyEntry) {
+      return res.status(404).json({ error: 'History entry not found' });
+    }
+    
+    res.json({ historyEntry });
+  } catch (error) {
+    console.error('Error in GET /documents/:projectId/:documentId/history/:historyId:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
