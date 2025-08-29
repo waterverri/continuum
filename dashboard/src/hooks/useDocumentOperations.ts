@@ -14,9 +14,12 @@ import {
   getDocumentTags,
   addTagsToDocument,
   addDocumentToEvent,
+  getDocumentHistory,
+  getHistoryEntry,
+  rollbackDocument,
 } from '../api';
 import { supabase } from '../supabaseClient';
-import type { Document, Preset, Tag } from '../api';
+import type { Document, Preset, Tag, DocumentHistory, DocumentHistoryResponse } from '../api';
 import type { DocumentFormData } from './useProjectDetailState';
 
 interface UseDocumentOperationsProps {
@@ -359,6 +362,53 @@ export function useDocumentOperations({
     }
   }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
 
+  const loadDocumentHistory = useCallback(async (documentId: string, limit = 50, offset = 0): Promise<DocumentHistoryResponse> => {
+    if (!projectId) throw new Error('Project ID is required');
+    
+    try {
+      const token = await getAccessToken();
+      return await getDocumentHistory(projectId, documentId, token, limit, offset);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load document history');
+      throw err;
+    }
+  }, [projectId, getAccessToken, setError]);
+
+  const loadHistoryEntry = useCallback(async (documentId: string, historyId: string): Promise<DocumentHistory> => {
+    if (!projectId) throw new Error('Project ID is required');
+    
+    try {
+      const token = await getAccessToken();
+      const response = await getHistoryEntry(projectId, documentId, historyId, token);
+      return response.historyEntry;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load history entry');
+      throw err;
+    }
+  }, [projectId, getAccessToken, setError]);
+
+  const handleRollbackDocument = useCallback(async (documentId: string, historyId: string): Promise<Document> => {
+    if (!projectId) throw new Error('Project ID is required');
+    
+    if (!confirm('Are you sure you want to rollback this document? This will create a new history entry with the previous state.')) {
+      throw new Error('Rollback cancelled');
+    }
+    
+    try {
+      const token = await getAccessToken();
+      const result = await rollbackDocument(projectId, documentId, historyId, token);
+      
+      // Update local document state
+      setDocuments(documents.map(doc => doc.id === documentId ? result.document : doc));
+      setSelectedDocument(result.document);
+      
+      return result.document;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rollback document');
+      throw err;
+    }
+  }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
+
   return {
     loadDocuments,
     loadPresets,
@@ -373,6 +423,9 @@ export function useDocumentOperations({
     handleDeletePreset,
     handleCreateDerivative,
     handleCreateFromSelection,
+    loadDocumentHistory,
+    loadHistoryEntry,
+    handleRollbackDocument,
     getAccessToken,
   };
 }

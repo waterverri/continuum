@@ -19,5 +19,6 @@
 @import './components/inline-tag-manager.css';
 @import './components/tag-filter-widget.css';
 @import './components/project-tags-filter.css';
+@import './components/DocumentHistoryModal.css';
 @import './layout.css';
 

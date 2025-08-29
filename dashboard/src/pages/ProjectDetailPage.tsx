@@ -662,6 +662,9 @@ export default function ProjectDetailPage() {
                     }
                   }}
                   projectId={projectId || ''}
+                  loadDocumentHistory={operations.loadDocumentHistory}
+                  loadHistoryEntry={operations.loadHistoryEntry}
+                  onRollback={operations.handleRollbackDocument}
                 />
               )
             )}

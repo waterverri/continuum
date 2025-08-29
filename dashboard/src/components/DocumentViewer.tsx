@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Document } from '../api';
+import type { Document, DocumentHistoryResponse, DocumentHistory } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 import { InlineTagManager } from './InlineTagManager';
+import DocumentHistoryModal from './DocumentHistoryModal';
 
 interface DocumentViewerProps {
   document: Document;
@@ -12,6 +13,9 @@ interface DocumentViewerProps {
   onDocumentSelect?: (document: Document) => void;
   onTagUpdate?: (documentId: string, tagIds: string[]) => void;
   projectId: string;
+  loadDocumentHistory?: (documentId: string, limit?: number, offset?: number) => Promise<DocumentHistoryResponse>;
+  loadHistoryEntry?: (documentId: string, historyId: string) => Promise<DocumentHistory>;
+  onRollback?: (documentId: string, historyId: string) => Promise<Document>;
 }
 
 export function DocumentViewer({ 
@@ -22,12 +26,16 @@ export function DocumentViewer({
   onCreateFromSelection, 
   onDocumentSelect,
   onTagUpdate,
-  projectId 
+  projectId,
+  loadDocumentHistory,
+  loadHistoryEntry,
+  onRollback
 }: DocumentViewerProps) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const [showCreateButton, setShowCreateButton] = useState(false);
   const [showExtractModal, setShowExtractModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
@@ -137,6 +145,17 @@ export function DocumentViewer({
     setShowExtractModal(false);
   }, []);
 
+  const handleRollback = useCallback(async (historyId: string) => {
+    if (!onRollback) return;
+    try {
+      await onRollback(document.id, historyId);
+      setShowHistoryModal(false);
+    } catch (err) {
+      console.error('Failed to rollback document:', err);
+      // Error handling is done in the hook, so we just need to not close the modal
+    }
+  }, [document.id, onRollback]);
+
   return (
     <div className="document-viewer">
       <div className="document-viewer__header">
@@ -165,6 +184,11 @@ export function DocumentViewer({
         
         
         <div className="document-viewer__actions">
+          {loadDocumentHistory && loadHistoryEntry && (
+            <button className="btn btn--secondary" onClick={() => setShowHistoryModal(true)}>
+              📜 History
+            </button>
+          )}
           {currentDocument.is_composite && (
             <button className="btn btn--primary" onClick={onResolve}>
               🔗 Resolve Template
@@ -242,6 +266,18 @@ export function DocumentViewer({
           selectedText={selectedText}
           onConfirm={handleExtractConfirm}
           onCancel={handleExtractCancel}
+        />
+      )}
+      
+      {showHistoryModal && loadDocumentHistory && loadHistoryEntry && (
+        <DocumentHistoryModal
+          isOpen={showHistoryModal}
+          onClose={() => setShowHistoryModal(false)}
+          document={document}
+          projectId={projectId}
+          loadDocumentHistory={loadDocumentHistory}
+          loadHistoryEntry={loadHistoryEntry}
+          onRollback={onRollback ? handleRollback : undefined}
         />
       )}
     </div>

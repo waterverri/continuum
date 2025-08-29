@@ -14,6 +14,7 @@ export interface Document {
   is_prompt: boolean;
   components?: Record<string, string>;
   created_at: string;
+  updated_at?: string;
   resolved_content?: string;
   tags?: Tag[];
   event_id?: string; // For event-specific document versions
@@ -80,6 +81,42 @@ export interface PresetContext {
     base_document_title: string;
     content: string;
     applied_overrides: Record<string, string> | null;
+}
+
+// Document History interfaces
+export interface DocumentHistory {
+  id: string;
+  document_id: string;
+  project_id: string;
+  title: string;
+  content?: string;
+  document_type?: string;
+  group_id?: string;
+  is_composite: boolean;
+  components?: Record<string, string>;
+  event_id?: string;
+  change_type: 'create' | 'update_content' | 'update_title' | 'update_type' | 'update_components' | 'move_group' | 'link_event' | 'unlink_event' | 'delete';
+  change_description?: string;
+  user_id: string;
+  created_at: string;
+  previous_version_id?: string;
+  profiles?: {
+    display_name?: string;
+    avatar_url?: string;
+  };
+}
+
+export interface DocumentHistoryResponse {
+  document: {
+    id: string;
+    title: string;
+  };
+  history: DocumentHistory[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
 }
 
 export const getPresetContext = async (presetId: string, accessToken: string): Promise<PresetContext> => {
@@ -179,6 +216,99 @@ export const deleteDocument = async (projectId: string, documentId: string, acce
     if (!response.ok) {
         throw new Error('Failed to delete document');
     }
+};
+
+// Document History API functions
+export const getDocumentHistory = async (
+  projectId: string, 
+  documentId: string, 
+  accessToken: string,
+  limit = 50,
+  offset = 0
+): Promise<DocumentHistoryResponse> => {
+  const url = `${API_URL}/api/documents/${projectId}/${documentId}/history?limit=${limit}&offset=${offset}`;
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch document history');
+  }
+
+  return await response.json();
+};
+
+export const getHistoryEntry = async (
+  projectId: string,
+  documentId: string,
+  historyId: string,
+  accessToken: string
+): Promise<{ historyEntry: DocumentHistory }> => {
+  const response = await fetch(`${API_URL}/api/documents/${projectId}/${documentId}/history/${historyId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch history entry');
+  }
+
+  return await response.json();
+};
+
+export const createHistoryEntry = async (
+  projectId: string,
+  documentId: string,
+  changeType: DocumentHistory['change_type'],
+  changeDescription?: string,
+  accessToken: string = ''
+): Promise<{ message: string; historyId: string }> => {
+  const response = await fetch(`${API_URL}/api/documents/${projectId}/${documentId}/history`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      change_type: changeType,
+      change_description: changeDescription,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create history entry');
+  }
+
+  return await response.json();
+};
+
+export const rollbackDocument = async (
+  projectId: string,
+  documentId: string,
+  historyId: string,
+  accessToken: string
+): Promise<{
+  message: string;
+  rolledBackFrom: string;
+  document: Document;
+}> => {
+  const response = await fetch(`${API_URL}/api/documents/${projectId}/${documentId}/rollback/${historyId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to rollback document');
+  }
+
+  return await response.json();
 };
 
 // Preset API functions
