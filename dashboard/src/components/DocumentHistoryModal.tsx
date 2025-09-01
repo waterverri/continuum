@@ -7,6 +7,7 @@ interface DocumentHistoryModalProps {
   document: Document;
   projectId: string;
   onRollback?: (historyId: string) => Promise<void>;
+  onDeleteHistory?: (historyId: string) => Promise<void>;
   loadDocumentHistory: (documentId: string, limit?: number, offset?: number) => Promise<DocumentHistoryResponse>;
   loadHistoryEntry: (documentId: string, historyId: string) => Promise<DocumentHistory>;
 }
@@ -16,10 +17,12 @@ interface HistoryEntryPreviewProps {
   isSelected: boolean;
   onClick: () => void;
   onRollback?: (historyId: string) => void;
+  onDelete?: (historyId: string) => void;
   canRollback: boolean;
+  canDelete: boolean;
 }
 
-function HistoryEntryPreview({ entry, isSelected, onClick, onRollback, canRollback }: HistoryEntryPreviewProps) {
+function HistoryEntryPreview({ entry, isSelected, onClick, onRollback, onDelete, canRollback, canDelete }: HistoryEntryPreviewProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
@@ -60,28 +63,49 @@ function HistoryEntryPreview({ entry, isSelected, onClick, onRollback, canRollba
       onClick={onClick}
     >
       <div className="history-entry-header">
-        <div className="history-entry-meta">
+        <div className="history-entry-left">
           <span 
             className="change-type-badge"
             style={{ backgroundColor: getChangeTypeColor(entry.change_type) }}
           >
             {getChangeTypeLabel(entry.change_type)}
           </span>
-          <span className="history-date">{formatDate(entry.created_at)}</span>
-          <span className="history-author">by User</span>
+          <div className="history-entry-info">
+            <div className="history-title">{entry.title}</div>
+            <div className="history-meta">
+              <span className="history-date">{formatDate(entry.created_at)}</span>
+              {entry.user_name && (
+                <span className="history-author">by {entry.user_name}</span>
+              )}
+            </div>
+          </div>
         </div>
+        
         <div className="history-entry-actions">
           {canRollback && onRollback && (
             <button
               type="button"
-              className="button-secondary small"
+              className="btn btn--ghost btn--sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onRollback(entry.id);
               }}
               title="Rollback to this version"
             >
-              Rollback
+              ↶ Rollback
+            </button>
+          )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              className="btn btn--danger btn--sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(entry.id);
+              }}
+              title="Delete this history entry"
+            >
+              🗑️
             </button>
           )}
         </div>
@@ -92,16 +116,6 @@ function HistoryEntryPreview({ entry, isSelected, onClick, onRollback, canRollba
           {entry.change_description}
         </div>
       )}
-      
-      <div className="history-entry-details">
-        <span className="history-detail">Title: {entry.title}</span>
-        {entry.document_type && (
-          <span className="history-detail">Type: {entry.document_type}</span>
-        )}
-        {entry.is_composite && (
-          <span className="history-detail">Composite Document</span>
-        )}
-      </div>
     </div>
   );
 }
@@ -138,7 +152,7 @@ function HistoryDetailView({ entry, onClose }: HistoryDetailViewProps) {
           <h3>{getChangeTypeLabel(entry.change_type)}</h3>
           <div className="history-detail-meta">
             <span>{formatDate(entry.created_at)}</span>
-            <span> • by User</span>
+            {entry.user_name && <span> • by {entry.user_name}</span>}
           </div>
         </div>
         <button 
@@ -210,6 +224,7 @@ export default function DocumentHistoryModal({
   document, 
   projectId: _projectId, // eslint-disable-line @typescript-eslint/no-unused-vars
   onRollback,
+  onDeleteHistory,
   loadDocumentHistory,
   loadHistoryEntry
 }: DocumentHistoryModalProps) {
@@ -220,6 +235,8 @@ export default function DocumentHistoryModal({
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [view, setView] = useState<'list' | 'detail'>('list');
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const limit = 20;
 
@@ -260,7 +277,8 @@ export default function DocumentHistoryModal({
   }, [page, loadHistory]);
 
   const handleEntryClick = useCallback(async (entry: DocumentHistory) => {
-    setLoading(true);
+    setLoadingDetail(true);
+    setError(null);
     try {
       const fullEntry = await loadHistoryEntry(document.id, entry.id);
       setSelectedEntry(fullEntry);
@@ -268,7 +286,7 @@ export default function DocumentHistoryModal({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load history entry');
     } finally {
-      setLoading(false);
+      setLoadingDetail(false);
     }
   }, [document.id, loadHistoryEntry]);
 
@@ -285,15 +303,33 @@ export default function DocumentHistoryModal({
     }
   }, [onRollback, loadHistory]);
 
+  const handleDelete = useCallback(async (historyId: string) => {
+    if (!onDeleteHistory) return;
+    
+    try {
+      await onDeleteHistory(historyId);
+      // Reload history after delete
+      setPage(0);
+      await loadHistory(0, false);
+      setDeleteConfirmId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete history entry');
+    }
+  }, [onDeleteHistory, loadHistory]);
+
   useEffect(() => {
     if (isOpen) {
       setView('list');
       setSelectedEntry(null);
       setPage(0);
+      setLoadingDetail(false);
+      setDeleteConfirmId(null);
       loadHistory(0, false);
     } else {
       setHistoryData(null);
       setError(null);
+      setLoadingDetail(false);
+      setDeleteConfirmId(null);
     }
   }, [isOpen, loadHistory]);
 
@@ -319,7 +355,11 @@ export default function DocumentHistoryModal({
             </div>
           )}
 
-          {view === 'list' && (
+          {loadingDetail && (
+            <div className="loading-message">Loading history details...</div>
+          )}
+
+          {!loadingDetail && view === 'list' && (
             <div className="history-list-view">
               {!historyData && loading ? (
                 <div className="loading-message">Loading history...</div>
@@ -337,7 +377,9 @@ export default function DocumentHistoryModal({
                         isSelected={false}
                         onClick={() => handleEntryClick(entry)}
                         onRollback={onRollback ? handleRollback : undefined}
+                        onDelete={onDeleteHistory ? (id) => setDeleteConfirmId(id) : undefined}
                         canRollback={!!onRollback && entry.change_type !== 'delete'}
+                        canDelete={!!onDeleteHistory}
                       />
                     ))}
                   </div>
@@ -365,10 +407,14 @@ export default function DocumentHistoryModal({
             </div>
           )}
 
-          {view === 'detail' && selectedEntry && (
+          {!loadingDetail && view === 'detail' && selectedEntry && (
             <HistoryDetailView
               entry={selectedEntry}
-              onClose={() => setView('list')}
+              onClose={() => {
+                setView('list');
+                setSelectedEntry(null);
+                setError(null);
+              }}
             />
           )}
         </div>
@@ -379,6 +425,39 @@ export default function DocumentHistoryModal({
           </button>
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirmId && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
+          <div className="modal-content small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Delete</h3>
+              <button type="button" className="modal-close" onClick={() => setDeleteConfirmId(null)}>
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this history entry? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn btn--secondary" 
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn--danger" 
+                onClick={() => handleDelete(deleteConfirmId)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

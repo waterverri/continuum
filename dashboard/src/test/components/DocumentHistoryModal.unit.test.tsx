@@ -111,7 +111,8 @@ describe('DocumentHistoryModal', () => {
     });
 
     expect(screen.getByText('Document History')).toBeInTheDocument();
-    expect(screen.getByText('Test Document')).toBeInTheDocument();
+    // Check for the document title in the header subtitle specifically
+    expect(screen.getAllByText('Test Document')).toHaveLength(3); // Header + 2 history entries
   });
 
   it('loads history on open', async () => {

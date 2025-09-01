@@ -16,6 +16,7 @@ interface DocumentViewerProps {
   loadDocumentHistory?: (documentId: string, limit?: number, offset?: number) => Promise<DocumentHistoryResponse>;
   loadHistoryEntry?: (documentId: string, historyId: string) => Promise<DocumentHistory>;
   onRollback?: (documentId: string, historyId: string) => Promise<Document>;
+  onDeleteHistory?: (historyId: string) => Promise<void>;
 }
 
 export function DocumentViewer({ 
@@ -29,7 +30,8 @@ export function DocumentViewer({
   projectId,
   loadDocumentHistory,
   loadHistoryEntry,
-  onRollback
+  onRollback,
+  onDeleteHistory
 }: DocumentViewerProps) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
@@ -278,6 +280,7 @@ export function DocumentViewer({
           loadDocumentHistory={loadDocumentHistory}
           loadHistoryEntry={loadHistoryEntry}
           onRollback={onRollback ? handleRollback : undefined}
+          onDeleteHistory={onDeleteHistory}
         />
       )}
     </div>
