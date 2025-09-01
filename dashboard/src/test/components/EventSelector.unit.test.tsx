@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { EventSelector } from '../../components/EventSelector';
 
 // Mock the API functions
@@ -87,7 +87,9 @@ describe('EventSelector', () => {
     const { getEvents } = await import('../../api');
     vi.mocked(getEvents).mockImplementation(() => new Promise(() => {})); // Never resolves
 
-    render(<EventSelector {...mockProps} />);
+    await act(async () => {
+      render(<EventSelector {...mockProps} />);
+    });
     
     expect(screen.getByText('Loading events...')).toBeInTheDocument();
   });

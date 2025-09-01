@@ -33,9 +33,7 @@ const mockHistoryEntries: DocumentHistory[] = [
     user_id: 'user-1',
     created_at: '2025-01-01T12:00:00Z',
     previous_version_id: null,
-    profiles: {
-      display_name: 'Test User'
-    }
+    user_name: 'Test User'
   },
   {
     id: 'hist-2', 
@@ -53,9 +51,7 @@ const mockHistoryEntries: DocumentHistory[] = [
     user_id: 'user-1',
     created_at: '2025-01-01T10:00:00Z',
     previous_version_id: null,
-    profiles: {
-      display_name: 'Test User'
-    }
+    user_name: 'Test User'
   }
 ];
 
@@ -133,7 +129,7 @@ describe('DocumentHistoryModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Content Updated')).toBeInTheDocument();
       expect(screen.getByText('Created')).toBeInTheDocument();
-      expect(screen.getAllByText('by User')).toHaveLength(2);
+      expect(screen.getAllByText('by Test User')).toHaveLength(2);
     });
   });
 
@@ -143,7 +139,7 @@ describe('DocumentHistoryModal', () => {
     });
 
     await waitFor(() => {
-      const rollbackButtons = screen.getAllByText('Rollback');
+      const rollbackButtons = screen.getAllByText('↶ Rollback');
       expect(rollbackButtons).toHaveLength(2); // Both entries should have rollback buttons
     });
   });
@@ -154,11 +150,11 @@ describe('DocumentHistoryModal', () => {
     });
 
     await waitFor(() => {
-      const rollbackButtons = screen.getAllByText('Rollback');
+      const rollbackButtons = screen.getAllByText('↶ Rollback');
       expect(rollbackButtons.length).toBeGreaterThan(0);
     });
 
-    const firstRollbackButton = screen.getAllByText('Rollback')[0];
+    const firstRollbackButton = screen.getAllByText('↶ Rollback')[0];
     await act(async () => {
       fireEvent.click(firstRollbackButton);
     });
@@ -306,6 +302,6 @@ describe('DocumentHistoryModal', () => {
     });
 
     // Rollback buttons should not be present
-    expect(screen.queryByText('Rollback')).not.toBeInTheDocument();
+    expect(screen.queryByText('↶ Rollback')).not.toBeInTheDocument();
   });
 });
