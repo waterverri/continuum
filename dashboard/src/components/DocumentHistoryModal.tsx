@@ -68,9 +68,7 @@ function HistoryEntryPreview({ entry, isSelected, onClick, onRollback, canRollba
             {getChangeTypeLabel(entry.change_type)}
           </span>
           <span className="history-date">{formatDate(entry.created_at)}</span>
-          {entry.profiles?.display_name && (
-            <span className="history-author">by {entry.profiles.display_name}</span>
-          )}
+          <span className="history-author">by User</span>
         </div>
         <div className="history-entry-actions">
           {canRollback && onRollback && (
@@ -140,9 +138,7 @@ function HistoryDetailView({ entry, onClose }: HistoryDetailViewProps) {
           <h3>{getChangeTypeLabel(entry.change_type)}</h3>
           <div className="history-detail-meta">
             <span>{formatDate(entry.created_at)}</span>
-            {entry.profiles?.display_name && (
-              <span> • by {entry.profiles.display_name}</span>
-            )}
+            <span> • by User</span>
           </div>
         </div>
         <button 

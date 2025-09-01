@@ -100,10 +100,7 @@ export interface DocumentHistory {
   user_id: string;
   created_at: string;
   previous_version_id?: string;
-  profiles?: {
-    display_name?: string;
-    avatar_url?: string;
-  };
+  user_name?: string; // Fetched separately on frontend
 }
 
 export interface DocumentHistoryResponse {

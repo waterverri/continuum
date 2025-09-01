@@ -665,8 +665,7 @@ router.get('/:projectId/:documentId/history', async (req: RequestWithUser, res: 
         change_description,
         user_id,
         created_at,
-        previous_version_id,
-        profiles!document_history_user_id_fkey(display_name)
+        previous_version_id
       `)
       .eq('document_id', documentId)
       .eq('project_id', projectId)
@@ -864,10 +863,7 @@ router.get('/:projectId/:documentId/history/:historyId', async (req: RequestWith
     // Get the specific history entry
     const { data: historyEntry, error } = await userSupabase
       .from('document_history')
-      .select(`
-        *,
-        profiles!document_history_user_id_fkey(display_name, avatar_url)
-      `)
+      .select('*')
       .eq('id', historyId)
       .eq('document_id', documentId)
       .eq('project_id', projectId)

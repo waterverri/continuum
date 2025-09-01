@@ -132,7 +132,7 @@ describe('DocumentHistoryModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Content Updated')).toBeInTheDocument();
       expect(screen.getByText('Created')).toBeInTheDocument();
-      expect(screen.getAllByText('by Test User')).toHaveLength(2);
+      expect(screen.getAllByText('by User')).toHaveLength(2);
     });
   });
 
