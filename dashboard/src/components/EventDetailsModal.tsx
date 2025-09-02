@@ -142,13 +142,22 @@ export function EventDetailsModal({
               <div className="event-documents">
                 <div className="documents-header">
                   <h4>Associated Documents ({eventDocuments.length})</h4>
-                  <button
-                    className="event-edit-btn"
-                    onClick={handleStartEdit}
-                    title="Edit this event"
-                  >
-                    ✎ Edit Event
-                  </button>
+                  <div className="event-actions">
+                    <button
+                      className="event-action-btn dependencies"
+                      onClick={() => {/* TODO: Open dependencies modal */}}
+                      title="Manage event dependencies"
+                    >
+                      🔗 Dependencies
+                    </button>
+                    <button
+                      className="event-action-btn edit"
+                      onClick={handleStartEdit}
+                      title="Edit this event"
+                    >
+                      ✎ Edit Event
+                    </button>
+                  </div>
                 </div>
                 {eventDocuments.length === 0 ? (
                   <p className="no-documents">No documents associated with this event.</p>

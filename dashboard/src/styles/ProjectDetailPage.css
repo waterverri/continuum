@@ -20,5 +20,6 @@
 @import './components/tag-filter-widget.css';
 @import './components/project-tags-filter.css';
 @import './components/DocumentHistoryModal.css';
+@import './components/EventDependencyModal.css';
 @import './layout.css';
 

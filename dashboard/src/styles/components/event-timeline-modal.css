@@ -847,6 +847,36 @@
   margin-bottom: var(--spacing-md);
 }
 
+.event-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.event-action-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.event-action-btn:hover {
+  background: var(--color-background-light);
+  border-color: var(--color-primary);
+}
+
+.event-action-btn.dependencies {
+  color: var(--color-primary);
+}
+
+.event-action-btn.edit {
+  color: var(--color-success, #28a745);
+}
+
 .event-documents h4 {
   color: var(--color-text-primary);
   font-size: var(--font-size-lg);

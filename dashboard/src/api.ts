@@ -74,6 +74,14 @@ export interface EventHierarchy {
   created_at: string;
 }
 
+export interface EventDependency {
+  id: string;
+  dependent_event_id: string;
+  source_event_id: string;
+  dependency_rule: string;
+  created_at: string;
+}
+
 export interface PresetContext {
     preset_id: string;
     preset_name: string;

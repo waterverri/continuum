@@ -1,6 +1,7 @@
 import express, { Response } from 'express';
 import { RequestWithUser } from '../index';
 import { createUserSupabaseClient } from '../db/supabaseClient';
+import { eventDependencyService } from '../services/eventDependencyService';
 
 const router = express.Router();
 
@@ -482,6 +483,270 @@ router.delete('/:projectId/:eventId/documents/:documentId', async (req: RequestW
     res.status(204).send();
   } catch (error) {
     console.error('Error in DELETE /events/:projectId/:eventId/documents/:documentId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/events/:projectId/:eventId/dependencies
+ * Create a new dependency for an event
+ */
+router.post('/:projectId/:eventId/dependencies', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId } = req.params;
+    const { source_event_id, dependency_rule } = req.body;
+    const userToken = req.token!;
+
+    // Validation
+    if (!source_event_id) {
+      return res.status(400).json({ error: 'source_event_id is required' });
+    }
+    
+    if (!dependency_rule || typeof dependency_rule !== 'string' || dependency_rule.trim().length === 0) {
+      return res.status(400).json({ error: 'dependency_rule is required and must be a non-empty string' });
+    }
+    
+    const userSupabase = createUserSupabaseClient(userToken);
+
+    // Verify both events exist and belong to the project
+    const [dependentEventResult, sourceEventResult] = await Promise.all([
+      userSupabase
+        .from('events')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('id', eventId)
+        .single(),
+      userSupabase
+        .from('events')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('id', source_event_id)
+        .single()
+    ]);
+
+    if (dependentEventResult.error || !dependentEventResult.data) {
+      return res.status(404).json({ error: 'Dependent event not found' });
+    }
+
+    if (sourceEventResult.error || !sourceEventResult.data) {
+      return res.status(404).json({ error: 'Source event not found' });
+    }
+    
+    // Create the dependency
+    const dependency = await eventDependencyService.createDependency(
+      eventId,
+      source_event_id,
+      dependency_rule.trim()
+    );
+    
+    // Recalculate the dependent event's dates
+    await eventDependencyService.recalculateEventDates(eventId, projectId);
+    
+    res.status(201).json({ dependency });
+  } catch (error: any) {
+    console.error('Error in POST /events/:projectId/:eventId/dependencies:', error);
+    
+    // Handle specific dependency errors
+    if (error.message?.includes('Cyclic event dependency')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/events/:projectId/:eventId/dependencies
+ * Get all dependencies for an event
+ */
+router.get('/:projectId/:eventId/dependencies', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId } = req.params;
+    const userToken = req.token!;
+    
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify event exists and belongs to project
+    const { data: event, error: eventError } = await userSupabase
+      .from('events')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Get dependencies with source event information
+    const { data: dependencies, error } = await userSupabase
+      .from('event_dependencies')
+      .select(`
+        *,
+        source_event:events!source_event_id(*)
+      `)
+      .eq('dependent_event_id', eventId);
+    
+    if (error) {
+      console.error('Error fetching event dependencies:', error);
+      return res.status(500).json({ error: 'Failed to fetch dependencies' });
+    }
+    
+    res.json({ dependencies: dependencies || [] });
+  } catch (error) {
+    console.error('Error in GET /events/:projectId/:eventId/dependencies:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/events/:projectId/:eventId/dependencies/:dependencyId
+ * Update an event dependency rule
+ */
+router.put('/:projectId/:eventId/dependencies/:dependencyId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId, dependencyId } = req.params;
+    const { dependency_rule } = req.body;
+    const userToken = req.token!;
+
+    if (!dependency_rule || typeof dependency_rule !== 'string' || dependency_rule.trim().length === 0) {
+      return res.status(400).json({ error: 'dependency_rule is required and must be a non-empty string' });
+    }
+    
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify event exists and belongs to project
+    const { data: event, error: eventError } = await userSupabase
+      .from('events')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Update the dependency rule
+    const { data: dependency, error } = await userSupabase
+      .from('event_dependencies')
+      .update({ dependency_rule: dependency_rule.trim() })
+      .eq('id', dependencyId)
+      .eq('dependent_event_id', eventId)
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Dependency not found' });
+      }
+      console.error('Error updating dependency:', error);
+      return res.status(500).json({ error: 'Failed to update dependency' });
+    }
+    
+    // Recalculate the dependent event's dates
+    await eventDependencyService.recalculateEventDates(eventId, projectId);
+    
+    res.json({ dependency });
+  } catch (error: any) {
+    console.error('Error in PUT /events/:projectId/:eventId/dependencies/:dependencyId:', error);
+    
+    if (error.message?.includes('Could not parse dependency rule')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * DELETE /api/events/:projectId/:eventId/dependencies/:dependencyId
+ * Delete an event dependency
+ */
+router.delete('/:projectId/:eventId/dependencies/:dependencyId', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId, dependencyId } = req.params;
+    const userToken = req.token!;
+    
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify event exists and belongs to project
+    const { data: event, error: eventError } = await userSupabase
+      .from('events')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Delete the dependency
+    const { error } = await userSupabase
+      .from('event_dependencies')
+      .delete()
+      .eq('id', dependencyId)
+      .eq('dependent_event_id', eventId);
+    
+    if (error) {
+      console.error('Error deleting dependency:', error);
+      return res.status(500).json({ error: 'Failed to delete dependency' });
+    }
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error in DELETE /events/:projectId/:eventId/dependencies/:dependencyId:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/events/:projectId/:eventId/recalculate
+ * Manually trigger recalculation of an event's dates based on its dependencies
+ */
+router.post('/:projectId/:eventId/recalculate', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, eventId } = req.params;
+    const userToken = req.token!;
+    
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify event exists and belongs to project
+    const { data: event, error: eventError } = await userSupabase
+      .from('events')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Recalculate dates
+    await eventDependencyService.recalculateEventDates(eventId, projectId);
+    
+    // Get the updated event
+    const { data: updatedEvent, error: updateError } = await userSupabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
+    
+    if (updateError) {
+      console.error('Error fetching updated event:', updateError);
+      return res.status(500).json({ error: 'Failed to fetch updated event' });
+    }
+    
+    res.json({ event: updatedEvent });
+  } catch (error: any) {
+    console.error('Error in POST /events/:projectId/:eventId/recalculate:', error);
+    
+    if (error.message?.includes('Could not parse dependency rule')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: 'Internal server error' });
   }
 });
