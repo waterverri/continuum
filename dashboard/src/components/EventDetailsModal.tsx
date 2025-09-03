@@ -70,12 +70,20 @@ export function EventDetailsModal({
       <div className="event-details-modal">
         <div className="event-details-header">
           <h3>{selectedEvent.name}</h3>
-          <button 
-            className="modal-close"
-            onClick={onClose}
-          >
-            &times;
-          </button>
+          <div className="header-actions">
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={handleStartEdit}
+            >
+              ✎ Edit
+            </button>
+            <button 
+              className="modal-close"
+              onClick={onClose}
+            >
+              &times;
+            </button>
+          </div>
         </div>
         
         <div className="event-details-body">
@@ -141,6 +149,13 @@ export function EventDetailsModal({
                 >
                   Cancel
                 </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowDependencyModal(true)}
+                  title="Manage event dependencies"
+                >
+                  🔗 Dependencies
+                </button>
                 <button 
                   className="btn btn-primary"
                   onClick={handleSaveEdit}
@@ -162,22 +177,6 @@ export function EventDetailsModal({
                   {getEventDuration(selectedEvent) && (
                     <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} days</span>
                   )}
-                </div>
-                <div className="event-actions">
-                  <button
-                    className="event-action-btn dependencies"
-                    onClick={() => setShowDependencyModal(true)}
-                    title="Manage event dependencies"
-                  >
-                    🔗 Dependencies
-                  </button>
-                  <button
-                    className="event-action-btn edit"
-                    onClick={handleStartEdit}
-                    title="Edit this event"
-                  >
-                    ✎ Edit Event
-                  </button>
                 </div>
               </div>
 

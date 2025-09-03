@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Event, EventDependency } from '../api';
 import { supabase } from '../supabaseClient';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface EventDependencyModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,14 +38,16 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`/api/events/${projectId}/${event.id}/dependencies`, {
+      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/dependencies`, {
         headers: {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         }
       });
       
       if (!response.ok) {
-        throw new Error('Failed to load dependencies');
+        const responseText = await response.text();
+        console.error('API Response:', response.status, responseText);
+        throw new Error(`Failed to load dependencies: ${response.status} - ${responseText.substring(0, 200)}`);
       }
       
       const data = await response.json();
@@ -74,7 +78,7 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`/api/events/${projectId}/${event.id}/dependencies`, {
+      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/dependencies`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +116,7 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`/api/events/${projectId}/${event.id}/dependencies/${dependencyId}`, {
+      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/dependencies/${dependencyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
@@ -138,7 +142,7 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`/api/events/${projectId}/${event.id}/recalculate`, {
+      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/recalculate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
