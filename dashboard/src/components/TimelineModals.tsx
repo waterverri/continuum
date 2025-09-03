@@ -30,7 +30,7 @@ export interface TimelineModalsProps {
   
   // Event handlers
   onEventDetailsClose: () => void;
-  onStartEditEvent: (event: Event) => EventFormData;
+  onStartEditEvent: (event: Event) => void;
   onFormDataChange: (data: EventFormData | ((prev: EventFormData) => EventFormData)) => void;
   onSaveEditEvent: (eventId: string, formData: EventFormData) => Promise<void>;
   onCancelEditEvent: () => void;

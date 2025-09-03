@@ -10,7 +10,7 @@ export interface EventDetailsModalProps {
   loading: boolean;
   formatDateDisplay: (timeValue?: number) => string;
   onClose: () => void;
-  onStartEdit: (event: Event) => EventFormData;
+  onStartEdit: (event: Event) => void;
   onFormDataChange: (data: EventFormData | ((prev: EventFormData) => EventFormData)) => void;
   onSaveEdit: (eventId: string, formData: EventFormData) => Promise<void>;
   onCancelEdit: () => void;
@@ -47,8 +47,7 @@ export function EventDetailsModal({
   };
 
   const handleStartEdit = () => {
-    const editFormData = onStartEdit(selectedEvent);
-    onFormDataChange(editFormData);
+    onStartEdit(selectedEvent);
   };
 
   const handleSaveEdit = async () => {

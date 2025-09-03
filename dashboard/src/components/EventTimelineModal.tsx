@@ -73,6 +73,7 @@ export function EventTimelineModal({
     setShowEventDetails: state.setShowEventDetails,
     setIsCreatingEvent: state.setIsCreatingEvent,
     setBaseDate: state.setBaseDate,
+    setFormData: state.setFormData,
     resetForm: state.resetForm,
     onEventsChange
   });

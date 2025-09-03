@@ -24,6 +24,7 @@ export interface UseTimelineOperationsProps {
   setShowEventDetails: (show: boolean) => void;
   setIsCreatingEvent: (creating: boolean) => void;
   setBaseDate: (date: Date) => void;
+  setFormData: (data: EventFormData | ((prev: EventFormData) => EventFormData)) => void;
   resetForm: () => void;
   onEventsChange?: () => void;
 }
@@ -38,7 +39,7 @@ export interface UseTimelineOperationsResult {
   handleCreateEvent: (formData: EventFormData) => Promise<void>;
   handleEditEvent: (eventId: string, formData: EventFormData) => Promise<void>;
   handleDeleteEvent: (eventId: string) => Promise<void>;
-  startEditEvent: (event: Event) => EventFormData;
+  startEditEvent: (event: Event) => void;
   
   // Base date operations
   handleBaseDateChange: (newDate: Date) => Promise<void>;
@@ -65,6 +66,7 @@ export function useTimelineOperations({
   setShowEventDetails,
   setIsCreatingEvent,
   setBaseDate,
+  setFormData,
   resetForm,
   onEventsChange
 }: UseTimelineOperationsProps): UseTimelineOperationsResult {
@@ -231,7 +233,7 @@ export function useTimelineOperations({
   }, [projectId, getAccessToken, loadTimeline, setSelectedEvent, setShowEventDetails, onEventsChange, setError]);
 
   const startEditEvent = useCallback((event: Event) => {
-    const formData = {
+    const formDataToSet = {
       name: event.name,
       description: event.description || '',
       time_start: event.time_start !== null && event.time_start !== undefined ? projectDaysToDatetimeInput(event.time_start, baseDate) : '',
@@ -240,12 +242,11 @@ export function useTimelineOperations({
       parent_event_id: event.parent_event_id || ''
     };
     
+    setFormData(formDataToSet);
     setEditingEvent(event);
     setSelectedEvent(event); // Ensure the event is selected
     setShowEventDetails(true); // Ensure the modal is open
-    
-    return formData;
-  }, [timeToDate, setEditingEvent, setSelectedEvent, setShowEventDetails]);
+  }, [baseDate, setFormData, setEditingEvent, setSelectedEvent, setShowEventDetails]);
 
   const handleBaseDateChange = useCallback(async (newDate: Date) => {
     try {
