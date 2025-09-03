@@ -433,11 +433,22 @@ export default function ProjectDetailPage() {
         const token = (await supabase.auth.getSession()).data.session?.access_token;
         if (!token) throw new Error('No authentication token');
 
-        const { createEvent } = await import('../api');
+        const { createEvent, addTagsToEvent } = await import('../api');
         const newEvent = await createEvent(projectId!, {
           name: eventName.trim(),
           description: `Auto-created for document: ${document.title}`
         }, token);
+
+        // Copy document tags to the new event
+        if (document.tags && document.tags.length > 0) {
+          try {
+            const tagIds = document.tags.map(tag => tag.id);
+            await addTagsToEvent(projectId!, newEvent.id, tagIds, token);
+          } catch (tagError) {
+            console.warn('Failed to copy tags to event:', tagError);
+            // Don't fail the entire operation if tagging fails
+          }
+        }
 
         // Assign document to the new event
         const formData = {
