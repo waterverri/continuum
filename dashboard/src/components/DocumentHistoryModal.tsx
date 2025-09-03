@@ -240,6 +240,23 @@ export default function DocumentHistoryModal({
 
   const limit = 20;
 
+  const loadInitialHistory = useCallback(async () => {
+    if (!document.id) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await loadDocumentHistory(document.id, limit, 0);
+      setHistoryData(response);
+      setHasMore(response.history.length === limit);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load document history');
+    } finally {
+      setLoading(false);
+    }
+  }, [document.id, loadDocumentHistory, limit]);
+
   const loadHistory = useCallback(async (pageNum = 0, append = false) => {
     if (!isOpen || !document.id) return;
     
@@ -253,14 +270,16 @@ export default function DocumentHistoryModal({
         pageNum * limit
       );
       
-      if (append && historyData) {
-        setHistoryData({
-          ...response,
-          history: [...historyData.history, ...response.history]
-        });
-      } else {
-        setHistoryData(response);
-      }
+      setHistoryData(currentData => {
+        if (append && currentData) {
+          return {
+            ...response,
+            history: [...currentData.history, ...response.history]
+          };
+        } else {
+          return response;
+        }
+      });
       
       setHasMore(response.history.length === limit);
     } catch (err) {
@@ -268,7 +287,7 @@ export default function DocumentHistoryModal({
     } finally {
       setLoading(false);
     }
-  }, [isOpen, document.id, loadDocumentHistory, historyData, limit]);
+  }, [isOpen, document.id, loadDocumentHistory, limit]);
 
   const loadMore = useCallback(() => {
     const nextPage = page + 1;
@@ -297,11 +316,11 @@ export default function DocumentHistoryModal({
       await onRollback(historyId);
       // Reload history after rollback
       setPage(0);
-      await loadHistory(0, false);
+      loadInitialHistory();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rollback document');
     }
-  }, [onRollback, loadHistory]);
+  }, [onRollback, loadInitialHistory]);
 
   const handleDelete = useCallback(async (historyId: string) => {
     if (!onDeleteHistory) return;
@@ -310,12 +329,12 @@ export default function DocumentHistoryModal({
       await onDeleteHistory(historyId);
       // Reload history after delete
       setPage(0);
-      await loadHistory(0, false);
+      loadInitialHistory();
       setDeleteConfirmId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete history entry');
     }
-  }, [onDeleteHistory, loadHistory]);
+  }, [onDeleteHistory, loadInitialHistory]);
 
   useEffect(() => {
     if (isOpen) {
@@ -324,14 +343,14 @@ export default function DocumentHistoryModal({
       setPage(0);
       setLoadingDetail(false);
       setDeleteConfirmId(null);
-      loadHistory(0, false);
+      loadInitialHistory();
     } else {
       setHistoryData(null);
       setError(null);
       setLoadingDetail(false);
       setDeleteConfirmId(null);
     }
-  }, [isOpen, loadHistory]);
+  }, [isOpen, loadInitialHistory]);
 
   if (!isOpen) return null;
 
