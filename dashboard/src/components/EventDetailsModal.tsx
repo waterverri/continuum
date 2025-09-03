@@ -163,27 +163,27 @@ export function EventDetailsModal({
                     <span><strong>Duration:</strong> {getEventDuration(selectedEvent)} days</span>
                   )}
                 </div>
+                <div className="event-actions">
+                  <button
+                    className="event-action-btn dependencies"
+                    onClick={() => setShowDependencyModal(true)}
+                    title="Manage event dependencies"
+                  >
+                    🔗 Dependencies
+                  </button>
+                  <button
+                    className="event-action-btn edit"
+                    onClick={handleStartEdit}
+                    title="Edit this event"
+                  >
+                    ✎ Edit Event
+                  </button>
+                </div>
               </div>
 
               <div className="event-documents">
                 <div className="documents-header">
                   <h4>Associated Documents ({eventDocuments.length})</h4>
-                  <div className="event-actions">
-                    <button
-                      className="event-action-btn dependencies"
-                      onClick={() => setShowDependencyModal(true)}
-                      title="Manage event dependencies"
-                    >
-                      🔗 Dependencies
-                    </button>
-                    <button
-                      className="event-action-btn edit"
-                      onClick={handleStartEdit}
-                      title="Edit this event"
-                    >
-                      ✎ Edit Event
-                    </button>
-                  </div>
                 </div>
                 {eventDocuments.length === 0 ? (
                   <p className="no-documents">No documents associated with this event.</p>
