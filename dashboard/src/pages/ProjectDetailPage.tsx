@@ -24,7 +24,7 @@ import { GroupSwitcherModal } from '../components/GroupSwitcherModal';
 import { TagManager } from '../components/TagManager';
 import { TagSelector } from '../components/TagSelector';
 import { TagFilterWidget } from '../components/TagFilterWidget';
-import { EventSelector } from '../components/EventSelector';
+import { EventAssignmentModal } from '../components/EventAssignmentModal';
 import { EventsWidget } from '../components/EventsWidget';
 import { EventTimelineModal } from '../components/EventTimelineModal';
 import { EventFilter } from '../components/EventFilter';
@@ -424,6 +424,43 @@ export default function ProjectDetailPage() {
     operations.loadDocuments();
   };
 
+  const handleCreateEvent = async (document: Document) => {
+    const eventName = prompt('Enter event name:', `${document.title} Event`);
+    if (eventName && eventName.trim()) {
+      try {
+        // Create event via API
+        const { supabase } = await import('../supabaseClient');
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) throw new Error('No authentication token');
+
+        const { createEvent } = await import('../api');
+        const newEvent = await createEvent(projectId!, {
+          name: eventName.trim(),
+          description: `Auto-created for document: ${document.title}`
+        }, token);
+
+        // Assign document to the new event
+        const formData = {
+          title: document.title,
+          content: document.content || '',
+          document_type: document.document_type || '',
+          is_composite: document.is_composite,
+          is_prompt: document.is_prompt,
+          components: document.components || {},
+          group_id: document.group_id,
+          ai_model: document.ai_model,
+          event_id: newEvent.id
+        };
+        
+        await operations.handleUpdateDocument(document.id, formData);
+        await loadEvents(); // Refresh events list
+      } catch (error) {
+        console.error('Failed to create event:', error);
+        state.setError('Failed to create event. Please try again.');
+      }
+    }
+  };
+
   const openDocumentEvolution = (document: Document) => {
     state.setEvolutionDocument(document);
     state.openModal('showDocumentEvolution');
@@ -592,6 +629,7 @@ export default function ProjectDetailPage() {
             onCreateDerivative={handleCreateDerivative}
             onManageTags={(document) => openTagSelector(document.id)}
             onManageEvents={openEventSelector}
+            onCreateEvent={handleCreateEvent}
             onDocumentEvolution={openDocumentEvolution}
             emptyMessage={sidebarFilter.hasActiveFilters ? "No documents match your filters." : "No documents found. Create your first document!"}
           />
@@ -1052,13 +1090,16 @@ export default function ProjectDetailPage() {
         />
       )}
 
-      {/* Event Selector Modal */}
+      {/* Event Assignment Modal */}
       {state.modals.showEventSelector && state.eventSelectorDocument && projectId && (
-        <EventSelector
+        <EventAssignmentModal
           projectId={projectId}
           document={state.eventSelectorDocument}
           onClose={closeEventSelector}
-          onUpdate={loadEvents}
+          onUpdate={() => {
+            operations.loadDocuments();
+            loadEvents();
+          }}
         />
       )}
 

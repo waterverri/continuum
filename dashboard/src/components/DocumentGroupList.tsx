@@ -19,6 +19,7 @@ interface DocumentGroupListProps {
   onCreateDerivative?: (document: Document) => void;
   onManageTags?: (document: Document) => void;
   onManageEvents?: (document: Document) => void;
+  onCreateEvent?: (document: Document) => void;
   onDocumentEvolution?: (document: Document) => void;
   emptyMessage?: string;
 }
@@ -33,6 +34,7 @@ interface DocumentGroupItemProps {
   onCreateDerivative?: (document: Document) => void;
   onManageTags?: (document: Document) => void;
   onManageEvents?: (document: Document) => void;
+  onCreateEvent?: (document: Document) => void;
   onDocumentEvolution?: (document: Document) => void;
 }
 
@@ -46,6 +48,7 @@ function DocumentGroupItem({
   onCreateDerivative,
   onManageTags,
   onManageEvents,
+  onCreateEvent,
   onDocumentEvolution
 }: DocumentGroupItemProps) {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -177,12 +180,20 @@ function DocumentGroupItem({
                   🏷️ Tags
                 </button>
               )}
+              {onCreateEvent && (
+                <button 
+                  className="document-dropdown-item"
+                  onClick={handleDropdownAction(() => onCreateEvent(selectedDocument))}
+                >
+                  ➕ Create Event
+                </button>
+              )}
               {onManageEvents && (
                 <button 
                   className="document-dropdown-item"
                   onClick={handleDropdownAction(() => onManageEvents(selectedDocument))}
                 >
-                  📅 Events
+                  📅 Assign Event
                 </button>
               )}
               {onDocumentEvolution && (
@@ -219,6 +230,7 @@ export function DocumentGroupList({
   onCreateDerivative,
   onManageTags,
   onManageEvents,
+  onCreateEvent,
   onDocumentEvolution,
   emptyMessage = 'No documents found.'
 }: DocumentGroupListProps) {
@@ -287,6 +299,7 @@ export function DocumentGroupList({
           onCreateDerivative={onCreateDerivative}
           onManageTags={onManageTags}
           onManageEvents={onManageEvents}
+          onCreateEvent={onCreateEvent}
           onDocumentEvolution={onDocumentEvolution}
         />
       ))}

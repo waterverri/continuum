@@ -12,6 +12,7 @@
 @import './components/event-timeline-modal.css';
 @import './components/event-filters.css';
 @import './components/event-selector.css';
+@import './components/EventAssignmentModal.css';
 @import './components/project-settings-modal.css';
 @import './components/presets-widget.css';
 @import './components/prompt-document.css';
