@@ -35,7 +35,6 @@ BEGIN
     CHECK (
         (is_prompt = FALSE AND 
          ai_model IS NULL AND 
-         ai_response IS NULL AND
          last_ai_response IS NULL AND
          last_ai_provider_id IS NULL AND
          last_ai_model_id IS NULL AND
