@@ -200,7 +200,8 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
       is_composite, 
       is_prompt,
       ai_model,
-      components 
+      components,
+      event_id
     } = req.body;
     const userToken = req.token!;
     
@@ -278,7 +279,8 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
         is_composite: is_composite || false,
         is_prompt: is_prompt || false,
         ai_model: is_prompt ? ai_model : null,
-        components: is_composite ? components : null
+        components: is_composite ? components : null,
+        event_id
       })
       .eq('id', documentId)
       .eq('project_id', projectId)
