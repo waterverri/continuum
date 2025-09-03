@@ -149,9 +149,10 @@ function HistoryDetailView({ entry, onClose }: HistoryDetailViewProps) {
     <div className="history-detail-view">
       <div className="history-detail-header">
         <div>
-          <h3>{getChangeTypeLabel(entry.change_type)}</h3>
+          <h3>{entry.title}</h3>
           <div className="history-detail-meta">
-            <span>{formatDate(entry.created_at)}</span>
+            <span className="change-type-label">{getChangeTypeLabel(entry.change_type)}</span>
+            <span> • {formatDate(entry.created_at)}</span>
             {entry.user_name && <span> • by {entry.user_name}</span>}
           </div>
         </div>
@@ -166,33 +167,35 @@ function HistoryDetailView({ entry, onClose }: HistoryDetailViewProps) {
       
       {entry.change_description && (
         <div className="history-detail-description">
-          <h4>Change Description</h4>
           <p>{entry.change_description}</p>
         </div>
       )}
       
-      <div className="history-detail-snapshot">
-        <h4>Document State</h4>
-        <div className="document-snapshot">
-          <div className="snapshot-field">
-            <label>Title:</label>
-            <span>{entry.title}</span>
+      {entry.content && (
+        <div className="history-content-viewer">
+          <div className="content-display">
+            <pre>{entry.content}</pre>
           </div>
-          
+        </div>
+      )}
+      
+      <div className="history-metadata-sidebar">
+        <h4>Document Properties</h4>
+        <div className="metadata-grid">
           {entry.document_type && (
-            <div className="snapshot-field">
+            <div className="metadata-field">
               <label>Type:</label>
               <span>{entry.document_type}</span>
             </div>
           )}
           
-          <div className="snapshot-field">
+          <div className="metadata-field">
             <label>Composite:</label>
             <span>{entry.is_composite ? 'Yes' : 'No'}</span>
           </div>
           
           {entry.is_composite && entry.components && (
-            <div className="snapshot-field">
+            <div className="metadata-field components-field">
               <label>Components:</label>
               <div className="components-list">
                 {Object.entries(entry.components).map(([key, value]) => (
@@ -200,15 +203,6 @@ function HistoryDetailView({ entry, onClose }: HistoryDetailViewProps) {
                     <code>{key}</code> → <code>{value}</code>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-          
-          {entry.content && (
-            <div className="snapshot-field">
-              <label>Content:</label>
-              <div className="content-preview">
-                <pre>{entry.content.substring(0, 500)}{entry.content.length > 500 ? '...' : ''}</pre>
               </div>
             </div>
           )}
