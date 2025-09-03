@@ -47,6 +47,10 @@ export interface TimelineModalsProps {
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCloseAllModals?: () => void;
+  
+  // Project and dependency handlers
+  projectId: string;
+  onDependencyChange?: () => void;
 }
 
 export function TimelineModals({
@@ -91,7 +95,11 @@ export function TimelineModals({
   onDocumentView,
   onDocumentEdit,
   onDocumentDelete,
-  onCloseAllModals
+  onCloseAllModals,
+  
+  // Project and dependency handlers
+  projectId,
+  onDependencyChange
 }: TimelineModalsProps) {
   
   return (
@@ -115,6 +123,8 @@ export function TimelineModals({
         onDocumentEdit={onDocumentEdit}
         onDocumentDelete={onDocumentDelete}
         onCloseAllModals={onCloseAllModals}
+        projectId={projectId}
+        onDependencyChange={onDependencyChange}
       />
 
       {/* Create Event Modal */}

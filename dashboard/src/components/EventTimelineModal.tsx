@@ -296,6 +296,10 @@ export function EventTimelineModal({
           onDocumentEdit={onDocumentEdit}
           onDocumentDelete={onDocumentDelete}
           onCloseAllModals={onCloseAllModals}
+          
+          // Project and dependency handlers
+          projectId={projectId}
+          onDependencyChange={operations.loadTimeline}
         />
       </div>
     </div>

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Event, Document, EventDocument } from '../api';
 import type { EventFormData } from '../types/timeline';
+import EventDependencyModal from './EventDependencyModal';
 
 export interface EventDetailsModalProps {
   isOpen: boolean;
@@ -19,6 +21,8 @@ export interface EventDetailsModalProps {
   onDocumentEdit?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCloseAllModals?: () => void;
+  projectId: string;
+  onDependencyChange?: () => void;
 }
 
 export function EventDetailsModal({
@@ -38,8 +42,11 @@ export function EventDetailsModal({
   onDocumentView,
   onDocumentEdit,
   onDocumentDelete,
-  onCloseAllModals
+  onCloseAllModals,
+  projectId,
+  onDependencyChange
 }: EventDetailsModalProps) {
+  const [showDependencyModal, setShowDependencyModal] = useState(false);
   
   if (!isOpen || !selectedEvent) return null;
 
@@ -164,7 +171,7 @@ export function EventDetailsModal({
                   <div className="event-actions">
                     <button
                       className="event-action-btn dependencies"
-                      onClick={() => {/* TODO: Open dependencies modal */}}
+                      onClick={() => setShowDependencyModal(true)}
                       title="Manage event dependencies"
                     >
                       🔗 Dependencies
@@ -226,6 +233,18 @@ export function EventDetailsModal({
           )}
         </div>
       </div>
+      
+      <EventDependencyModal
+        isOpen={showDependencyModal}
+        onClose={() => setShowDependencyModal(false)}
+        event={selectedEvent}
+        projectId={projectId}
+        onDependencyChange={() => {
+          onDependencyChange?.();
+          setShowDependencyModal(false);
+        }}
+        events={events}
+      />
     </div>
   );
 }
