@@ -625,8 +625,10 @@ export default function ProjectDetailPage() {
                   onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
                   aiProviders={aiProviders}
                   accessToken={accessToken}
-                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
-                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
+                  projectId={projectId!}
+                  allDocuments={state.documents}
+                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType, groupId) => 
+                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
                   }
                   onRefreshDocument={() => {
                     if (state.selectedDocument) {
@@ -641,8 +643,8 @@ export default function ProjectDetailPage() {
                   allDocuments={state.documents}
                   resolvedContent={state.resolvedContent}
                   onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType) => 
-                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType)
+                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType, groupId) => 
+                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
                   }
                   onDocumentSelect={(document) => {
                     state.setSelectedDocument(document);

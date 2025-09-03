@@ -291,7 +291,8 @@ export function useDocumentOperations({
     selectedText: string, 
     selectionInfo: { start: number; end: number },
     title: string,
-    documentType: string
+    documentType: string,
+    groupId?: string
   ) => {
     if (!projectId) return;
     
@@ -303,6 +304,7 @@ export function useDocumentOperations({
         title,
         content: selectedText,
         document_type: documentType,
+        group_id: groupId, // Add to group if specified
         is_composite: false,
         components: {}
       }, token);

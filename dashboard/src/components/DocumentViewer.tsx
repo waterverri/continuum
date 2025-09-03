@@ -9,7 +9,7 @@ interface DocumentViewerProps {
   allDocuments: Document[];
   resolvedContent: string | null;
   onResolve: () => void;
-  onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string) => void;
+  onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string, groupId?: string) => void;
   onDocumentSelect?: (document: Document) => void;
   onTagUpdate?: (documentId: string, tagIds: string[]) => void;
   projectId: string;
@@ -123,10 +123,10 @@ export function DocumentViewer({
     setShowExtractModal(true);
   }, []);
 
-  const handleExtractConfirm = useCallback((title: string, documentType: string) => {
+  const handleExtractConfirm = useCallback((title: string, documentType: string, groupId?: string) => {
     try {
       if (selectedText && selectionRange && onCreateFromSelection) {
-        onCreateFromSelection(selectedText, selectionRange, title, documentType);
+        onCreateFromSelection(selectedText, selectionRange, title, documentType, groupId);
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
@@ -266,6 +266,7 @@ export function DocumentViewer({
         <ExtractTextModal
           sourceDocument={currentDocument}
           selectedText={selectedText}
+          allDocuments={allDocuments}
           onConfirm={handleExtractConfirm}
           onCancel={handleExtractCancel}
         />

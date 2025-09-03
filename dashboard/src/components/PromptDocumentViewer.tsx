@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Document, AIProvider, ProviderModel, CostEstimate } from '../api';
-import { estimateAICost, submitAIRequest, getUserCredits, getProviderModels } from '../api';
+import { estimateAICost, submitAIRequest, getUserCredits, getProviderModels, saveLLMResponse } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
 interface PromptDocumentViewerProps {
@@ -9,7 +9,9 @@ interface PromptDocumentViewerProps {
   onResolve: () => void;
   aiProviders: AIProvider[];
   accessToken: string;
-  onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string) => void;
+  projectId: string;
+  allDocuments?: Document[];
+  onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string, groupId?: string) => void;
   onRefreshDocument: () => void;
 }
 
@@ -19,7 +21,10 @@ export function PromptDocumentViewer({
   onResolve, 
   aiProviders,
   accessToken,
-  onCreateFromSelection
+  projectId,
+  allDocuments = [],
+  onCreateFromSelection,
+  onRefreshDocument
 }: PromptDocumentViewerProps) {
   const [selectedProviderId, setSelectedProviderId] = useState('');
   const [selectedModel, setSelectedModel] = useState(document.ai_model || '');
@@ -47,13 +52,31 @@ export function PromptDocumentViewer({
     (model.description && model.description.toLowerCase().includes(modelSearchTerm.toLowerCase()))
   );
 
-  // Load initial data
+  // Load initial data and restore last response if available
   useEffect(() => {
     loadUserCredits();
-    // Reset response when document changes
-    setAiResponse('');
-    setAiStatus('idle');
-  }, [document.id]);
+    
+    // Load last response if available
+    if (document.last_ai_response) {
+      setAiResponse(document.last_ai_response);
+      setAiStatus('completed');
+      
+      // Restore AI settings from last response
+      if (document.last_ai_provider_id) {
+        setSelectedProviderId(document.last_ai_provider_id);
+      }
+      if (document.last_ai_model_id) {
+        setSelectedModel(document.last_ai_model_id);
+      }
+      if (document.last_ai_max_tokens) {
+        setMaxTokens(document.last_ai_max_tokens);
+      }
+    } else {
+      // Reset response when document changes and no saved response
+      setAiResponse('');
+      setAiStatus('idle');
+    }
+  }, [document.id, document.last_ai_response]);
 
   // Load models when provider changes
   useEffect(() => {
@@ -136,9 +159,33 @@ export function PromptDocumentViewer({
       const prompt = resolvedContent || document.content || '';
       const result = await submitAIRequest(selectedProviderId, selectedModel, prompt, { maxTokens }, accessToken);
       
-      // Set ephemeral response
+      // Set response
       setAiResponse(result.response);
       setAiStatus('completed');
+      
+      // Save response to document for future reuse
+      try {
+        await saveLLMResponse(
+          projectId,
+          document.id,
+          result.response,
+          selectedProviderId,
+          selectedModel,
+          maxTokens,
+          costEstimate || {
+            inputTokens: result.inputTokens,
+            estimatedMaxCost: result.costCredits,
+            estimatedMaxTokens: result.outputTokens
+          },
+          accessToken
+        );
+        
+        // Refresh document to get updated fields
+        onRefreshDocument();
+      } catch (saveError) {
+        console.error('Failed to save LLM response:', saveError);
+        // Don't fail the request if saving fails, just log it
+      }
       
       // Refresh credits after a small delay to ensure backend processing is complete
       setTimeout(() => {
@@ -350,16 +397,30 @@ export function PromptDocumentViewer({
           )}
 
           {hasResponse && (
-            <div className="document-content">
-              <textarea
-                ref={responseRef}
-                value={aiResponse}
-                readOnly
-                className="form-input"
-                rows={Math.max(10, aiResponse.split('\n').length + 2)}
-                style={{ resize: 'vertical', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
-              />
-            </div>
+            <>
+              {/* Response metadata */}
+              {document.last_ai_response && aiResponse === document.last_ai_response && (
+                <div className="response-metadata">
+                  <small style={{ color: '#666', fontSize: '0.85em' }}>
+                    Saved response from {document.last_ai_provider_id}/{document.last_ai_model_id} • 
+                    Max tokens: {document.last_ai_max_tokens} • 
+                    Generated: {document.last_ai_response_timestamp ? 
+                      new Date(document.last_ai_response_timestamp).toLocaleString() : 'Unknown'}
+                  </small>
+                </div>
+              )}
+              
+              <div className="document-content">
+                <textarea
+                  ref={responseRef}
+                  value={aiResponse}
+                  readOnly
+                  className="form-input"
+                  rows={Math.max(10, aiResponse.split('\n').length + 2)}
+                  style={{ resize: 'vertical', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
+                />
+              </div>
+            </>
           )}
         </div>
       )}
@@ -369,8 +430,9 @@ export function PromptDocumentViewer({
         <ExtractTextModal
           sourceDocument={document}
           selectedText={selectedText}
-          onConfirm={(title: string, documentType: string) => {
-            onCreateFromSelection?.(selectedText, selectionRange, title, documentType);
+          allDocuments={allDocuments}
+          onConfirm={(title: string, documentType: string, groupId?: string) => {
+            onCreateFromSelection?.(selectedText, selectionRange, title, documentType, groupId);
             setShowExtractModal(false);
             setSelectedText('');
             setSelectionRange(null);

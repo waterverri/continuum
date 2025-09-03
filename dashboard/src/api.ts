@@ -22,6 +22,13 @@ export interface Document {
   events?: Event; // For joined event data
   // AI-related fields (only for prompt documents)
   ai_model?: string;
+  // LLM response tracking fields
+  last_ai_response?: string;
+  last_ai_provider_id?: string;
+  last_ai_model_id?: string;
+  last_ai_max_tokens?: number;
+  last_ai_cost_estimate?: CostEstimate;
+  last_ai_response_timestamp?: string;
 }
 
 export interface Preset {
@@ -962,4 +969,39 @@ export const addCredits = async (amount: number, accessToken: string): Promise<n
 
   const data = await response.json();
   return data.newBalance;
+};
+
+// Document LLM Response API functions
+export const saveLLMResponse = async (
+  projectId: string,
+  documentId: string,
+  response: string,
+  providerId: string,
+  modelId: string,
+  maxTokens: number,
+  costEstimate: CostEstimate,
+  accessToken: string
+): Promise<Document> => {
+  const apiResponse = await fetch(`${API_URL}/api/documents/${projectId}/${documentId}/save-response`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      response,
+      provider_id: providerId,
+      model_id: modelId,
+      max_tokens: maxTokens,
+      cost_estimate: costEstimate
+    }),
+  });
+
+  if (!apiResponse.ok) {
+    const error = await apiResponse.json();
+    throw new Error(error.error || 'Failed to save LLM response');
+  }
+
+  const data = await apiResponse.json();
+  return data.document;
 };

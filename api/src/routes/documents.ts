@@ -880,4 +880,95 @@ router.get('/:projectId/:documentId/history/:historyId', async (req: RequestWith
   }
 });
 
+/**
+ * POST /api/documents/:projectId/:documentId/save-response
+ * Save LLM response and metadata for a promptable document
+ */
+router.post('/:projectId/:documentId/save-response', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { projectId, documentId } = req.params;
+    const { 
+      response, 
+      provider_id, 
+      model_id, 
+      max_tokens, 
+      cost_estimate 
+    } = req.body;
+    const userToken = req.token!;
+    
+    // Validate required fields
+    if (!response || !provider_id || !model_id) {
+      return res.status(400).json({ 
+        error: 'response, provider_id, and model_id are required' 
+      });
+    }
+    
+    // Create user-authenticated client for RLS
+    const userSupabase = createUserSupabaseClient(userToken);
+    
+    // Verify document exists, is prompt-enabled, and user has access
+    const { data: document, error: docError } = await userSupabase
+      .from('documents')
+      .select('id, title, is_prompt')
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .single();
+    
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    if (!document.is_prompt) {
+      return res.status(400).json({ 
+        error: 'Document is not configured for AI prompts' 
+      });
+    }
+    
+    // Update document with LLM response data
+    const { data: updatedDocument, error } = await userSupabase
+      .from('documents')
+      .update({
+        last_ai_response: response,
+        last_ai_provider_id: provider_id,
+        last_ai_model_id: model_id,
+        last_ai_max_tokens: max_tokens,
+        last_ai_cost_estimate: cost_estimate,
+        last_ai_response_timestamp: new Date().toISOString()
+      })
+      .eq('id', documentId)
+      .eq('project_id', projectId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error saving LLM response:', error);
+      return res.status(500).json({ error: 'Failed to save LLM response' });
+    }
+    
+    // Create history entry for response save
+    try {
+      const userId = req.user?.id;
+      if (userId) {
+        await userSupabase.rpc('create_document_history_entry', {
+          p_document_id: documentId,
+          p_change_type: 'ai_response',
+          p_change_description: `AI response saved (${provider_id}/${model_id})`,
+          p_user_id: userId
+        });
+      }
+    } catch (historyError) {
+      console.error('Error creating AI response history entry:', historyError);
+      // Don't fail the save if history creation fails
+    }
+    
+    res.json({ 
+      message: 'LLM response saved successfully',
+      document: updatedDocument
+    });
+  } catch (error) {
+    console.error('Error in POST /documents/:projectId/:documentId/save-response:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
