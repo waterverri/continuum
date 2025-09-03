@@ -7,6 +7,7 @@ export interface EventDetailsModalProps {
   editingEvent: Event | null;
   eventDocuments: (EventDocument & {documents: Document})[];
   formData: EventFormData;
+  events: Event[];
   loading: boolean;
   formatDateDisplay: (timeValue?: number) => string;
   onClose: () => void;
@@ -26,6 +27,7 @@ export function EventDetailsModal({
   editingEvent,
   eventDocuments,
   formData,
+  events,
   loading,
   formatDateDisplay,
   onClose,
@@ -107,6 +109,24 @@ export function EventDetailsModal({
                   />
                 </div>
               </div>
+              {events.length > 0 && (
+                <div className="form-group">
+                  <label>Parent Event</label>
+                  <select
+                    value={formData.parent_event_id}
+                    onChange={(e) => onFormDataChange((prev) => ({ ...prev, parent_event_id: e.target.value }))}
+                  >
+                    <option value="">No parent event</option>
+                    {events
+                      .filter(e => !editingEvent || e.id !== editingEvent.id)
+                      .map(event => (
+                        <option key={event.id} value={event.id}>
+                          {event.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
               <div className="form-actions">
                 <button 
                   className="btn btn-secondary"

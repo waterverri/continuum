@@ -103,6 +103,7 @@ export function TimelineModals({
         editingEvent={editingEvent}
         eventDocuments={eventDocuments}
         formData={formData}
+        events={events}
         loading={loading}
         formatDateDisplay={formatDateDisplay}
         onClose={onEventDetailsClose}
