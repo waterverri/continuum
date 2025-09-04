@@ -48,18 +48,47 @@ router.post('/validate-dependency-rule', async (req: RequestWithUser, res: Respo
     try {
       if (is_duration) {
         // Validate duration rule
-        const durationMatch = rule.toLowerCase().match(/(\d+)\s*(day|days|week|weeks|month|months|business\s*day|business\s*days)/);
+        const durationMatch = rule.toLowerCase().match(/(\d+(?:\.\d+)?)\s*(hour|hours|day|days|week|weeks|month|months|business\s*day|business\s*days)/);
         
         if (!durationMatch) {
           return res.status(400).json({ 
-            error: `Invalid duration rule format. Expected format like "3 days" or "2 weeks"`,
+            error: `Invalid duration rule format. Expected format like "3 days", "2 weeks", or "4 hours"`,
             valid: false 
           });
         }
         
+        const amount = parseFloat(durationMatch[1]);
+        const unit = durationMatch[2].replace(/\s+/g, ' ');
+        
+        let durationDays: number;
+        switch (unit) {
+          case 'hour':
+          case 'hours':
+            durationDays = amount / 24;
+            break;
+          case 'day':
+          case 'days':
+            durationDays = amount;
+            break;
+          case 'week':
+          case 'weeks':
+            durationDays = amount * 7;
+            break;
+          case 'month':
+          case 'months':
+            durationDays = amount * 30;
+            break;
+          case 'business day':
+          case 'business days':
+            durationDays = Math.ceil(amount * 1.4);
+            break;
+          default:
+            durationDays = amount;
+        }
+        
         res.json({ 
           valid: true, 
-          duration_days: parseInt(durationMatch[1]) * (durationMatch[2].includes('week') ? 7 : durationMatch[2].includes('month') ? 30 : 1),
+          duration_days: durationDays,
           rule_type: 'duration'
         });
       } else {

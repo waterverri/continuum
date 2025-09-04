@@ -281,17 +281,20 @@ export class EventDependencyService {
     // Handle various duration formats
     const normalizedRule = rule.toLowerCase().trim();
     
-    // Match patterns like "3 days", "2 weeks", "1 month", "5 business days"
-    const durationMatch = normalizedRule.match(/(\d+)\s*(day|days|week|weeks|month|months|business\s*day|business\s*days)/);
+    // Match patterns like "3 days", "2 weeks", "1 month", "5 business days", "4 hours"
+    const durationMatch = normalizedRule.match(/(\d+(?:\.\d+)?)\s*(hour|hours|day|days|week|weeks|month|months|business\s*day|business\s*days)/);
     
     if (!durationMatch) {
       throw new Error(`Invalid duration rule: ${rule}`);
     }
     
-    const amount = parseInt(durationMatch[1]);
+    const amount = parseFloat(durationMatch[1]);
     const unit = durationMatch[2].replace(/\s+/g, ' '); // Normalize spaces
     
     switch (unit) {
+      case 'hour':
+      case 'hours':
+        return amount / 24; // Convert hours to fraction of days
       case 'day':
       case 'days':
         return amount;

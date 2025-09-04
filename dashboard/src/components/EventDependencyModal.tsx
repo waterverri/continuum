@@ -25,6 +25,8 @@ export default function EventDependencyModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingDependency, setEditingDependency] = useState<EventDependency | null>(null);
+  const [formDependencyType, setFormDependencyType] = useState<'start' | 'end'>('start');
   const [newDependency, setNewDependency] = useState({
     sourceEventId: '',
     rule: '',
@@ -65,12 +67,13 @@ export default function EventDependencyModal({
     if (isOpen) {
       loadDependencies();
       setShowAddForm(false);
+      setEditingDependency(null);
       setNewDependency({ sourceEventId: '', rule: '', dependencyType: 'start', isDuration: false });
     }
   }, [isOpen, loadDependencies]);
 
-  // Create new dependency
-  const handleCreateDependency = async () => {
+  // Create or update dependency
+  const handleSaveDependency = async () => {
     if ((!newDependency.sourceEventId && !newDependency.isDuration) || !newDependency.rule.trim()) {
       setError(newDependency.isDuration ? 'Please enter a duration rule' : 'Please select a source event and enter a dependency rule');
       return;
@@ -106,8 +109,8 @@ export default function EventDependencyModal({
       }
       
       
-      // Step 2: Create dependency directly with supabase client
-      const insertData: any = {
+      // Step 2: Create or update dependency
+      const dependencyData: any = {
         dependent_event_id: event.id,
         dependency_rule: newDependency.rule.trim(),
         dependency_type: newDependency.dependencyType,
@@ -116,15 +119,27 @@ export default function EventDependencyModal({
       
       // Only set source_event_id for non-duration dependencies
       if (!newDependency.isDuration) {
-        insertData.source_event_id = newDependency.sourceEventId;
+        dependencyData.source_event_id = newDependency.sourceEventId;
       }
       
-      const { error: insertError } = await supabase
-        .from('event_dependencies')
-        .insert(insertData);
+      let saveError;
+      if (editingDependency) {
+        // Update existing dependency
+        const { error } = await supabase
+          .from('event_dependencies')
+          .update(dependencyData)
+          .eq('id', editingDependency.id);
+        saveError = error;
+      } else {
+        // Create new dependency
+        const { error } = await supabase
+          .from('event_dependencies')
+          .insert(dependencyData);
+        saveError = error;
+      }
       
-      if (insertError) {
-        throw new Error(`Failed to create dependency: ${insertError.message}`);
+      if (saveError) {
+        throw new Error(`Failed to ${editingDependency ? 'update' : 'create'} dependency: ${saveError.message}`);
       }
       
       
@@ -137,15 +152,14 @@ export default function EventDependencyModal({
       });
       
       if (!recalcResponse.ok) {
-        console.warn('Dependency created but recalculation failed');
+        console.warn(`Dependency ${editingDependency ? 'updated' : 'created'} but recalculation failed`);
       }
       
       await loadDependencies();
-      setShowAddForm(false);
-      setNewDependency({ sourceEventId: '', rule: '', dependencyType: 'start', isDuration: false });
+      closeForm();
       onDependencyChange();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create dependency');
+      setError(err instanceof Error ? err.message : `Failed to ${editingDependency ? 'update' : 'create'} dependency`);
     } finally {
       setLoading(false);
     }
@@ -225,16 +239,53 @@ export default function EventDependencyModal({
     return sourceEvent?.name || 'Unknown Event';
   };
 
+  // Helper functions for form management
+  const openAddForm = (dependencyType: 'start' | 'end') => {
+    setFormDependencyType(dependencyType);
+    setEditingDependency(null);
+    setNewDependency({ 
+      sourceEventId: '', 
+      rule: '', 
+      dependencyType, 
+      isDuration: false 
+    });
+    setShowAddForm(true);
+  };
+
+  const openEditForm = (dependency: EventDependency) => {
+    setFormDependencyType(dependency.dependency_type);
+    setEditingDependency(dependency);
+    setNewDependency({
+      sourceEventId: dependency.source_event_id || '',
+      rule: dependency.dependency_rule,
+      dependencyType: dependency.dependency_type,
+      isDuration: dependency.is_duration
+    });
+    setShowAddForm(true);
+  };
+
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingDependency(null);
+    setNewDependency({ sourceEventId: '', rule: '', dependencyType: 'start', isDuration: false });
+  };
+
+  // Check if dependency type already exists
+  const hasStartDependency = dependencies.some(dep => dep.dependency_type === 'start');
+  const hasEndDependency = dependencies.some(dep => dep.dependency_type === 'end');
+
   // Example rules for user reference - context-aware
   const getExampleRules = () => {
     if (newDependency.isDuration) {
       return [
+        '2 hours',
+        '4 hours',
+        '1 day',
         '3 days',
         '1 week',
         '2 weeks',
         '5 business days',
-        '1 month',
-        '10 days'
+        '1 month'
       ];
     } else if (newDependency.dependencyType === 'start') {
       return [
@@ -301,10 +352,18 @@ export default function EventDependencyModal({
                     <button
                       type="button"
                       className="btn btn--primary btn--sm"
-                      onClick={() => setShowAddForm(true)}
-                      disabled={loading}
+                      onClick={() => openAddForm('start')}
+                      disabled={loading || hasStartDependency}
                     >
-                      Add Dependency
+                      Set Start Dependency
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--sm"
+                      onClick={() => openAddForm('end')}
+                      disabled={loading || hasEndDependency}
+                    >
+                      Set End Dependency
                     </button>
                   </div>
                 </div>
@@ -331,14 +390,24 @@ export default function EventDependencyModal({
                                 </span>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              className="btn btn--danger btn--sm"
-                              onClick={() => handleDeleteDependency(dep.id)}
-                              disabled={loading}
-                            >
-                              Delete
-                            </button>
+                            <div className="dependency-actions">
+                              <button
+                                type="button"
+                                className="btn btn--secondary btn--sm"
+                                onClick={() => openEditForm(dep)}
+                                disabled={loading}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn--danger btn--sm"
+                                onClick={() => handleDeleteDependency(dep.id)}
+                                disabled={loading}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                           <div className="dependency-rule">
                             <code>{dep.dependency_rule}</code>
@@ -366,14 +435,24 @@ export default function EventDependencyModal({
                                 </span>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              className="btn btn--danger btn--sm"
-                              onClick={() => handleDeleteDependency(dep.id)}
-                              disabled={loading}
-                            >
-                              Delete
-                            </button>
+                            <div className="dependency-actions">
+                              <button
+                                type="button"
+                                className="btn btn--secondary btn--sm"
+                                onClick={() => openEditForm(dep)}
+                                disabled={loading}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn--danger btn--sm"
+                                onClick={() => handleDeleteDependency(dep.id)}
+                                disabled={loading}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                           <div className="dependency-rule">
                             <code>{dep.dependency_rule}</code>
@@ -388,30 +467,14 @@ export default function EventDependencyModal({
                 )}
               </div>
 
-              {/* Add New Dependency Form */}
+              {/* Add/Edit Dependency Form */}
               {showAddForm && (
                 <div className="add-dependency-form">
-                  <h3>Add New Dependency</h3>
-                  
-                  <div className="form-group">
-                    <label>Dependency Type</label>
-                    <select
-                      value={newDependency.dependencyType}
-                      onChange={(e) => setNewDependency(prev => ({ 
-                        ...prev, 
-                        dependencyType: e.target.value as 'start' | 'end',
-                        isDuration: false, // Reset duration when type changes
-                        sourceEventId: '', // Reset source when type changes
-                        rule: '' // Reset rule when type changes
-                      }))}
-                      className="form-control"
-                    >
-                      <option value="start">Start Time</option>
-                      <option value="end">End Time</option>
-                    </select>
-                  </div>
+                  <h3>
+                    {editingDependency ? 'Edit' : 'Set'} {formDependencyType === 'start' ? 'Start' : 'End'} Time Dependency
+                  </h3>
 
-                  {newDependency.dependencyType === 'end' && (
+                  {formDependencyType === 'end' && (
                     <div className="form-group">
                       <label>Rule Type</label>
                       <div className="radio-group">
@@ -476,7 +539,7 @@ export default function EventDependencyModal({
                       className="form-control"
                       placeholder={
                         newDependency.isDuration 
-                          ? "e.g., 3 days, 2 weeks, 5 business days"
+                          ? "e.g., 2 hours, 3 days, 2 weeks, 5 business days"
                           : "e.g., 2 days after {source.end}"
                       }
                     />
@@ -508,17 +571,17 @@ export default function EventDependencyModal({
                     <button
                       type="button"
                       className="btn btn--secondary"
-                      onClick={() => setShowAddForm(false)}
+                      onClick={closeForm}
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
                       className="btn btn--primary"
-                      onClick={handleCreateDependency}
+                      onClick={handleSaveDependency}
                       disabled={loading}
                     >
-                      Create Dependency
+                      {editingDependency ? 'Update' : 'Create'} Dependency
                     </button>
                   </div>
                 </div>
