@@ -710,6 +710,9 @@ router.post('/:projectId/:eventId/recalculate', async (req: RequestWithUser, res
     const { projectId, eventId } = req.params;
     const userToken = req.token!;
     
+    console.log(`[Events API] POST /recalculate called with projectId: ${projectId}, eventId: ${eventId}`);
+    console.log(`[Events API] User token present: ${!!userToken}`);
+    
     const userSupabase = createUserSupabaseClient(userToken);
     
     // Verify event exists and belongs to project
