@@ -5,6 +5,85 @@ import { eventDependencyService } from '../services/eventDependencyService';
 
 const router = express.Router();
 
+/**
+ * POST /api/events/validate-dependency-rule  
+ * Validate a natural language dependency rule and check for cycles
+ * IMPORTANT: This must come before parameterized routes to avoid conflicts
+ */
+router.post('/validate-dependency-rule', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { rule, source_event_start, source_event_end, dependent_event_id, source_event_id, project_id } = req.body;
+    
+    
+    if (!rule || typeof rule !== 'string') {
+      return res.status(400).json({ error: 'Rule is required and must be a string' });
+    }
+    
+    // Check for cycles if event IDs are provided
+    if (dependent_event_id && source_event_id && project_id) {
+      try {
+        const wouldCreateCycle = await eventDependencyService.wouldCreateCycle(
+          dependent_event_id,
+          source_event_id,
+          project_id
+        );
+        
+        if (wouldCreateCycle) {
+          return res.status(400).json({ 
+            error: 'Creating this dependency would create a cycle',
+            valid: false,
+            cycle_detected: true
+          });
+        }
+      } catch (cycleError) {
+        console.error('Error checking for cycles:', cycleError);
+        return res.status(500).json({ error: 'Failed to check for dependency cycles' });
+      }
+    }
+    
+    // Mock source event dates for validation
+    const mockSourceStartDate = new Date(source_event_start || '2024-01-01');
+    const mockSourceEndDate = new Date(source_event_end || '2024-01-05');
+    
+    try {
+      // Test the rule parsing using the eventDependencyService logic
+      const processedRule = rule
+        .replace(/\{source\.start\}/g, mockSourceStartDate.toDateString())
+        .replace(/\{source\.end\}/g, mockSourceEndDate.toDateString());
+      
+      // Try to parse with chrono
+      const chrono = require('chrono-node');
+      const parsedDates = chrono.parse(processedRule);
+      
+      if (parsedDates.length === 0) {
+        return res.status(400).json({ 
+          error: `Could not parse dependency rule: "${rule}"`,
+          valid: false 
+        });
+      }
+      
+      const parsedDate = parsedDates[0].start.date();
+      
+      res.json({ 
+        valid: true, 
+        parsed_date: parsedDate.toISOString(),
+        processed_rule: processedRule
+      });
+      
+    } catch (parseError) {
+      console.error('Error parsing dependency rule:', parseError);
+      return res.status(400).json({ 
+        error: `Invalid dependency rule: ${parseError}`,
+        valid: false 
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error in POST /events/validate-dependency-rule:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export interface Event {
   id: string;
   project_id: string;
@@ -540,61 +619,5 @@ router.post('/:projectId/:eventId/recalculate', async (req: RequestWithUser, res
 });
 
 // Complex document evolution endpoints removed - using simplified frontend approach
-
-/**
- * POST /api/events/validate-dependency-rule
- * Validate a natural language dependency rule
- */
-router.post('/validate-dependency-rule', async (req: RequestWithUser, res: Response) => {
-  try {
-    const { rule, source_event_start, source_event_end } = req.body;
-    
-    
-    if (!rule || typeof rule !== 'string') {
-      return res.status(400).json({ error: 'Rule is required and must be a string' });
-    }
-    
-    // Mock source event dates for validation
-    const mockSourceStartDate = new Date(source_event_start || '2024-01-01');
-    const mockSourceEndDate = new Date(source_event_end || '2024-01-05');
-    
-    try {
-      // Test the rule parsing using the eventDependencyService logic
-      const processedRule = rule
-        .replace(/\{source\.start\}/g, mockSourceStartDate.toDateString())
-        .replace(/\{source\.end\}/g, mockSourceEndDate.toDateString());
-      
-      // Try to parse with chrono
-      const chrono = require('chrono-node');
-      const parsedDates = chrono.parse(processedRule);
-      
-      if (parsedDates.length === 0) {
-        return res.status(400).json({ 
-          error: `Could not parse dependency rule: "${rule}"`,
-          valid: false 
-        });
-      }
-      
-      const parsedDate = parsedDates[0].start.date();
-      
-      res.json({ 
-        valid: true, 
-        parsed_date: parsedDate.toISOString(),
-        processed_rule: processedRule
-      });
-      
-    } catch (parseError) {
-      console.error('Error parsing dependency rule:', parseError);
-      return res.status(400).json({ 
-        error: `Invalid dependency rule: ${parseError}`,
-        valid: false 
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error in POST /events/validate-dependency-rule:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 export default router;

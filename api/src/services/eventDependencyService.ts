@@ -2,6 +2,124 @@ import chrono from 'chrono-node';
 import { supabase } from '../db/supabaseClient';
 import type { EventDependency } from '../types/events';
 
+/**
+ * Reusable dependency cycle detector for event dependencies
+ */
+class DependencyCycleDetector {
+  private visited: Set<string> = new Set();
+  private currentPath: Set<string> = new Set();
+
+  /**
+   * Check if adding a new dependency would create a cycle
+   * @param dependentEventId The event that will depend on sourceEventId
+   * @param sourceEventId The event that dependentEventId will depend on
+   * @param projectId Project ID for scoping the dependency graph
+   */
+  async wouldCreateCycle(dependentEventId: string, sourceEventId: string, projectId: string): Promise<boolean> {
+    // Reset state for new check
+    this.visited.clear();
+    this.currentPath.clear();
+
+    // If source event depends on dependent event (directly or indirectly), adding this dependency would create a cycle
+    return await this.hasPath(sourceEventId, dependentEventId, projectId);
+  }
+
+  /**
+   * Get all events in a dependency chain starting from eventId, detecting cycles
+   * @param startEventId Starting event ID
+   * @param projectId Project ID for scoping
+   * @param maxDepth Maximum recursion depth to prevent infinite loops (default: 100)
+   * @returns Array of event IDs in dependency order, or throws error if cycle detected
+   */
+  async getDependencyChain(startEventId: string, projectId: string, maxDepth: number = 100): Promise<string[]> {
+    this.visited.clear();
+    this.currentPath.clear();
+    
+    const chain: string[] = [];
+    await this._buildChainRecursive(startEventId, projectId, chain, maxDepth, 0);
+    return chain;
+  }
+
+  /**
+   * Check if there's a dependency path from startEventId to targetEventId
+   */
+  private async hasPath(startEventId: string, targetEventId: string, projectId: string): Promise<boolean> {
+    if (startEventId === targetEventId) {
+      return true;
+    }
+
+    if (this.visited.has(startEventId)) {
+      return false;
+    }
+
+    if (this.currentPath.has(startEventId)) {
+      // Cycle detected in current path
+      return true;
+    }
+
+    this.visited.add(startEventId);
+    this.currentPath.add(startEventId);
+
+    // Get all events that startEventId depends on
+    const { data: dependencies, error } = await supabase
+      .from('event_dependencies')
+      .select('source_event_id')
+      .eq('dependent_event_id', startEventId);
+
+    if (error) {
+      throw new Error(`Failed to check dependency path: ${error.message}`);
+    }
+
+    // Recursively check each dependency
+    for (const dep of dependencies || []) {
+      if (await this.hasPath(dep.source_event_id, targetEventId, projectId)) {
+        return true;
+      }
+    }
+
+    this.currentPath.delete(startEventId);
+    return false;
+  }
+
+  /**
+   * Recursively build dependency chain with cycle detection
+   */
+  private async _buildChainRecursive(eventId: string, projectId: string, chain: string[], maxDepth: number, currentDepth: number): Promise<void> {
+    if (currentDepth > maxDepth) {
+      throw new Error(`Maximum dependency depth (${maxDepth}) exceeded - possible cycle detected`);
+    }
+
+    if (this.currentPath.has(eventId)) {
+      throw new Error(`Dependency cycle detected involving event: ${eventId}`);
+    }
+
+    if (this.visited.has(eventId)) {
+      return; // Already processed this event
+    }
+
+    this.visited.add(eventId);
+    this.currentPath.add(eventId);
+    chain.push(eventId);
+
+    // Get events that depend on this event
+    const { data: dependentEvents, error } = await supabase
+      .from('event_dependencies')
+      .select('dependent_event_id')
+      .eq('source_event_id', eventId);
+
+    if (error) {
+      throw new Error(`Failed to get dependent events: ${error.message}`);
+    }
+
+    // Recursively process dependent events
+    for (const dep of dependentEvents || []) {
+      await this._buildChainRecursive(dep.dependent_event_id, projectId, chain, maxDepth, currentDepth + 1);
+    }
+
+    this.currentPath.delete(eventId);
+  }
+}
+
 interface Event {
   id: string;
   project_id: string;
@@ -22,6 +140,7 @@ interface ProjectBaseDate {
  * Service for managing event dependencies with natural language rules
  */
 export class EventDependencyService {
+  private cycleDetector = new DependencyCycleDetector();
   
   /**
    * Calculate the actual date for an event based on its dependencies
@@ -237,43 +356,47 @@ export class EventDependencyService {
    * Update an event's calculated dates and trigger recalculation of dependent events
    */
   async recalculateEventDates(eventId: string, projectId: string): Promise<void> {
-    // First, calculate this event's dates based on its dependencies
-    const calculatedDates = await this.calculateDependentEventDate(eventId, projectId);
-    
-    // Update the event if we have calculated dates
-    if (calculatedDates.time_start != null || calculatedDates.time_end != null) {
-      const updateData: any = {};
-      if (calculatedDates.time_start != null) {
-        updateData.time_start = calculatedDates.time_start;
-      }
-      if (calculatedDates.time_end != null) {
-        updateData.time_end = calculatedDates.time_end;
-      }
+    // Use cycle detector to safely recalculate dependency chain
+    try {
+      const dependencyChain = await this.cycleDetector.getDependencyChain(eventId, projectId);
       
-      const { error } = await supabase
-        .from('events')
-        .update(updateData)
-        .eq('id', eventId);
-      
-      if (error) {
-        throw new Error(`Failed to update event dates: ${error.message}`);
+      // Calculate dates for each event in the chain
+      for (const chainEventId of dependencyChain) {
+        const calculatedDates = await this.calculateDependentEventDate(chainEventId, projectId);
+        
+        // Update the event if we have calculated dates
+        if (calculatedDates.time_start != null || calculatedDates.time_end != null) {
+          const updateData: any = {};
+          if (calculatedDates.time_start != null) {
+            updateData.time_start = calculatedDates.time_start;
+          }
+          if (calculatedDates.time_end != null) {
+            updateData.time_end = calculatedDates.time_end;
+          }
+          
+          const { error } = await supabase
+            .from('events')
+            .update(updateData)
+            .eq('id', chainEventId);
+          
+          if (error) {
+            throw new Error(`Failed to update event dates for ${chainEventId}: ${error.message}`);
+          }
+        }
       }
+    } catch (error: any) {
+      if (error.message?.includes('cycle detected') || error.message?.includes('Maximum dependency depth')) {
+        throw new Error(`Cannot recalculate dates: ${error.message}`);
+      }
+      throw error;
     }
-    
-    // Find all events that depend on this event and recalculate them
-    const { data: dependentEvents, error: depsError } = await supabase
-      .from('event_dependencies')
-      .select('dependent_event_id')
-      .eq('source_event_id', eventId);
-    
-    if (depsError) {
-      throw new Error(`Failed to get dependent events: ${depsError.message}`);
-    }
-    
-    // Recursively recalculate dependent events
-    for (const dep of dependentEvents || []) {
-      await this.recalculateEventDates(dep.dependent_event_id, projectId);
-    }
+  }
+
+  /**
+   * Check if creating a dependency would create a cycle
+   */
+  async wouldCreateCycle(dependentEventId: string, sourceEventId: string, projectId: string): Promise<boolean> {
+    return await this.cycleDetector.wouldCreateCycle(dependentEventId, sourceEventId, projectId);
   }
   
   /**

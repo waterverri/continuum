@@ -89,7 +89,10 @@ export default function EventDependencyModal({
         body: JSON.stringify({
           rule: newDependency.rule.trim(),
           source_event_start: sourceEvent?.time_start,
-          source_event_end: sourceEvent?.time_end
+          source_event_end: sourceEvent?.time_end,
+          dependent_event_id: event.id,
+          source_event_id: newDependency.sourceEventId,
+          project_id: projectId
         })
       });
       
