@@ -145,23 +145,8 @@ export class EventDependencyService {
   /**
    * Calculate the actual date for an event based on its dependencies
    */
-  async calculateDependentEventDate(eventId: string, projectId: string): Promise<{ time_start?: number; time_end?: number }> {
-    // Get project base date for converting to project-relative format
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('base_date')
-      .eq('id', projectId)
-      .single();
-    
-    if (projectError) {
-      throw new Error(`Failed to get project base date: ${projectError.message}`);
-    }
-    
-    if (!project) {
-      throw new Error(`Project not found with ID: ${projectId}`);
-    }
-    
-    const baseDate = new Date(project.base_date);
+  async calculateDependentEventDate(eventId: string, projectId: string, baseDateString: string): Promise<{ time_start?: number; time_end?: number }> {
+    const baseDate = new Date(baseDateString);
     
     // Get all dependencies for this event
     const { data: dependencies, error: depsError } = await supabase
@@ -355,14 +340,14 @@ export class EventDependencyService {
   /**
    * Update an event's calculated dates and trigger recalculation of dependent events
    */
-  async recalculateEventDates(eventId: string, projectId: string): Promise<void> {
+  async recalculateEventDates(eventId: string, projectId: string, baseDate: string): Promise<void> {
     // Use cycle detector to safely recalculate dependency chain
     try {
       const dependencyChain = await this.cycleDetector.getDependencyChain(eventId, projectId);
       
       // Calculate dates for each event in the chain
       for (const chainEventId of dependencyChain) {
-        const calculatedDates = await this.calculateDependentEventDate(chainEventId, projectId);
+        const calculatedDates = await this.calculateDependentEventDate(chainEventId, projectId, baseDate);
         
         // Update the event if we have calculated dates
         if (calculatedDates.time_start != null || calculatedDates.time_end != null) {

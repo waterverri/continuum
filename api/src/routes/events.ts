@@ -579,20 +579,31 @@ router.post('/:projectId/:eventId/recalculate', async (req: RequestWithUser, res
     
     const userSupabase = createUserSupabaseClient(userToken);
     
-    // Verify event exists and belongs to project
-    const { data: event, error: eventError } = await userSupabase
-      .from('events')
-      .select('*')
-      .eq('project_id', projectId)
-      .eq('id', eventId)
-      .single();
+    // Verify event exists and belongs to project, and get project base_date
+    const [eventResult, projectResult] = await Promise.all([
+      userSupabase
+        .from('events')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('id', eventId)
+        .single(),
+      userSupabase
+        .from('projects')
+        .select('base_date')
+        .eq('id', projectId)
+        .single()
+    ]);
 
-    if (eventError || !event) {
+    if (eventResult.error || !eventResult.data) {
       return res.status(404).json({ error: 'Event not found' });
     }
+
+    if (projectResult.error || !projectResult.data) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
     
-    // Recalculate dates
-    await eventDependencyService.recalculateEventDates(eventId, projectId);
+    // Recalculate dates with base_date from user context
+    await eventDependencyService.recalculateEventDates(eventId, projectId, projectResult.data.base_date);
     
     // Get the updated event
     const { data: updatedEvent, error: updateError } = await userSupabase
