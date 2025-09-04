@@ -38,26 +38,26 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/dependencies`, {
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
-      });
+      // Load dependencies directly with supabase client
+      const { data: dependencies, error: depsError } = await supabase
+        .from('event_dependencies')
+        .select(`
+          *,
+          source_event:events!source_event_id(*)
+        `)
+        .eq('dependent_event_id', event.id);
       
-      if (!response.ok) {
-        const responseText = await response.text();
-        console.error('API Response:', response.status, responseText);
-        throw new Error(`Failed to load dependencies: ${response.status} - ${responseText.substring(0, 200)}`);
+      if (depsError) {
+        throw new Error(`Failed to load dependencies: ${depsError.message}`);
       }
       
-      const data = await response.json();
-      setDependencies(data.dependencies || []);
+      setDependencies(dependencies || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dependencies');
     } finally {
       setLoading(false);
     }
-  }, [isOpen, event.id, projectId]);
+  }, [isOpen, event.id]);
 
   useEffect(() => {
     if (isOpen) {
@@ -78,21 +78,51 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/dependencies`, {
+      // Step 1: Validate the rule
+      const sourceEvent = events.find(e => e.id === newDependency.sourceEventId);
+      const validationResponse = await fetch(`${API_URL}/api/events/validate-dependency-rule`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
         body: JSON.stringify({
-          source_event_id: newDependency.sourceEventId,
-          dependency_rule: newDependency.rule.trim()
+          rule: newDependency.rule.trim(),
+          source_event_start: sourceEvent?.time_start,
+          source_event_end: sourceEvent?.time_end
         })
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create dependency');
+      if (!validationResponse.ok) {
+        const validationError = await validationResponse.json();
+        throw new Error(validationError.error || 'Invalid dependency rule');
+      }
+      
+      
+      // Step 2: Create dependency directly with supabase client
+      const { error: insertError } = await supabase
+        .from('event_dependencies')
+        .insert({
+          dependent_event_id: event.id,
+          source_event_id: newDependency.sourceEventId,
+          dependency_rule: newDependency.rule.trim()
+        });
+      
+      if (insertError) {
+        throw new Error(`Failed to create dependency: ${insertError.message}`);
+      }
+      
+      
+      // Step 3: Trigger recalculation
+      const recalcResponse = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/recalculate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      });
+      
+      if (!recalcResponse.ok) {
+        console.warn('Dependency created but recalculation failed');
       }
       
       await loadDependencies();
@@ -116,15 +146,26 @@ export default function EventDependencyModal({
     setError(null);
     
     try {
-      const response = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/dependencies/${dependencyId}`, {
-        method: 'DELETE',
+      // Delete directly with supabase client
+      const { error: deleteError } = await supabase
+        .from('event_dependencies')
+        .delete()
+        .eq('id', dependencyId);
+      
+      if (deleteError) {
+        throw new Error(`Failed to delete dependency: ${deleteError.message}`);
+      }
+      
+      // Trigger recalculation after deletion
+      const recalcResponse = await fetch(`${API_URL}/api/events/${projectId}/${event.id}/recalculate`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         }
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to delete dependency');
+      if (!recalcResponse.ok) {
+        console.warn('Dependency deleted but recalculation failed');
       }
       
       await loadDependencies();

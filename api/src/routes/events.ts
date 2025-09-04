@@ -487,219 +487,7 @@ router.delete('/:projectId/:eventId/documents/:documentId', async (req: RequestW
   }
 });
 
-/**
- * POST /api/events/:projectId/:eventId/dependencies
- * Create a new dependency for an event
- */
-router.post('/:projectId/:eventId/dependencies', async (req: RequestWithUser, res: Response) => {
-  try {
-    const { projectId, eventId } = req.params;
-    const { source_event_id, dependency_rule } = req.body;
-    const userToken = req.token!;
-
-    // Validation
-    if (!source_event_id) {
-      return res.status(400).json({ error: 'source_event_id is required' });
-    }
-    
-    if (!dependency_rule || typeof dependency_rule !== 'string' || dependency_rule.trim().length === 0) {
-      return res.status(400).json({ error: 'dependency_rule is required and must be a non-empty string' });
-    }
-    
-    const userSupabase = createUserSupabaseClient(userToken);
-
-    // Verify both events exist and belong to the project
-    const [dependentEventResult, sourceEventResult] = await Promise.all([
-      userSupabase
-        .from('events')
-        .select('id')
-        .eq('project_id', projectId)
-        .eq('id', eventId)
-        .single(),
-      userSupabase
-        .from('events')
-        .select('id')
-        .eq('project_id', projectId)
-        .eq('id', source_event_id)
-        .single()
-    ]);
-
-    if (dependentEventResult.error || !dependentEventResult.data) {
-      return res.status(404).json({ error: 'Dependent event not found' });
-    }
-
-    if (sourceEventResult.error || !sourceEventResult.data) {
-      return res.status(404).json({ error: 'Source event not found' });
-    }
-    
-    // Create the dependency
-    const dependency = await eventDependencyService.createDependency(
-      eventId,
-      source_event_id,
-      dependency_rule.trim()
-    );
-    
-    // Recalculate the dependent event's dates
-    await eventDependencyService.recalculateEventDates(eventId, projectId);
-    
-    res.status(201).json({ dependency });
-  } catch (error: any) {
-    console.error('Error in POST /events/:projectId/:eventId/dependencies:', error);
-    
-    // Handle specific dependency errors
-    if (error.message?.includes('Cyclic event dependency')) {
-      return res.status(400).json({ error: error.message });
-    }
-    
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-/**
- * GET /api/events/:projectId/:eventId/dependencies
- * Get all dependencies for an event
- */
-router.get('/:projectId/:eventId/dependencies', async (req: RequestWithUser, res: Response) => {
-  try {
-    const { projectId, eventId } = req.params;
-    const userToken = req.token!;
-    
-    const userSupabase = createUserSupabaseClient(userToken);
-    
-    // Verify event exists and belongs to project
-    const { data: event, error: eventError } = await userSupabase
-      .from('events')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('id', eventId)
-      .single();
-
-    if (eventError || !event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-    
-    // Get dependencies with source event information
-    const { data: dependencies, error } = await userSupabase
-      .from('event_dependencies')
-      .select(`
-        *,
-        source_event:events!source_event_id(*)
-      `)
-      .eq('dependent_event_id', eventId);
-    
-    if (error) {
-      console.error('Error fetching event dependencies:', error);
-      return res.status(500).json({ error: 'Failed to fetch dependencies' });
-    }
-    
-    res.json({ dependencies: dependencies || [] });
-  } catch (error) {
-    console.error('Error in GET /events/:projectId/:eventId/dependencies:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-/**
- * PUT /api/events/:projectId/:eventId/dependencies/:dependencyId
- * Update an event dependency rule
- */
-router.put('/:projectId/:eventId/dependencies/:dependencyId', async (req: RequestWithUser, res: Response) => {
-  try {
-    const { projectId, eventId, dependencyId } = req.params;
-    const { dependency_rule } = req.body;
-    const userToken = req.token!;
-
-    if (!dependency_rule || typeof dependency_rule !== 'string' || dependency_rule.trim().length === 0) {
-      return res.status(400).json({ error: 'dependency_rule is required and must be a non-empty string' });
-    }
-    
-    const userSupabase = createUserSupabaseClient(userToken);
-    
-    // Verify event exists and belongs to project
-    const { data: event, error: eventError } = await userSupabase
-      .from('events')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('id', eventId)
-      .single();
-
-    if (eventError || !event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-    
-    // Update the dependency rule
-    const { data: dependency, error } = await userSupabase
-      .from('event_dependencies')
-      .update({ dependency_rule: dependency_rule.trim() })
-      .eq('id', dependencyId)
-      .eq('dependent_event_id', eventId)
-      .select()
-      .single();
-    
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({ error: 'Dependency not found' });
-      }
-      console.error('Error updating dependency:', error);
-      return res.status(500).json({ error: 'Failed to update dependency' });
-    }
-    
-    // Recalculate the dependent event's dates
-    await eventDependencyService.recalculateEventDates(eventId, projectId);
-    
-    res.json({ dependency });
-  } catch (error: any) {
-    console.error('Error in PUT /events/:projectId/:eventId/dependencies/:dependencyId:', error);
-    
-    if (error.message?.includes('Could not parse dependency rule')) {
-      return res.status(400).json({ error: error.message });
-    }
-    
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-/**
- * DELETE /api/events/:projectId/:eventId/dependencies/:dependencyId
- * Delete an event dependency
- */
-router.delete('/:projectId/:eventId/dependencies/:dependencyId', async (req: RequestWithUser, res: Response) => {
-  try {
-    const { projectId, eventId, dependencyId } = req.params;
-    const userToken = req.token!;
-    
-    const userSupabase = createUserSupabaseClient(userToken);
-    
-    // Verify event exists and belongs to project
-    const { data: event, error: eventError } = await userSupabase
-      .from('events')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('id', eventId)
-      .single();
-
-    if (eventError || !event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-    
-    // Delete the dependency
-    const { error } = await userSupabase
-      .from('event_dependencies')
-      .delete()
-      .eq('id', dependencyId)
-      .eq('dependent_event_id', eventId);
-    
-    if (error) {
-      console.error('Error deleting dependency:', error);
-      return res.status(500).json({ error: 'Failed to delete dependency' });
-    }
-    
-    res.status(204).send();
-  } catch (error) {
-    console.error('Error in DELETE /events/:projectId/:eventId/dependencies/:dependencyId:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// Old dependency CRUD endpoints removed - now handled client-side with RLS
 
 /**
  * POST /api/events/:projectId/:eventId/recalculate
@@ -709,9 +497,6 @@ router.post('/:projectId/:eventId/recalculate', async (req: RequestWithUser, res
   try {
     const { projectId, eventId } = req.params;
     const userToken = req.token!;
-    
-    console.log(`[Events API] POST /recalculate called with projectId: ${projectId}, eventId: ${eventId}`);
-    console.log(`[Events API] User token present: ${!!userToken}`);
     
     const userSupabase = createUserSupabaseClient(userToken);
     
@@ -755,5 +540,61 @@ router.post('/:projectId/:eventId/recalculate', async (req: RequestWithUser, res
 });
 
 // Complex document evolution endpoints removed - using simplified frontend approach
+
+/**
+ * POST /api/events/validate-dependency-rule
+ * Validate a natural language dependency rule
+ */
+router.post('/validate-dependency-rule', async (req: RequestWithUser, res: Response) => {
+  try {
+    const { rule, source_event_start, source_event_end } = req.body;
+    
+    
+    if (!rule || typeof rule !== 'string') {
+      return res.status(400).json({ error: 'Rule is required and must be a string' });
+    }
+    
+    // Mock source event dates for validation
+    const mockSourceStartDate = new Date(source_event_start || '2024-01-01');
+    const mockSourceEndDate = new Date(source_event_end || '2024-01-05');
+    
+    try {
+      // Test the rule parsing using the eventDependencyService logic
+      const processedRule = rule
+        .replace(/\{source\.start\}/g, mockSourceStartDate.toDateString())
+        .replace(/\{source\.end\}/g, mockSourceEndDate.toDateString());
+      
+      // Try to parse with chrono
+      const chrono = require('chrono-node');
+      const parsedDates = chrono.parse(processedRule);
+      
+      if (parsedDates.length === 0) {
+        return res.status(400).json({ 
+          error: `Could not parse dependency rule: "${rule}"`,
+          valid: false 
+        });
+      }
+      
+      const parsedDate = parsedDates[0].start.date();
+      
+      res.json({ 
+        valid: true, 
+        parsed_date: parsedDate.toISOString(),
+        processed_rule: processedRule
+      });
+      
+    } catch (parseError) {
+      console.error('Error parsing dependency rule:', parseError);
+      return res.status(400).json({ 
+        error: `Invalid dependency rule: ${parseError}`,
+        valid: false 
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error in POST /events/validate-dependency-rule:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 export default router;

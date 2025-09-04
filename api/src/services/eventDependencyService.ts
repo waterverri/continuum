@@ -27,29 +27,20 @@ export class EventDependencyService {
    * Calculate the actual date for an event based on its dependencies
    */
   async calculateDependentEventDate(eventId: string, projectId: string): Promise<{ time_start?: number; time_end?: number }> {
-    console.log(`[EventDependencyService] Starting calculateDependentEventDate for eventId: ${eventId}, projectId: ${projectId}`);
-    
     // Get project base date for converting to project-relative format
-    console.log(`[EventDependencyService] Querying projects table for ID: ${projectId}`);
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('base_date')
       .eq('id', projectId)
       .single();
     
-    console.log(`[EventDependencyService] Project query result:`, { project, error: projectError });
-    
     if (projectError) {
-      console.error(`[EventDependencyService] Project query error for ID ${projectId}:`, projectError);
       throw new Error(`Failed to get project base date: ${projectError.message}`);
     }
     
     if (!project) {
-      console.error(`[EventDependencyService] Project not found with ID: ${projectId}`);
       throw new Error(`Project not found with ID: ${projectId}`);
     }
-    
-    console.log(`[EventDependencyService] Found project with base_date: ${project.base_date}`);
     
     const baseDate = new Date(project.base_date);
     
