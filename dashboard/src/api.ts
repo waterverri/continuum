@@ -86,6 +86,8 @@ export interface EventDependency {
   dependent_event_id: string;
   source_event_id: string;
   dependency_rule: string;
+  dependency_type: 'start' | 'end';
+  is_duration: boolean;
   created_at: string;
 }
 

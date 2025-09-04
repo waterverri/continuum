@@ -27,7 +27,9 @@ export default function EventDependencyModal({
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDependency, setNewDependency] = useState({
     sourceEventId: '',
-    rule: ''
+    rule: '',
+    dependencyType: 'start' as 'start' | 'end',
+    isDuration: false
   });
 
   // Load existing dependencies
@@ -63,14 +65,14 @@ export default function EventDependencyModal({
     if (isOpen) {
       loadDependencies();
       setShowAddForm(false);
-      setNewDependency({ sourceEventId: '', rule: '' });
+      setNewDependency({ sourceEventId: '', rule: '', dependencyType: 'start', isDuration: false });
     }
   }, [isOpen, loadDependencies]);
 
   // Create new dependency
   const handleCreateDependency = async () => {
-    if (!newDependency.sourceEventId || !newDependency.rule.trim()) {
-      setError('Please select a source event and enter a dependency rule');
+    if ((!newDependency.sourceEventId && !newDependency.isDuration) || !newDependency.rule.trim()) {
+      setError(newDependency.isDuration ? 'Please enter a duration rule' : 'Please select a source event and enter a dependency rule');
       return;
     }
     
@@ -92,7 +94,9 @@ export default function EventDependencyModal({
           source_event_end: sourceEvent?.time_end,
           dependent_event_id: event.id,
           source_event_id: newDependency.sourceEventId,
-          project_id: projectId
+          project_id: projectId,
+          dependency_type: newDependency.dependencyType,
+          is_duration: newDependency.isDuration
         })
       });
       
@@ -103,13 +107,21 @@ export default function EventDependencyModal({
       
       
       // Step 2: Create dependency directly with supabase client
+      const insertData: any = {
+        dependent_event_id: event.id,
+        dependency_rule: newDependency.rule.trim(),
+        dependency_type: newDependency.dependencyType,
+        is_duration: newDependency.isDuration
+      };
+      
+      // Only set source_event_id for non-duration dependencies
+      if (!newDependency.isDuration) {
+        insertData.source_event_id = newDependency.sourceEventId;
+      }
+      
       const { error: insertError } = await supabase
         .from('event_dependencies')
-        .insert({
-          dependent_event_id: event.id,
-          source_event_id: newDependency.sourceEventId,
-          dependency_rule: newDependency.rule.trim()
-        });
+        .insert(insertData);
       
       if (insertError) {
         throw new Error(`Failed to create dependency: ${insertError.message}`);
@@ -130,7 +142,7 @@ export default function EventDependencyModal({
       
       await loadDependencies();
       setShowAddForm(false);
-      setNewDependency({ sourceEventId: '', rule: '' });
+      setNewDependency({ sourceEventId: '', rule: '', dependencyType: 'start', isDuration: false });
       onDependencyChange();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create dependency');
@@ -213,15 +225,37 @@ export default function EventDependencyModal({
     return sourceEvent?.name || 'Unknown Event';
   };
 
-  // Example rules for user reference
-  const exampleRules = [
-    '2 days after {source.end}',
-    'first Monday after {source.end}',
-    '1 week before {source.start}',
-    '3 business days after {source.end}',
-    'same day as {source.start} but next week',
-    'last Friday before {source.start}'
-  ];
+  // Example rules for user reference - context-aware
+  const getExampleRules = () => {
+    if (newDependency.isDuration) {
+      return [
+        '3 days',
+        '1 week',
+        '2 weeks',
+        '5 business days',
+        '1 month',
+        '10 days'
+      ];
+    } else if (newDependency.dependencyType === 'start') {
+      return [
+        '2 days after {source.end}',
+        'first Monday after {source.end}',
+        '1 week before {source.start}',
+        '3 business days after {source.end}',
+        'same day as {source.start}',
+        'last Friday before {source.start}'
+      ];
+    } else {
+      return [
+        '1 day after {source.end}',
+        'same day as {source.end}',
+        '3 days after {source.start}',
+        'first Friday after {source.end}',
+        '1 week after {source.start}',
+        'next business day after {source.end}'
+      ];
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -280,29 +314,76 @@ export default function EventDependencyModal({
                     <p>No dependencies configured. This event's dates can be set manually.</p>
                   </div>
                 ) : (
-                  <div className="dependencies-list">
-                    {dependencies.map((dep) => (
-                      <div key={dep.id} className="dependency-card">
-                        <div className="dependency-header">
-                          <div className="dependency-info">
-                            <span className="source-event-name">
-                              {getSourceEventName(dep.source_event_id)}
-                            </span>
+                  <div className="dependencies-sections">
+                    {/* Start Dependencies */}
+                    <div className="dependency-type-section">
+                      <h4>Start Time Dependencies</h4>
+                      {dependencies.filter(dep => dep.dependency_type === 'start').map((dep) => (
+                        <div key={dep.id} className="dependency-card">
+                          <div className="dependency-header">
+                            <div className="dependency-info">
+                              <span className="dependency-type-badge start">Start</span>
+                              {dep.is_duration ? (
+                                <span className="source-event-name">Duration Rule</span>
+                              ) : (
+                                <span className="source-event-name">
+                                  {getSourceEventName(dep.source_event_id)}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn--danger btn--sm"
+                              onClick={() => handleDeleteDependency(dep.id)}
+                              disabled={loading}
+                            >
+                              Delete
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            className="btn btn--danger btn--sm"
-                            onClick={() => handleDeleteDependency(dep.id)}
-                            disabled={loading}
-                          >
-                            Delete
-                          </button>
+                          <div className="dependency-rule">
+                            <code>{dep.dependency_rule}</code>
+                          </div>
                         </div>
-                        <div className="dependency-rule">
-                          <code>{dep.dependency_rule}</code>
+                      ))}
+                      {dependencies.filter(dep => dep.dependency_type === 'start').length === 0 && (
+                        <p className="no-dependencies">No start dependencies configured.</p>
+                      )}
+                    </div>
+
+                    {/* End Dependencies */}
+                    <div className="dependency-type-section">
+                      <h4>End Time Dependencies</h4>
+                      {dependencies.filter(dep => dep.dependency_type === 'end').map((dep) => (
+                        <div key={dep.id} className="dependency-card">
+                          <div className="dependency-header">
+                            <div className="dependency-info">
+                              <span className="dependency-type-badge end">End</span>
+                              {dep.is_duration ? (
+                                <span className="source-event-name">Duration Rule</span>
+                              ) : (
+                                <span className="source-event-name">
+                                  {getSourceEventName(dep.source_event_id)}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn--danger btn--sm"
+                              onClick={() => handleDeleteDependency(dep.id)}
+                              disabled={loading}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                          <div className="dependency-rule">
+                            <code>{dep.dependency_rule}</code>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                      {dependencies.filter(dep => dep.dependency_type === 'end').length === 0 && (
+                        <p className="no-dependencies">No end dependencies configured.</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -313,39 +394,104 @@ export default function EventDependencyModal({
                   <h3>Add New Dependency</h3>
                   
                   <div className="form-group">
-                    <label>Source Event</label>
+                    <label>Dependency Type</label>
                     <select
-                      value={newDependency.sourceEventId}
-                      onChange={(e) => setNewDependency(prev => ({ ...prev, sourceEventId: e.target.value }))}
+                      value={newDependency.dependencyType}
+                      onChange={(e) => setNewDependency(prev => ({ 
+                        ...prev, 
+                        dependencyType: e.target.value as 'start' | 'end',
+                        isDuration: false, // Reset duration when type changes
+                        sourceEventId: '', // Reset source when type changes
+                        rule: '' // Reset rule when type changes
+                      }))}
                       className="form-control"
                     >
-                      <option value="">Select an event...</option>
-                      {availableSourceEvents.map(sourceEvent => (
-                        <option key={sourceEvent.id} value={sourceEvent.id}>
-                          {sourceEvent.name}
-                        </option>
-                      ))}
+                      <option value="start">Start Time</option>
+                      <option value="end">End Time</option>
                     </select>
                   </div>
 
+                  {newDependency.dependencyType === 'end' && (
+                    <div className="form-group">
+                      <label>Rule Type</label>
+                      <div className="radio-group">
+                        <label className="radio-option">
+                          <input
+                            type="radio"
+                            name="ruleType"
+                            checked={!newDependency.isDuration}
+                            onChange={() => setNewDependency(prev => ({ 
+                              ...prev, 
+                              isDuration: false,
+                              sourceEventId: '',
+                              rule: ''
+                            }))}
+                          />
+                          <span>Natural Language (relative to another event)</span>
+                        </label>
+                        <label className="radio-option">
+                          <input
+                            type="radio"
+                            name="ruleType"
+                            checked={newDependency.isDuration}
+                            onChange={() => setNewDependency(prev => ({ 
+                              ...prev, 
+                              isDuration: true,
+                              sourceEventId: '',
+                              rule: ''
+                            }))}
+                          />
+                          <span>Duration (from start time)</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {!newDependency.isDuration && (
+                    <div className="form-group">
+                      <label>Source Event</label>
+                      <select
+                        value={newDependency.sourceEventId}
+                        onChange={(e) => setNewDependency(prev => ({ ...prev, sourceEventId: e.target.value }))}
+                        className="form-control"
+                      >
+                        <option value="">Select an event...</option>
+                        {availableSourceEvents.map(sourceEvent => (
+                          <option key={sourceEvent.id} value={sourceEvent.id}>
+                            {sourceEvent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="form-group">
-                    <label>Dependency Rule</label>
+                    <label>
+                      {newDependency.isDuration ? 'Duration Rule' : 'Dependency Rule'}
+                    </label>
                     <input
                       type="text"
                       value={newDependency.rule}
                       onChange={(e) => setNewDependency(prev => ({ ...prev, rule: e.target.value }))}
                       className="form-control"
-                      placeholder="e.g., 2 days after {source.end}"
+                      placeholder={
+                        newDependency.isDuration 
+                          ? "e.g., 3 days, 2 weeks, 5 business days"
+                          : "e.g., 2 days after {source.end}"
+                      }
                     />
                     <div className="form-help">
-                      Use natural language to describe when this event should occur relative to the source event.
+                      {newDependency.isDuration 
+                        ? 'Specify how long this event lasts from its start time.'
+                        : 'Use natural language to describe when this event should occur relative to the source event.'
+                      }
                     </div>
                   </div>
 
                   <div className="example-rules">
-                    <h4>Example Rules</h4>
+                    <h4>Example {newDependency.isDuration ? 'Durations' : 'Rules'}</h4>
                     <div className="examples-list">
-                      {exampleRules.map((rule, index) => (
+                      {getExampleRules().map((rule, index) => (
                         <button
                           key={index}
                           type="button"

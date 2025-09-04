@@ -12,15 +12,15 @@ const router = express.Router();
  */
 router.post('/validate-dependency-rule', async (req: RequestWithUser, res: Response) => {
   try {
-    const { rule, source_event_start, source_event_end, dependent_event_id, source_event_id, project_id } = req.body;
+    const { rule, source_event_start, source_event_end, dependent_event_id, source_event_id, project_id, dependency_type, is_duration } = req.body;
     
     
     if (!rule || typeof rule !== 'string') {
       return res.status(400).json({ error: 'Rule is required and must be a string' });
     }
     
-    // Check for cycles if event IDs are provided
-    if (dependent_event_id && source_event_id && project_id) {
+    // Check for cycles if event IDs are provided (only for non-duration dependencies)
+    if (dependent_event_id && source_event_id && project_id && !is_duration) {
       try {
         const wouldCreateCycle = await eventDependencyService.wouldCreateCycle(
           dependent_event_id,
@@ -46,29 +46,48 @@ router.post('/validate-dependency-rule', async (req: RequestWithUser, res: Respo
     const mockSourceEndDate = new Date(source_event_end || '2024-01-05');
     
     try {
-      // Test the rule parsing using the eventDependencyService logic
-      const processedRule = rule
-        .replace(/\{source\.start\}/g, mockSourceStartDate.toDateString())
-        .replace(/\{source\.end\}/g, mockSourceEndDate.toDateString());
-      
-      // Try to parse with chrono
-      const chrono = require('chrono-node');
-      const parsedDates = chrono.parse(processedRule);
-      
-      if (parsedDates.length === 0) {
-        return res.status(400).json({ 
-          error: `Could not parse dependency rule: "${rule}"`,
-          valid: false 
+      if (is_duration) {
+        // Validate duration rule
+        const durationMatch = rule.toLowerCase().match(/(\d+)\s*(day|days|week|weeks|month|months|business\s*day|business\s*days)/);
+        
+        if (!durationMatch) {
+          return res.status(400).json({ 
+            error: `Invalid duration rule format. Expected format like "3 days" or "2 weeks"`,
+            valid: false 
+          });
+        }
+        
+        res.json({ 
+          valid: true, 
+          duration_days: parseInt(durationMatch[1]) * (durationMatch[2].includes('week') ? 7 : durationMatch[2].includes('month') ? 30 : 1),
+          rule_type: 'duration'
+        });
+      } else {
+        // Validate natural language rule with source event
+        const processedRule = rule
+          .replace(/\{source\.start\}/g, mockSourceStartDate.toDateString())
+          .replace(/\{source\.end\}/g, mockSourceEndDate.toDateString());
+        
+        // Try to parse with chrono
+        const chrono = require('chrono-node');
+        const parsedDates = chrono.parse(processedRule);
+        
+        if (parsedDates.length === 0) {
+          return res.status(400).json({ 
+            error: `Could not parse dependency rule: "${rule}"`,
+            valid: false 
+          });
+        }
+        
+        const parsedDate = parsedDates[0].start.date();
+        
+        res.json({ 
+          valid: true, 
+          parsed_date: parsedDate.toISOString(),
+          processed_rule: processedRule,
+          rule_type: 'natural_language'
         });
       }
-      
-      const parsedDate = parsedDates[0].start.date();
-      
-      res.json({ 
-        valid: true, 
-        parsed_date: parsedDate.toISOString(),
-        processed_rule: processedRule
-      });
       
     } catch (parseError) {
       console.error('Error parsing dependency rule:', parseError);

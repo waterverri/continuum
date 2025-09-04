@@ -148,7 +148,7 @@ export class EventDependencyService {
   async calculateDependentEventDate(eventId: string, projectId: string, baseDateString: string): Promise<{ time_start?: number; time_end?: number }> {
     const baseDate = new Date(baseDateString);
     
-    // Get all dependencies for this event
+    // Get all dependencies for this event, separated by type
     const { data: dependencies, error: depsError } = await supabase
       .from('event_dependencies')
       .select(`
@@ -168,27 +168,54 @@ export class EventDependencyService {
     let calculatedStart: number | undefined;
     let calculatedEnd: number | undefined;
     
-    // Process each dependency
-    for (const dep of dependencies) {
-      const sourceEvent = dep.source_event;
-      
-      if (!sourceEvent || sourceEvent.time_start == null || sourceEvent.time_end == null) {
-        continue; // Skip if source event doesn't have dates
+    // Separate start and end dependencies
+    const startDeps = dependencies.filter(dep => dep.dependency_type === 'start');
+    const endDeps = dependencies.filter(dep => dep.dependency_type === 'end');
+    
+    // Process start dependencies
+    for (const dep of startDeps) {
+      if (!dep.is_duration) {
+        const sourceEvent = dep.source_event;
+        if (!sourceEvent || sourceEvent.time_start == null || sourceEvent.time_end == null) {
+          continue; // Skip if source event doesn't have dates
+        }
+        
+        const result = await this.parseNaturalLanguageRule(
+          dep.dependency_rule,
+          sourceEvent,
+          baseDate
+        );
+        
+        if (result.time_start != null) {
+          calculatedStart = result.time_start;
+        }
       }
-      
-      // Parse the natural language rule
-      const result = await this.parseNaturalLanguageRule(
-        dep.dependency_rule,
-        sourceEvent,
-        baseDate
-      );
-      
-      // Apply the calculated dates (could have start, end, or both)
-      if (result.time_start != null) {
-        calculatedStart = result.time_start;
-      }
-      if (result.time_end != null) {
-        calculatedEnd = result.time_end;
+    }
+    
+    // Process end dependencies
+    for (const dep of endDeps) {
+      if (dep.is_duration) {
+        // Duration rule - calculate end based on start time
+        if (calculatedStart != null) {
+          const durationDays = this.parseDurationRule(dep.dependency_rule);
+          calculatedEnd = calculatedStart + durationDays;
+        }
+      } else {
+        // Natural language rule with source event
+        const sourceEvent = dep.source_event;
+        if (!sourceEvent || sourceEvent.time_start == null || sourceEvent.time_end == null) {
+          continue; // Skip if source event doesn't have dates
+        }
+        
+        const result = await this.parseNaturalLanguageRule(
+          dep.dependency_rule,
+          sourceEvent,
+          baseDate
+        );
+        
+        if (result.time_start != null) {
+          calculatedEnd = result.time_start; // For end deps, we treat the calculated date as the end time
+        }
       }
     }
     
@@ -241,19 +268,46 @@ export class EventDependencyService {
     const timeDiff = resultDate.getTime() - projectBaseDate.getTime();
     const daysDiff = timeDiff / (24 * 60 * 60 * 1000);
     
-    // Determine if this rule affects start time, end time, or both
-    const result: { time_start?: number; time_end?: number } = {};
+    // Always return as time_start - the caller will decide how to use it based on dependency type
+    return {
+      time_start: daysDiff
+    };
+  }
+  
+  /**
+   * Parse duration rule and return number of days
+   */
+  private parseDurationRule(rule: string): number {
+    // Handle various duration formats
+    const normalizedRule = rule.toLowerCase().trim();
     
-    if (rule.includes('starts') || rule.includes('begin')) {
-      result.time_start = daysDiff;
-    } else if (rule.includes('ends') || rule.includes('finish')) {
-      result.time_end = daysDiff;
-    } else {
-      // Default: assume it's setting the start time
-      result.time_start = daysDiff;
+    // Match patterns like "3 days", "2 weeks", "1 month", "5 business days"
+    const durationMatch = normalizedRule.match(/(\d+)\s*(day|days|week|weeks|month|months|business\s*day|business\s*days)/);
+    
+    if (!durationMatch) {
+      throw new Error(`Invalid duration rule: ${rule}`);
     }
     
-    return result;
+    const amount = parseInt(durationMatch[1]);
+    const unit = durationMatch[2].replace(/\s+/g, ' '); // Normalize spaces
+    
+    switch (unit) {
+      case 'day':
+      case 'days':
+        return amount;
+      case 'week':
+      case 'weeks':
+        return amount * 7;
+      case 'month':
+      case 'months':
+        return amount * 30; // Approximate
+      case 'business day':
+      case 'business days':
+        // Convert business days to calendar days (rough approximation)
+        return Math.ceil(amount * 1.4); // Accounts for weekends
+      default:
+        throw new Error(`Unsupported duration unit: ${unit}`);
+    }
   }
   
   /**
