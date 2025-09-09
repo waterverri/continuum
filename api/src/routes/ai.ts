@@ -1,6 +1,7 @@
 import express from 'express';
 import { RequestWithUser } from '../index';
 import { AIGatewayService } from '../services/aiGatewayService';
+import { contextAssemblyService } from '../services/contextAssemblyService';
 import { supabaseAdmin } from '../db/supabaseClient';
 
 const router = express.Router();
@@ -377,6 +378,402 @@ router.post('/proxy', async (req: RequestWithUser, res) => {
   } catch (error) {
     console.error('Error in AI proxy setup:', error);
     res.status(500).json({ error: 'Failed to initialize AI request' });
+  }
+});
+
+// POST /ai/chat - Chat with AI using documents as context
+router.post('/chat', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { 
+      documentId,
+      messages, 
+      providerId, 
+      model, 
+      maxTokens = 4000,
+      contextDocuments = [] // Array of document IDs to include as context
+    } = req.body;
+
+    if (!documentId || !messages || !providerId || !model) {
+      return res.status(400).json({ error: 'Document ID, messages, provider ID, and model are required' });
+    }
+
+    // Verify user has access to the document
+    const { data: document, error: docError } = await supabaseAdmin
+      .from('documents')
+      .select('*, projects!inner(id)')
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Verify user has access to the project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', document.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Use context assembly service for intelligent context building
+    const contextData = await contextAssemblyService.assembleContext(
+      document.project_id,
+      documentId,
+      contextDocuments,
+      {
+        includeRelated: true,
+        includeEventContext: true,
+        maxContextSize: 50000, // 50k tokens for chat context
+        preferredTypes: ['character', 'setting', 'plot', 'lore'] // Common writing document types
+      }
+    );
+
+    console.log(`Assembled context: ${contextData.tokenCount} tokens from ${contextData.documentsUsed.length} documents`);
+
+    // Prepare messages with context
+    const enhancedMessages = [
+      { role: 'system', content: `You are helping with a writing project. Here is the current context:\n\n${contextData.context}` },
+      ...messages
+    ];
+
+    // Make AI request through existing proxy logic
+    const response = await aiGateway.makeEnhancedProxyRequest({
+      providerId,
+      model,
+      messages: enhancedMessages,
+      maxTokens
+    });
+
+    // Get pricing for cost calculation
+    const providers = await aiGateway.getProvidersWithKeys();
+    const provider = providers.find(p => p.id === providerId);
+    let pricing = provider?.pricing[model] || { input: 10, output: 30 };
+
+    const actualCost = Math.ceil(
+      (response.inputTokens * pricing.input + response.outputTokens * pricing.output) / 1000000 * 10000
+    );
+
+    // Deduct credits
+    await supabaseAdmin.rpc('deduct_user_credits', {
+      p_user_id: userId,
+      p_credits: actualCost
+    });
+
+    // Update document with chat data if it's a chat interaction_mode
+    if (document.interaction_mode === 'chat') {
+      // Parse existing chat data or create new
+      let chatData;
+      try {
+        chatData = document.content ? JSON.parse(document.content) : {
+          messages: [],
+          active_context: [],
+          total_cost: 0,
+          conversation_summary: ''
+        };
+      } catch {
+        chatData = {
+          messages: [],
+          active_context: contextDocuments,
+          total_cost: 0,
+          conversation_summary: ''
+        };
+      }
+
+      // Add new messages
+      chatData.messages.push(...messages);
+      chatData.messages.push({
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date().toISOString(),
+        tokens: response.outputTokens,
+        cost: actualCost
+      });
+
+      chatData.total_cost = (chatData.total_cost || 0) + actualCost;
+      chatData.active_context = contextDocuments;
+
+      // Update document
+      await supabaseAdmin
+        .from('documents')
+        .update({
+          content: JSON.stringify(chatData, null, 2)
+        })
+        .eq('id', documentId);
+    }
+
+    res.json({
+      response: response.response,
+      inputTokens: response.inputTokens,
+      outputTokens: response.outputTokens,
+      costCredits: actualCost
+    });
+
+  } catch (error) {
+    console.error('Error in AI chat:', error);
+    res.status(500).json({ error: 'Chat request failed' });
+  }
+});
+
+// GET /ai/project-prompts/:projectId - Get prompt templates for a project
+router.get('/project-prompts/:projectId', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    const { projectId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Verify user has access to project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get project prompts with document details
+    const { data: prompts, error } = await supabaseAdmin
+      .from('prompt_templates_with_documents')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching project prompts:', error);
+      return res.status(500).json({ error: 'Failed to fetch project prompts' });
+    }
+
+    res.json({ prompts: prompts || [] });
+  } catch (error) {
+    console.error('Error in project prompts endpoint:', error);
+    res.status(500).json({ error: 'Failed to fetch project prompts' });
+  }
+});
+
+// POST /ai/project-prompts - Create a new prompt template
+router.post('/project-prompts', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { projectId, documentId, name, description, variables } = req.body;
+
+    if (!projectId || !documentId || !name) {
+      return res.status(400).json({ error: 'Project ID, document ID, and name are required' });
+    }
+
+    // Verify user has editor/owner access to project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership || !['owner', 'editor'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Editor access required' });
+    }
+
+    // Create prompt template
+    const { data: prompt, error } = await supabaseAdmin
+      .from('project_prompts')
+      .insert({
+        project_id: projectId,
+        document_id: documentId,
+        name,
+        description,
+        variables: variables || {},
+        created_by: userId
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error creating project prompt:', error);
+      return res.status(500).json({ error: 'Failed to create project prompt' });
+    }
+
+    res.json({ prompt });
+  } catch (error) {
+    console.error('Error in create project prompt:', error);
+    res.status(500).json({ error: 'Failed to create project prompt' });
+  }
+});
+
+// POST /ai/transform - Transform document content using a prompt template
+router.post('/transform', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { 
+      documentId, 
+      promptTemplateId, 
+      variables = {}, 
+      providerId, 
+      model, 
+      maxTokens = 4000 
+    } = req.body;
+
+    if (!documentId || !promptTemplateId || !providerId || !model) {
+      return res.status(400).json({ error: 'Document ID, prompt template ID, provider ID, and model are required' });
+    }
+
+    // Get document and prompt template
+    const { data: document } = await supabaseAdmin
+      .from('documents')
+      .select('*')
+      .eq('id', documentId)
+      .single();
+
+    const { data: promptTemplate } = await supabaseAdmin
+      .from('prompt_templates_with_documents')
+      .select('*')
+      .eq('id', promptTemplateId)
+      .single();
+
+    if (!document || !promptTemplate) {
+      return res.status(404).json({ error: 'Document or prompt template not found' });
+    }
+
+    // Verify access to project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', document.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Replace template variables in prompt
+    let promptContent = promptTemplate.document_content || '';
+    Object.entries(variables).forEach(([key, value]) => {
+      promptContent = promptContent.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
+    });
+
+    // Prepare messages with document context
+    const messages: Array<{ role: 'user' | 'system' | 'assistant'; content: string }> = [
+      { role: 'system', content: promptContent },
+      { role: 'user', content: `Document Title: ${document.title}\nDocument Type: ${document.document_type || 'Document'}\nContent:\n${document.content || ''}` }
+    ];
+
+    // Make AI request
+    const response = await aiGateway.makeEnhancedProxyRequest({
+      providerId,
+      model,
+      messages,
+      maxTokens
+    });
+
+    // Calculate cost and deduct credits
+    const providers = await aiGateway.getProvidersWithKeys();
+    const provider = providers.find(p => p.id === providerId);
+    const pricing = provider?.pricing[model] || { input: 10, output: 30 };
+
+    const actualCost = Math.ceil(
+      (response.inputTokens * pricing.input + response.outputTokens * pricing.output) / 1000000 * 10000
+    );
+
+    await supabaseAdmin.rpc('deduct_user_credits', {
+      p_user_id: userId,
+      p_credits: actualCost
+    });
+
+    res.json({
+      response: response.response,
+      inputTokens: response.inputTokens,
+      outputTokens: response.outputTokens,
+      costCredits: actualCost
+    });
+
+  } catch (error) {
+    console.error('Error in AI transform:', error);
+    res.status(500).json({ error: 'Transform request failed' });
+  }
+});
+
+// GET /ai/context/:documentId - Preview context assembly for a document  
+router.get('/context/:documentId', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    const { documentId } = req.params;
+    const { contextDocuments = '' } = req.query;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Verify user has access to the document
+    const { data: document } = await supabaseAdmin
+      .from('documents')
+      .select('*, projects!inner(id)')
+      .eq('id', documentId)
+      .single();
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Verify user has access to the project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', document.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Parse additional context documents
+    const additionalDocs = contextDocuments ? 
+      (contextDocuments as string).split(',').filter(id => id.trim()) : [];
+
+    // Assemble context
+    const contextData = await contextAssemblyService.assembleContext(
+      document.project_id,
+      documentId,
+      additionalDocs,
+      {
+        includeRelated: true,
+        includeEventContext: true,
+        maxContextSize: 50000,
+        preferredTypes: ['character', 'setting', 'plot', 'lore']
+      }
+    );
+
+    res.json({
+      tokenCount: contextData.tokenCount,
+      documentsUsed: contextData.documentsUsed,
+      contextPreview: contextData.context.substring(0, 1000) + (contextData.context.length > 1000 ? '...' : '')
+    });
+
+  } catch (error) {
+    console.error('Error getting context preview:', error);
+    res.status(500).json({ error: 'Failed to get context preview' });
   }
 });
 

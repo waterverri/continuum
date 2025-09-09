@@ -12,6 +12,7 @@ export interface Document {
   content?: string;
   is_composite: boolean;
   is_prompt: boolean;
+  interaction_mode?: 'document' | 'chat' | 'canvas';
   components?: Record<string, string>;
   created_at: string;
   updated_at?: string;
@@ -949,6 +950,114 @@ export const submitAIRequest = async (
     throw new Error(error.error || 'Failed to submit AI request');
   }
 
+  return await response.json();
+};
+
+// AI Chat API functions
+export const submitAIChat = async (data: {
+  documentId: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>;
+  providerId: string;
+  model: string;
+  maxTokens?: number;
+  contextDocuments?: string[];
+}, accessToken: string): Promise<{
+  response: string;
+  inputTokens: number;
+  outputTokens: number;
+  costCredits: number;
+}> => {
+  const response = await fetch(`${API_URL}/api/ai/chat`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to submit chat request');
+  }
+  return await response.json();
+};
+
+export const getProjectPrompts = async (projectId: string, accessToken: string): Promise<{
+  prompts: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    variables: Record<string, any>;
+    document_title: string;
+    document_content: string;
+    created_at: string;
+  }>;
+}> => {
+  const response = await fetch(`${API_URL}/api/ai/project-prompts/${projectId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch project prompts');
+  }
+  return await response.json();
+};
+
+export const createProjectPrompt = async (data: {
+  projectId: string;
+  documentId: string;
+  name: string;
+  description?: string;
+  variables?: Record<string, any>;
+}, accessToken: string): Promise<{
+  prompt: any;
+}> => {
+  const response = await fetch(`${API_URL}/api/ai/project-prompts`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create project prompt');
+  }
+  return await response.json();
+};
+
+export const submitAITransform = async (data: {
+  documentId: string;
+  promptTemplateId: string;
+  variables?: Record<string, any>;
+  providerId: string;
+  model: string;
+  maxTokens?: number;
+}, accessToken: string): Promise<{
+  response: string;
+  inputTokens: number;
+  outputTokens: number;
+  costCredits: number;
+}> => {
+  const response = await fetch(`${API_URL}/api/ai/transform`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to submit transform request');
+  }
   return await response.json();
 };
 

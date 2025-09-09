@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Document, DocumentHistoryResponse, DocumentHistory } from '../api';
+import type { Document, DocumentHistoryResponse, DocumentHistory, AIProvider } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 import { InlineTagManager } from './InlineTagManager';
 import DocumentHistoryModal from './DocumentHistoryModal';
+import { AIChatModal } from './AIChatModal';
+import { TransformModal } from './TransformModal';
 
 interface DocumentViewerProps {
   document: Document;
@@ -17,6 +19,9 @@ interface DocumentViewerProps {
   loadHistoryEntry?: (documentId: string, historyId: string) => Promise<DocumentHistory>;
   onRollback?: (documentId: string, historyId: string) => Promise<Document>;
   onDeleteHistory?: (historyId: string) => Promise<void>;
+  // AI props
+  aiProviders?: AIProvider[];
+  accessToken?: string;
 }
 
 export function DocumentViewer({ 
@@ -31,13 +36,17 @@ export function DocumentViewer({
   loadDocumentHistory,
   loadHistoryEntry,
   onRollback,
-  onDeleteHistory
+  onDeleteHistory,
+  aiProviders = [],
+  accessToken = ''
 }: DocumentViewerProps) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const [showCreateButton, setShowCreateButton] = useState(false);
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [showTransformModal, setShowTransformModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
@@ -158,10 +167,25 @@ export function DocumentViewer({
     }
   }, [document.id, onRollback]);
 
+  // Check if this is a chat document
+  const isChatDocument = document.interaction_mode === 'chat';
+  let chatData = null;
+  
+  if (isChatDocument && document.content) {
+    try {
+      chatData = JSON.parse(document.content);
+    } catch (error) {
+      console.warn('Failed to parse chat data:', error);
+    }
+  }
+
   return (
     <div className="document-viewer">
       <div className="document-viewer__header">
-        <h3 className="document-viewer__title">{document.title}</h3>
+        <h3 className="document-viewer__title">
+          {document.title}
+          {isChatDocument && <span className="chat-indicator"> 💬</span>}
+        </h3>
         
         {/* Document Type Tabs */}
         {availableTypes.length > 1 && (
@@ -196,6 +220,20 @@ export function DocumentViewer({
               🔗 Resolve Template
             </button>
           )}
+          <button 
+            className="btn btn--ai" 
+            onClick={() => setShowAIModal(true)}
+            title="Chat with AI about this document"
+          >
+            🤖 AI Chat
+          </button>
+          <button 
+            className="btn btn--ai btn--secondary" 
+            onClick={() => setShowTransformModal(true)}
+            title="Transform document using AI templates"
+          >
+            ⚡ Transform
+          </button>
           {showCreateButton && selectedText && (
             <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
               📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
@@ -204,62 +242,108 @@ export function DocumentViewer({
         </div>
       </div>
       
-      {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && (
-        <div className="document-components">
-          <h4>Components:</h4>
-          <div className="components-list">
-            {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
-              <div key={key} className="component-mapping">
-                <strong>{`{{${key}}}`}</strong> → {docId}
+      {/* Chat Document View */}
+      {isChatDocument && chatData ? (
+        <div className="chat-document-view">
+          <div className="chat-document-info">
+            <div className="chat-stats">
+              <span>💬 {chatData.messages?.length || 0} messages</span>
+              <span>💰 {chatData.total_cost || 0} credits spent</span>
+              {chatData.active_context?.length > 0 && (
+                <span>📄 {chatData.active_context.length} context docs</span>
+              )}
+            </div>
+          </div>
+          
+          <div className="chat-messages-readonly">
+            {chatData.messages?.map((message: any, index: number) => (
+              <div key={index} className={`chat-message chat-message--${message.role}`}>
+                <div className="chat-message__header">
+                  <strong>{message.role === 'user' ? 'You' : 'AI'}</strong>
+                  <span className="chat-message__time">
+                    {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
+                  </span>
+                  {message.tokens && (
+                    <span className="chat-message__meta">
+                      {message.tokens} tokens • {message.cost || 0} credits
+                    </span>
+                  )}
+                </div>
+                <div className="chat-message__content">
+                  {message.content}
+                </div>
               </div>
-            ))}
+            )) || <p className="no-messages">No messages yet. Start a conversation using AI Chat!</p>}
           </div>
+          
+          {chatData.conversation_summary && (
+            <div className="chat-summary">
+              <h4>Conversation Summary:</h4>
+              <p>{chatData.conversation_summary}</p>
+            </div>
+          )}
         </div>
-      )}
-      
-      <div className="content-section">
-        <div className="document-content-header">
-          <h4>Raw Content</h4>
-          <div className="document-content-meta">
-            <strong>Type:</strong> {currentDocument.document_type || 'No type'} • 
-            <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
+      ) : (
+        // Regular Document View
+        <>
+          {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && (
+            <div className="document-components">
+              <h4>Components:</h4>
+              <div className="components-list">
+                {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
+                  <div key={key} className="component-mapping">
+                    <strong>{`{{${key}}}`}</strong> → {docId}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="content-section">
+            <div className="document-content-header">
+              <h4>Raw Content</h4>
+              <div className="document-content-meta">
+                <strong>Type:</strong> {currentDocument.document_type || 'No type'} • 
+                <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
+              </div>
+            </div>
+            
+            {/* Inline Tag Manager */}
+            <div className="document-content-tags">
+              <InlineTagManager
+                projectId={projectId}
+                documentId={document.id}
+                currentTags={document.tags || []}
+                onTagUpdate={onTagUpdate}
+              />
+            </div>
+            
+            <div 
+              ref={contentRef}
+              className="content-display content-display--raw" 
+              onMouseUp={handleTextSelection}
+              onKeyUp={handleTextSelection}
+              style={{ userSelect: 'text', cursor: 'text' }}
+            >
+              {currentDocument.content || 'No content'}
+            </div>
           </div>
-        </div>
-        
-        {/* Inline Tag Manager */}
-        <div className="document-content-tags">
-          <InlineTagManager
-            projectId={projectId}
-            documentId={document.id}
-            currentTags={document.tags || []}
-            onTagUpdate={onTagUpdate}
-          />
-        </div>
-        
-        <div 
-          ref={contentRef}
-          className="content-display content-display--raw" 
-          onMouseUp={handleTextSelection}
-          onKeyUp={handleTextSelection}
-          style={{ userSelect: 'text', cursor: 'text' }}
-        >
-          {currentDocument.content || 'No content'}
-        </div>
-      </div>
-      
-      {currentDocument.is_composite && resolvedContent && (
-        <div className="content-section">
-          <h4>Resolved Content:</h4>
-          <div 
-            ref={resolvedContentRef}
-            className="content-display content-display--resolved"
-            onMouseUp={handleTextSelection}
-            onKeyUp={handleTextSelection}
-            style={{ userSelect: 'text', cursor: 'text' }}
-          >
-            {resolvedContent}
-          </div>
-        </div>
+          
+          {currentDocument.is_composite && resolvedContent && (
+            <div className="content-section">
+              <h4>Resolved Content:</h4>
+              <div 
+                ref={resolvedContentRef}
+                className="content-display content-display--resolved"
+                onMouseUp={handleTextSelection}
+                onKeyUp={handleTextSelection}
+                style={{ userSelect: 'text', cursor: 'text' }}
+              >
+                {resolvedContent}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {showExtractModal && (
@@ -282,6 +366,33 @@ export function DocumentViewer({
           loadHistoryEntry={loadHistoryEntry}
           onRollback={onRollback ? handleRollback : undefined}
           onDeleteHistory={onDeleteHistory}
+        />
+      )}
+
+      {showAIModal && aiProviders.length > 0 && (
+        <AIChatModal
+          isOpen={showAIModal}
+          onClose={() => setShowAIModal(false)}
+          document={document}
+          allDocuments={allDocuments}
+          aiProviders={aiProviders}
+          accessToken={accessToken}
+          projectId={projectId}
+        />
+      )}
+
+      {showTransformModal && aiProviders.length > 0 && (
+        <TransformModal
+          isOpen={showTransformModal}
+          onClose={() => setShowTransformModal(false)}
+          document={document}
+          aiProviders={aiProviders}
+          accessToken={accessToken}
+          projectId={projectId}
+          onSuccess={(result) => {
+            // You could show the result or create a new document here
+            console.log('Transform result:', result);
+          }}
         />
       )}
     </div>

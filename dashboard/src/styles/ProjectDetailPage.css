@@ -22,5 +22,6 @@
 @import './components/project-tags-filter.css';
 @import './components/DocumentHistoryModal.css';
 @import './components/EventDependencyModal.css';
+@import './components/ai-chat-modal.css';
 @import './layout.css';
 

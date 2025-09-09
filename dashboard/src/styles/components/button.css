@@ -68,6 +68,30 @@
   font-size: var(--font-size-lg);
 }
 
+/* AI Button Styles */
+.btn--ai {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: 1px solid #5b21b6;
+}
+
+.btn--ai:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  border-color: #4c1d95;
+  transform: translateY(-1px);
+}
+
+.btn--ai.btn--secondary {
+  background: linear-gradient(135deg, #e0e7ff, #ede9fe);
+  color: #6366f1;
+  border: 1px solid #c7d2fe;
+}
+
+.btn--ai.btn--secondary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c7d2fe, #ddd6fe);
+  border-color: #a5b4fc;
+}
+
 /* Button Layout */
 .btn--full-width {
   width: 100%;

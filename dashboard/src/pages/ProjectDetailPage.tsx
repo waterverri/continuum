@@ -716,6 +716,8 @@ export default function ProjectDetailPage() {
                   loadDocumentHistory={operations.loadDocumentHistory}
                   loadHistoryEntry={operations.loadHistoryEntry}
                   onRollback={operations.handleRollbackDocument}
+                  aiProviders={aiProviders}
+                  accessToken={accessToken}
                 />
               )
             )}
