@@ -6,32 +6,26 @@ CREATE OR REPLACE FUNCTION extract_template_variables(content TEXT)
 RETURNS jsonb AS $$
 DECLARE
     variables jsonb := '{}';
-    matches text[];
+    match_record record;
     var_name text;
 BEGIN
     -- Extract variables in {{variable_name}} format
-    SELECT array_agg(DISTINCT substring(match FROM '\{\{([^}]+)\}\}'))
-    INTO matches
-    FROM regexp_split_to_table(content, '') AS t(char)
-    CROSS JOIN LATERAL regexp_matches(content, '\{\{([^}]+)\}\}', 'g') AS m(match);
-    
-    -- Convert array to JSON object with default values
-    IF matches IS NOT NULL THEN
-        FOR i IN 1..array_length(matches, 1) LOOP
-            var_name := trim(matches[i]);
-            IF var_name IS NOT NULL AND var_name != '' THEN
-                variables := jsonb_set(
-                    variables, 
-                    ARRAY[var_name], 
-                    jsonb_build_object(
-                        'type', 'text',
-                        'description', 'Template variable: ' || var_name,
-                        'default', ''
-                    )
-                );
-            END IF;
-        END LOOP;
-    END IF;
+    FOR match_record IN
+        SELECT (regexp_matches(content, '\{\{([^}]+)\}\}', 'g'))[1] AS variable_name
+    LOOP
+        var_name := trim(match_record.variable_name);
+        IF var_name IS NOT NULL AND var_name != '' THEN
+            variables := jsonb_set(
+                variables, 
+                ARRAY[var_name], 
+                jsonb_build_object(
+                    'type', 'text',
+                    'description', 'Template variable: ' || var_name,
+                    'default', ''
+                )
+            );
+        END IF;
+    END LOOP;
     
     RETURN variables;
 END;
