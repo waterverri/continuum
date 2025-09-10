@@ -70,10 +70,10 @@ COMMENT ON VIEW public.prompt_templates_with_documents IS
 Users can only see templates for projects they have access to.';
 
 -- Step 8: Create indexes to optimize RLS policy performance
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_prompts_created_by_project 
+CREATE INDEX IF NOT EXISTS idx_project_prompts_created_by_project 
 ON public.project_prompts(created_by, project_id);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_prompts_project_created_by 
+CREATE INDEX IF NOT EXISTS idx_project_prompts_project_created_by 
 ON public.project_prompts(project_id, created_by);
 
 -- Step 9: Validate RLS setup with test queries (informational)
