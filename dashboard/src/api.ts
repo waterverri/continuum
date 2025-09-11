@@ -966,6 +966,7 @@ export const submitAIChat = async (data: {
   inputTokens: number;
   outputTokens: number;
   costCredits: number;
+  chatDocument?: Document;
 }> => {
   const response = await fetch(`${API_URL}/api/ai/chat`, {
     method: 'POST',

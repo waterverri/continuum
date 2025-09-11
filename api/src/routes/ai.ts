@@ -469,21 +469,24 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       p_credits: actualCost
     });
 
-    // Update document with chat data if it's a chat interaction_mode
+    let chatDocument = null;
+
     if (document.interaction_mode === 'chat') {
-      // Parse existing chat data or create new
+      // Case 1: Already a chat document - append messages
       let chatData;
       try {
         chatData = document.content ? JSON.parse(document.content) : {
           messages: [],
-          active_context: [],
+          primary_context: null,
+          additional_context: contextDocuments,
           total_cost: 0,
           conversation_summary: ''
         };
       } catch {
         chatData = {
           messages: [],
-          active_context: contextDocuments,
+          primary_context: null,
+          additional_context: contextDocuments,
           total_cost: 0,
           conversation_summary: ''
         };
@@ -500,22 +503,80 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       });
 
       chatData.total_cost = (chatData.total_cost || 0) + actualCost;
-      chatData.active_context = contextDocuments;
+      chatData.additional_context = contextDocuments;
 
-      // Update document
+      // Update existing chat document
       await supabaseAdmin
         .from('documents')
         .update({
           content: JSON.stringify(chatData, null, 2)
         })
         .eq('id', documentId);
+
+    } else {
+      // Case 2: Original document - create new chat document
+      const sessionId = Math.random().toString(36).substring(2, 8);
+      const chatTitle = `Chat: ${document.title}`;
+      const chatDocumentType = `${document.id}_chat_${sessionId}`;
+
+      const chatData = {
+        messages: [
+          ...messages,
+          {
+            role: 'assistant',
+            content: response.response,
+            timestamp: new Date().toISOString(),
+            tokens: response.outputTokens,
+            cost: actualCost
+          }
+        ],
+        primary_context: {
+          document_id: document.id,
+          title: document.title,
+          content_snapshot: document.content || '',
+          captured_at: new Date().toISOString()
+        },
+        additional_context: contextDocuments,
+        total_cost: actualCost,
+        session_metadata: {
+          started_at: new Date().toISOString(),
+          session_id: sessionId,
+          ai_config: {
+            provider: providerId,
+            model: model
+          }
+        }
+      };
+
+      // Create new chat document
+      const { data: newChatDoc, error: chatError } = await supabaseAdmin
+        .from('documents')
+        .insert({
+          project_id: document.project_id,
+          title: chatTitle,
+          document_type: chatDocumentType,
+          interaction_mode: 'chat',
+          content: JSON.stringify(chatData, null, 2),
+          created_by: userId
+        })
+        .select()
+        .single();
+
+      if (chatError) {
+        console.error('Error creating chat document:', chatError);
+        throw new Error('Failed to create chat document');
+      }
+
+      chatDocument = newChatDoc;
+      console.log(`Created new chat document: ${newChatDoc.id} for original document: ${document.id}`);
     }
 
     res.json({
       response: response.response,
       inputTokens: response.inputTokens,
       outputTokens: response.outputTokens,
-      costCredits: actualCost
+      costCredits: actualCost,
+      chatDocument
     });
 
   } catch (error) {

@@ -20,6 +20,7 @@ interface AIChatModalProps {
   accessToken: string;
   projectId: string;
   events?: any[];
+  onDocumentSwitch?: (newDocument: Document) => void;
 }
 
 export function AIChatModal({
@@ -30,7 +31,8 @@ export function AIChatModal({
   aiProviders,
   accessToken,
   projectId: _projectId,
-  events = []
+  events = [],
+  onDocumentSwitch
 }: AIChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -120,6 +122,12 @@ export function AIChatModal({
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // If a new chat document was created, switch to it
+      if (response.chatDocument && onDocumentSwitch) {
+        console.debug('Switching to newly created chat document:', response.chatDocument.id);
+        onDocumentSwitch(response.chatDocument);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, {

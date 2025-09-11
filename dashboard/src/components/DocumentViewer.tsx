@@ -378,6 +378,7 @@ export function DocumentViewer({
           aiProviders={aiProviders}
           accessToken={accessToken}
           projectId={projectId}
+          onDocumentSwitch={onDocumentSelect}
         />
       )}
 
