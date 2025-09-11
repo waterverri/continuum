@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Document, AIProvider } from '../api';
 import { submitAIChat, getProviderModels } from '../api';
-import { DocumentPickerModal } from './DocumentPickerModal';
+import { EnhancedDocumentPickerModal } from './EnhancedDocumentPickerModal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -19,6 +19,7 @@ interface AIChatModalProps {
   aiProviders: AIProvider[];
   accessToken: string;
   projectId: string;
+  events?: any[];
 }
 
 export function AIChatModal({
@@ -28,13 +29,16 @@ export function AIChatModal({
   allDocuments,
   aiProviders,
   accessToken,
-  projectId: _projectId
+  projectId: _projectId,
+  events = []
 }: AIChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [modelSearch, setModelSearch] = useState('');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [contextDocuments, setContextDocuments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDocumentPicker, setShowDocumentPicker] = useState(false);
@@ -146,6 +150,24 @@ export function AIChatModal({
     setContextDocuments(prev => prev.filter(id => id !== docId));
   };
 
+  const handleModelSelect = (model: any) => {
+    setSelectedModel(model.id);
+    setModelSearch(model.name);
+    setShowModelDropdown(false);
+  };
+
+  const handleModelSearchChange = (value: string) => {
+    setModelSearch(value);
+    setShowModelDropdown(true);
+    if (!value) {
+      setSelectedModel('');
+    }
+  };
+
+  const filteredModels = availableModels.filter(model =>
+    model.name.toLowerCase().includes(modelSearch.toLowerCase())
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -181,19 +203,34 @@ export function AIChatModal({
               <div className="form-group">
                 <label className="form-label">
                   Model:
-                  <select
-                    className="form-input"
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    disabled={!selectedProvider}
-                  >
-                    <option value="">Select model...</option>
-                    {availableModels.map(model => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="searchable-select">
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={modelSearch}
+                      onChange={(e) => handleModelSearchChange(e.target.value)}
+                      onFocus={() => setShowModelDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowModelDropdown(false), 200)}
+                      placeholder={!selectedProvider ? "Select provider first..." : "Search models..."}
+                      disabled={!selectedProvider}
+                    />
+                    {showModelDropdown && selectedProvider && filteredModels.length > 0 && (
+                      <div className="searchable-dropdown">
+                        {filteredModels.map(model => (
+                          <div
+                            key={model.id}
+                            className="dropdown-item"
+                            onClick={() => handleModelSelect(model)}
+                          >
+                            <div className="model-name">{model.name}</div>
+                            {model.description && (
+                              <div className="model-description">{model.description}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </label>
               </div>
             </div>
@@ -305,12 +342,14 @@ export function AIChatModal({
       
       {/* Document Picker Modal */}
       {showDocumentPicker && (
-        <DocumentPickerModal
+        <EnhancedDocumentPickerModal
           documents={allDocuments.filter(doc => 
             doc.id !== document.id && 
             doc.project_id === document.project_id &&
             !contextDocuments.includes(doc.id)
           )}
+          events={events}
+          projectId={_projectId}
           componentKey="AI Chat Context"
           onSelect={handleDocumentSelect}
           onCancel={() => setShowDocumentPicker(false)}
