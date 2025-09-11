@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Document, AIProvider } from '../api';
 import { submitAIChat, getProviderModels } from '../api';
+import { DocumentPickerModal } from './DocumentPickerModal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -36,6 +37,7 @@ export function AIChatModal({
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   const [contextDocuments, setContextDocuments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDocumentPicker, setShowDocumentPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load existing chat data if document is chat mode
@@ -133,12 +135,15 @@ export function AIChatModal({
     }
   };
 
-  const toggleContextDocument = (docId: string) => {
-    setContextDocuments(prev => 
-      prev.includes(docId) 
-        ? prev.filter(id => id !== docId)
-        : [...prev, docId]
-    );
+  const handleDocumentSelect = (docId: string) => {
+    if (!contextDocuments.includes(docId)) {
+      setContextDocuments(prev => [...prev, docId]);
+    }
+    setShowDocumentPicker(false);
+  };
+
+  const removeContextDocument = (docId: string) => {
+    setContextDocuments(prev => prev.filter(id => id !== docId));
   };
 
   if (!isOpen) return null;
@@ -196,20 +201,38 @@ export function AIChatModal({
 
           {/* Context Documents */}
           <div className="context-selector">
-            <h4>Additional Context Documents:</h4>
+            <div className="context-header">
+              <h4>Additional Context Documents:</h4>
+              <button 
+                className="btn btn--secondary btn--sm"
+                onClick={() => setShowDocumentPicker(true)}
+              >
+                + Add Document
+              </button>
+            </div>
             <div className="context-documents">
-              {allDocuments
-                .filter(doc => doc.id !== document.id && doc.project_id === document.project_id)
-                .map(doc => (
-                  <label key={doc.id} className="context-document">
-                    <input
-                      type="checkbox"
-                      checked={contextDocuments.includes(doc.id)}
-                      onChange={() => toggleContextDocument(doc.id)}
-                    />
-                    <span>{doc.title} ({doc.document_type || 'Document'})</span>
-                  </label>
-                ))}
+              {contextDocuments.length === 0 ? (
+                <p className="no-context-docs">No additional context documents selected. Click "Add Document" to include relevant documents in your conversation.</p>
+              ) : (
+                contextDocuments
+                  .map(docId => allDocuments.find(doc => doc.id === docId))
+                  .filter(doc => doc)
+                  .map(doc => (
+                    <div key={doc!.id} className="context-document-card">
+                      <div className="context-document-info">
+                        <span className="context-document-title">{doc!.title}</span>
+                        <span className="context-document-type">({doc!.document_type || 'Document'})</span>
+                      </div>
+                      <button 
+                        className="context-document-remove"
+                        onClick={() => removeContextDocument(doc!.id)}
+                        title="Remove document"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+              )}
             </div>
           </div>
 
@@ -279,6 +302,20 @@ export function AIChatModal({
           </button>
         </div>
       </div>
+      
+      {/* Document Picker Modal */}
+      {showDocumentPicker && (
+        <DocumentPickerModal
+          documents={allDocuments.filter(doc => 
+            doc.id !== document.id && 
+            doc.project_id === document.project_id &&
+            !contextDocuments.includes(doc.id)
+          )}
+          componentKey="AI Chat Context"
+          onSelect={handleDocumentSelect}
+          onCancel={() => setShowDocumentPicker(false)}
+        />
+      )}
     </div>
   );
 }
