@@ -426,10 +426,26 @@ router.post('/chat', async (req: RequestWithUser, res) => {
     }
 
     // Use context assembly service for intelligent context building
+    // For original documents (non-chat), always include the original document as primary context
+    let contextDocumentIds = contextDocuments;
+    let primaryDocumentId = documentId;
+    
+    if (document.interaction_mode !== 'chat') {
+      // When creating a new chat from an original document, 
+      // the original document should always be included in the context
+      if (!contextDocuments.includes(documentId)) {
+        contextDocumentIds = [documentId, ...contextDocuments];
+      }
+      primaryDocumentId = documentId;
+    } else {
+      // For existing chat documents, use the chat document as primary
+      primaryDocumentId = documentId;
+    }
+    
     const contextData = await contextAssemblyService.assembleContext(
       document.project_id,
-      documentId,
-      contextDocuments,
+      primaryDocumentId,
+      contextDocumentIds,
       {
         includeRelated: true,
         includeEventContext: true,
@@ -438,7 +454,13 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       }
     );
 
+    console.log(`Document ID: ${documentId}, Document interaction_mode: ${document.interaction_mode}`);
+    console.log(`Original contextDocuments: [${contextDocuments.join(', ')}]`);
+    console.log(`Final contextDocumentIds: [${contextDocumentIds.join(', ')}]`);
+    console.log(`Primary document ID for assembly: ${primaryDocumentId}`);
     console.log(`Assembled context: ${contextData.tokenCount} tokens from ${contextData.documentsUsed.length} documents`);
+    console.log(`Documents used in context: [${contextData.documentsUsed.join(', ')}]`);
+    console.log(`Context assembly mode: ${document.interaction_mode === 'chat' ? 'existing chat' : 'new chat from original document'}`);
 
     // Prepare messages with context
     const enhancedMessages = [
@@ -556,8 +578,7 @@ router.post('/chat', async (req: RequestWithUser, res) => {
           title: chatTitle,
           document_type: chatDocumentType,
           interaction_mode: 'chat',
-          content: JSON.stringify(chatData, null, 2),
-          created_by: userId
+          content: JSON.stringify(chatData, null, 2)
         })
         .select()
         .single();
