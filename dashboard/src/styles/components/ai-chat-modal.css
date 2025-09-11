@@ -1,4 +1,29 @@
 /* AI Chat Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: var(--spacing-lg);
+}
+
+.modal {
+  background-color: var(--color-background);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .modal--large {
   width: 90vw;
   max-width: 1000px;
@@ -6,8 +31,61 @@
   max-height: 600px;
 }
 
+.modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background-light);
+}
+
+.modal__header h2 {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.modal__close {
+  background: none;
+  border: none;
+  font-size: var(--font-size-2xl);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  color: var(--color-text-primary);
+}
+
+.modal__close:hover {
+  background-color: var(--color-background-lighter);
+}
+
+.modal__body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xl);
+}
+
+.modal__footer {
+  padding: var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-background-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-lg);
+}
+
 .ai-config {
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-md);
@@ -50,7 +128,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   cursor: pointer;
@@ -59,7 +137,7 @@
 }
 
 .context-document:hover {
-  background: var(--color-background-hover);
+  background: var(--color-background-lighter);
 }
 
 .context-document input[type="checkbox"] {
@@ -96,7 +174,7 @@
 }
 
 .chat-message--assistant {
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   margin-right: auto;
   border-bottom-left-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
@@ -169,7 +247,7 @@
   display: flex;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   border-top: 1px solid var(--color-border);
 }
 
@@ -197,7 +275,7 @@
 }
 
 .chat-document-info {
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-md);
@@ -233,7 +311,7 @@
 }
 
 .chat-summary {
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
   margin-top: var(--spacing-md);
@@ -269,7 +347,7 @@
   color: var(--color-text-secondary);
   font-style: italic;
   padding: var(--spacing-xl);
-  background: var(--color-background-subtle);
+  background: var(--color-background-light);
   border-radius: var(--radius-md);
 }
 
@@ -291,12 +369,12 @@
 
 .prompt-card:hover {
   border-color: var(--color-primary);
-  background: var(--color-background-hover);
+  background: var(--color-background-lighter);
 }
 
 .prompt-card--selected {
   border-color: var(--color-primary);
-  background: var(--color-primary-subtle);
+  background: var(--color-primary-light);
 }
 
 .prompt-card__header {
@@ -361,7 +439,7 @@
 }
 
 .error-message {
-  background: var(--color-danger-subtle);
+  background: var(--color-danger-light);
   color: var(--color-danger);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
