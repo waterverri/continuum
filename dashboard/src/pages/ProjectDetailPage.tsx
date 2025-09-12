@@ -30,6 +30,7 @@ import { EventTimelineModal } from '../components/EventTimelineModal';
 import { EventFilter } from '../components/EventFilter';
 import { DocumentEvolution } from '../components/DocumentEvolution';
 import { ProjectSettingsModal } from '../components/ProjectSettingsModal';
+import { DocumentGroupDeletionModal } from '../components/DocumentGroupDeletionModal';
 import '../styles/ProjectDetailPage.css';
 
 
@@ -56,6 +57,8 @@ export default function ProjectDetailPage() {
     setLoading: state.setLoading,
     setSelectedDocument: state.setSelectedDocument,
     setResolvedContent: state.setResolvedContent,
+    setDocumentToDelete: state.setDocumentToDelete,
+    openModal: state.openModal,
   });
   
   // Get events from state hook instead
@@ -496,11 +499,6 @@ export default function ProjectDetailPage() {
     state.setSidebarOpen(false);
   };
 
-  const handleSidebarDocumentEdit = (document: Document) => {
-    state.startEdit(document);
-    state.setSidebarOpen(false);
-  };
-
   const handleDocumentRename = (document: Document) => {
     const newTitle = prompt('Enter new document title:', document.title);
     if (newTitle && newTitle.trim() && newTitle.trim() !== document.title) {
@@ -634,7 +632,6 @@ export default function ProjectDetailPage() {
             documents={sidebarFilter.filteredDocuments}
             selectedDocumentId={state.selectedDocument?.id}
             onDocumentClick={handleSidebarDocumentClick}
-            onDocumentEdit={handleSidebarDocumentEdit}
             onDocumentRename={handleDocumentRename}
             onDocumentDelete={operations.handleDeleteDocument}
             onCreateDerivative={handleCreateDerivative}
@@ -698,6 +695,10 @@ export default function ProjectDetailPage() {
                   onDocumentSelect={(document) => {
                     state.setSelectedDocument(document);
                     state.setResolvedContent(null);
+                  }}
+                  onEditDocument={(document) => {
+                    state.closeAllModals();
+                    state.startEdit(document);
                   }}
                   onTagUpdate={async () => {
                     await operations.loadDocuments();
@@ -1164,6 +1165,21 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Document Group Deletion Modal */}
+      {state.modals.showDocumentDeletion && state.documentToDelete && (
+        <DocumentGroupDeletionModal
+          isOpen={state.modals.showDocumentDeletion}
+          document={state.documentToDelete}
+          groupDocuments={state.documents.filter(doc => doc.group_id === state.documentToDelete?.group_id)}
+          onClose={() => {
+            state.closeModal('showDocumentDeletion');
+            state.setDocumentToDelete(null);
+          }}
+          onDeleteDocument={operations.handleConfirmDeleteDocument}
+          onDeleteGroup={operations.handleConfirmDeleteGroup}
+        />
       )}
 
       {/* Project Settings Modal */}

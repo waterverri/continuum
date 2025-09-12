@@ -14,6 +14,7 @@ interface DocumentViewerProps {
   onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string, groupId?: string) => void;
   onDocumentSelect?: (document: Document) => void;
   onTagUpdate?: (documentId: string, tagIds: string[]) => void;
+  onEditDocument?: (document: Document) => void;
   projectId: string;
   loadDocumentHistory?: (documentId: string, limit?: number, offset?: number) => Promise<DocumentHistoryResponse>;
   loadHistoryEntry?: (documentId: string, historyId: string) => Promise<DocumentHistory>;
@@ -32,6 +33,7 @@ export function DocumentViewer({
   onCreateFromSelection, 
   onDocumentSelect,
   onTagUpdate,
+  onEditDocument,
   projectId,
   loadDocumentHistory,
   loadHistoryEntry,
@@ -48,6 +50,7 @@ export function DocumentViewer({
   const [showAIModal, setShowAIModal] = useState(false);
   const [showTransformModal, setShowTransformModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
 
@@ -187,29 +190,52 @@ export function DocumentViewer({
           {isChatDocument && <span className="chat-indicator"> 💬</span>}
         </h3>
         
-        {/* Document Type Tabs */}
+        {/* Document Type Dropdown */}
         {availableTypes.length > 1 && (
-          <div className="document-viewer__tabs">
-            {availableTypes.map(type => (
-              <button
-                key={type}
-                className={`document-tab ${activeTab === type ? 'document-tab--active' : ''}`}
-                onClick={() => {
-                  setActiveTab(type);
-                  const targetDoc = groupDocuments.find(doc => doc.document_type === type);
-                  if (targetDoc && onDocumentSelect) {
-                    onDocumentSelect(targetDoc);
-                  }
-                }}
+          <div className="document-viewer__type-selector">
+            <div className="dropdown">
+              <button 
+                className="dropdown-button"
+                onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                onBlur={() => setTimeout(() => setShowTypeDropdown(false), 200)}
               >
-                {type}
+                {activeTab || 'Select Type'} ▼
               </button>
-            ))}
+              {showTypeDropdown && (
+                <div className="dropdown-menu">
+                  {availableTypes.map(type => (
+                    <button
+                      key={type}
+                      className={`dropdown-item ${activeTab === type ? 'dropdown-item--active' : ''}`}
+                      onClick={() => {
+                        setActiveTab(type);
+                        setShowTypeDropdown(false);
+                        const targetDoc = groupDocuments.find(doc => doc.document_type === type);
+                        if (targetDoc && onDocumentSelect) {
+                          onDocumentSelect(targetDoc);
+                        }
+                      }}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
         
         
         <div className="document-viewer__actions">
+          {onEditDocument && (
+            <button 
+              className="btn btn--primary" 
+              onClick={() => onEditDocument(currentDocument)}
+              title="Edit this document"
+            >
+              ✏️ Edit
+            </button>
+          )}
           {loadDocumentHistory && loadHistoryEntry && (
             <button className="btn btn--secondary" onClick={() => setShowHistoryModal(true)}>
               📜 History

@@ -13,7 +13,6 @@ interface DocumentGroupListProps {
   documents: Document[];
   selectedDocumentId?: string;
   onDocumentClick?: (document: Document) => void;
-  onDocumentEdit?: (document: Document) => void;
   onDocumentRename?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
@@ -28,7 +27,6 @@ interface DocumentGroupItemProps {
   group: DocumentGroup;
   selectedDocumentId?: string;
   onDocumentClick?: (document: Document) => void;
-  onDocumentEdit?: (document: Document) => void;
   onDocumentRename?: (document: Document) => void;
   onDocumentDelete?: (documentId: string) => void;
   onCreateDerivative?: (document: Document) => void;
@@ -42,7 +40,6 @@ function DocumentGroupItem({
   group,
   selectedDocumentId,
   onDocumentClick,
-  onDocumentEdit,
   onDocumentRename,
   onDocumentDelete,
   onCreateDerivative,
@@ -148,14 +145,6 @@ function DocumentGroupItem({
           </button>
           {showDropdown && selectedDocument && (
             <div className="document-dropdown-menu">
-              {onDocumentEdit && (
-                <button 
-                  className="document-dropdown-item"
-                  onClick={handleDropdownAction(() => onDocumentEdit(selectedDocument))}
-                >
-                  ✏️ Edit
-                </button>
-              )}
               {onDocumentRename && (
                 <button 
                   className="document-dropdown-item"
@@ -224,7 +213,6 @@ export function DocumentGroupList({
   documents,
   selectedDocumentId,
   onDocumentClick,
-  onDocumentEdit,
   onDocumentRename,
   onDocumentDelete,
   onCreateDerivative,
@@ -293,7 +281,6 @@ export function DocumentGroupList({
           group={group}
           selectedDocumentId={selectedDocumentId}
           onDocumentClick={onDocumentClick}
-          onDocumentEdit={onDocumentEdit}
           onDocumentRename={onDocumentRename}
           onDocumentDelete={onDocumentDelete}
           onCreateDerivative={onCreateDerivative}

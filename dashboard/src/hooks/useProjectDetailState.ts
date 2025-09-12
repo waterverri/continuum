@@ -61,6 +61,7 @@ export function useProjectDetailState() {
     showEventSelector: false,
     showEventTimeline: false,
     showDocumentEvolution: false,
+    showDocumentDeletion: false,
   });
 
   // Modal-related states
@@ -73,6 +74,7 @@ export function useProjectDetailState() {
   const [eventSelectorDocument, setEventSelectorDocument] = useState<Document | null>(null);
   const [evolutionDocument, setEvolutionDocument] = useState<Document | null>(null);
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
 
   // Reset form function
   const resetForm = useCallback(() => {
@@ -114,6 +116,7 @@ export function useProjectDetailState() {
       showEventSelector: false,
       showEventTimeline: false,
       showDocumentEvolution: false,
+      showDocumentDeletion: false,
     });
   }, []);
 
@@ -195,6 +198,8 @@ export function useProjectDetailState() {
     setEvolutionDocument,
     editingPreset,
     setEditingPreset,
+    documentToDelete,
+    setDocumentToDelete,
 
     // Actions
     resetForm,

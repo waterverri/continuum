@@ -33,6 +33,8 @@ interface UseDocumentOperationsProps {
   setLoading: (loading: boolean) => void;
   setSelectedDocument: (document: Document | null) => void;
   setResolvedContent: (content: string | null) => void;
+  setDocumentToDelete: (document: Document | null) => void;
+  openModal: (modalName: any) => void;
 }
 
 export function useDocumentOperations({
@@ -46,6 +48,8 @@ export function useDocumentOperations({
   setLoading,
   setSelectedDocument,
   setResolvedContent,
+  setDocumentToDelete,
+  openModal,
 }: UseDocumentOperationsProps) {
   
   const getAccessToken = useCallback(async () => {
@@ -148,15 +152,79 @@ export function useDocumentOperations({
   }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
 
   const handleDeleteDocument = useCallback(async (documentId: string) => {
-    if (!projectId || !confirm('Are you sure you want to delete this document?')) return;
+    if (!projectId) return;
+    
+    // Find the document to delete
+    const document = documents.find(doc => doc.id === documentId);
+    if (!document) return;
+    
+    // Set up modal state and open it
+    setDocumentToDelete(document);
+    openModal('showDocumentDeletion');
+  }, [projectId, documents, setDocumentToDelete, openModal]);
+
+  const handleConfirmDeleteDocument = useCallback(async (documentId: string) => {
+    if (!projectId) return;
     
     try {
       const token = await getAccessToken();
+      const documentToDelete = documents.find(doc => doc.id === documentId);
+      
+      // If this is a group head document, reassign group head first
+      if (documentToDelete?.group_id && documentToDelete.id === documentToDelete.group_id) {
+        const groupDocuments = documents.filter(doc => doc.group_id === documentToDelete.group_id && doc.id !== documentId);
+        
+        if (groupDocuments.length > 0) {
+          // Pick the first remaining document as new group head
+          const newGroupHead = groupDocuments[0];
+          
+          // Update the new group head to have its id as group_id
+          await updateDocument(projectId, newGroupHead.id, {
+            ...newGroupHead,
+            group_id: newGroupHead.id,
+          }, token);
+          
+          // Update all other group documents to reference the new head
+          await Promise.all(
+            groupDocuments.slice(1).map(doc => 
+              updateDocument(projectId, doc.id, {
+                ...doc,
+                group_id: newGroupHead.id,
+              }, token)
+            )
+          );
+        }
+      }
+      
+      // Delete the document
       await deleteDocument(projectId, documentId, token);
       setDocuments(documents.filter(doc => doc.id !== documentId));
       setSelectedDocument(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete document');
+      throw err;
+    }
+  }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
+
+  const handleConfirmDeleteGroup = useCallback(async (groupId: string) => {
+    if (!projectId) return;
+    
+    try {
+      const token = await getAccessToken();
+      const groupDocuments = documents.filter(doc => doc.group_id === groupId);
+      
+      // Delete all documents in the group
+      await Promise.all(
+        groupDocuments.map(doc => deleteDocument(projectId, doc.id, token))
+      );
+      
+      // Remove deleted documents from state
+      const deletedIds = new Set(groupDocuments.map(doc => doc.id));
+      setDocuments(documents.filter(doc => !deletedIds.has(doc.id)));
+      setSelectedDocument(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete group');
+      throw err;
     }
   }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
 
@@ -418,6 +486,8 @@ export function useDocumentOperations({
     handleCreateDocument,
     handleUpdateDocument,
     handleDeleteDocument,
+    handleConfirmDeleteDocument,
+    handleConfirmDeleteGroup,
     handleResolveDocument,
     handleCreatePreset,
     handleUpdatePreset,

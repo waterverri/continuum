@@ -1,0 +1,263 @@
+/* Document Group Deletion Modal */
+.document-deletion-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--background-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.document-deletion-info p {
+  margin: 0.5rem 0;
+  color: var(--text-color);
+}
+
+.document-deletion-info p:first-child {
+  margin-top: 0;
+}
+
+.document-deletion-info p:last-child {
+  margin-bottom: 0;
+}
+
+.deletion-options {
+  margin: 1.5rem 0;
+}
+
+.deletion-options > p {
+  margin-bottom: 1rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.radio-option {
+  display: block;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--background-primary);
+}
+
+.radio-option:hover {
+  border-color: var(--primary-color);
+  background: var(--background-secondary);
+}
+
+.radio-option input[type="radio"] {
+  margin-right: 0.75rem;
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.radio-option input[type="radio"]:checked + .radio-content {
+  color: var(--primary-color);
+}
+
+.radio-option input[type="radio"]:checked ~ * {
+  color: var(--primary-color);
+}
+
+.radio-content {
+  flex: 1;
+}
+
+.radio-content strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+.radio-description {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.warning-text {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--warning-background, #fef3cd);
+  border: 1px solid var(--warning-border, #ffeaa7);
+  border-radius: 0.25rem;
+  color: var(--warning-color, #856404);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.group-documents-preview {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--background-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.group-documents-preview h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.group-documents-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.group-documents-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.group-documents-list li:last-child {
+  border-bottom: none;
+}
+
+.group-documents-list li.current-document {
+  background: var(--primary-background, rgba(99, 102, 241, 0.1));
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem 0;
+}
+
+.doc-title {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.doc-type {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.current-indicator {
+  font-size: 0.75rem;
+  color: var(--primary-color);
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.head-indicator {
+  font-size: 0.75rem;
+  background: var(--info-background, #cce7ff);
+  color: var(--info-color, #0056b3);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+
+.single-document-deletion {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.single-document-deletion p {
+  margin-bottom: 1rem;
+  color: var(--text-color);
+}
+
+/* Confirmation step styles */
+.confirmation-content {
+  text-align: center;
+  padding: 1rem;
+}
+
+.confirmation-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.group-deletion-confirmation h4,
+.individual-deletion-confirmation h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  color: var(--danger-color, #dc3545);
+}
+
+.documents-to-delete {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  text-align: left;
+  background: var(--background-secondary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.documents-to-delete li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.documents-to-delete li:last-child {
+  border-bottom: none;
+}
+
+.document-to-delete {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--background-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.group-head-warning {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: var(--info-background, #cce7ff);
+  border: 1px solid var(--info-border, #99d6ff);
+  border-radius: 0.5rem;
+  color: var(--info-color, #0056b3);
+  font-size: 0.875rem;
+}
+
+.final-warning {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--danger-color, #dc3545);
+  font-weight: 500;
+}
+
+/* Button styling overrides for danger actions */
+.btn--danger {
+  background-color: var(--danger-color, #dc3545);
+  color: white;
+  border: 1px solid var(--danger-color, #dc3545);
+}
+
+.btn--danger:hover {
+  background-color: var(--danger-hover, #c82333);
+  border-color: var(--danger-hover, #c82333);
+}
+
+.btn--danger:focus {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .group-documents-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .current-indicator {
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+  
+  .documents-to-delete {
+    font-size: 0.875rem;
+  }
+}

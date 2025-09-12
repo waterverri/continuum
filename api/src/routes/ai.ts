@@ -537,9 +537,32 @@ router.post('/chat', async (req: RequestWithUser, res) => {
 
     } else {
       // Case 2: Original document - create new chat document
-      const sessionId = Math.random().toString(36).substring(2, 8);
+      // Find existing chat documents for this project to determine next number
+      const { data: existingChats } = await supabaseAdmin
+        .from('documents')
+        .select('document_type')
+        .eq('project_id', document.project_id)
+        .eq('interaction_mode', 'chat')
+        .like('document_type', 'chat_%');
+
+      // Find the highest chat number
+      let chatNumber = 1;
+      if (existingChats && existingChats.length > 0) {
+        const chatNumbers = existingChats
+          .map(chat => {
+            const match = chat.document_type?.match(/^chat_(\d+)$/);
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter(num => !isNaN(num));
+        
+        if (chatNumbers.length > 0) {
+          chatNumber = Math.max(...chatNumbers) + 1;
+        }
+      }
+
       const chatTitle = `Chat: ${document.title}`;
-      const chatDocumentType = `${document.id}_chat_${sessionId}`;
+      const chatDocumentType = `chat_${chatNumber}`;
+      const sessionId = Math.random().toString(36).substring(2, 8); // For session tracking
 
       const chatData = {
         messages: [
