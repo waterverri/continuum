@@ -245,6 +245,101 @@
   margin-top: var(--spacing-xs);
 }
 
+/* Source Document Styles */
+.source-document-info {
+  margin-bottom: var(--spacing-lg);
+}
+
+.source-document-info h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.source-document-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.source-document-card:hover {
+  background: var(--color-primary-lighter);
+  box-shadow: var(--shadow-sm);
+}
+
+.source-document-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.source-document-title {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.source-document-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.source-document-action {
+  display: flex;
+  align-items: center;
+}
+
+.view-content-hint {
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Source Content Modal */
+.source-content-modal {
+  max-width: 800px;
+  max-height: 80vh;
+}
+
+.source-content-meta {
+  background: var(--color-background-light);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.source-content-meta p {
+  margin: var(--spacing-xs) 0;
+  font-size: var(--font-size-sm);
+}
+
+.source-content h4 {
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+}
+
+.source-content-text {
+  background: var(--color-background-light);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: var(--font-family-mono, 'Courier New', monospace);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;

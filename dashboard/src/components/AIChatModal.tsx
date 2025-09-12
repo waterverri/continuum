@@ -44,6 +44,8 @@ export function AIChatModal({
   const [contextDocuments, setContextDocuments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDocumentPicker, setShowDocumentPicker] = useState(false);
+  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [sourceDocument, setSourceDocument] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load existing chat data if document is chat mode
@@ -54,8 +56,15 @@ export function AIChatModal({
         if (chatData.messages) {
           setMessages(chatData.messages);
         }
-        if (chatData.active_context) {
+        // Handle both old and new chat data formats
+        if (chatData.additional_context) {
+          setContextDocuments(chatData.additional_context);
+        } else if (chatData.active_context) {
           setContextDocuments(chatData.active_context);
+        }
+        // Set source document from primary context
+        if (chatData.primary_context) {
+          setSourceDocument(chatData.primary_context);
         }
       } catch (error) {
         console.warn('Failed to parse chat data:', error);
@@ -244,6 +253,24 @@ export function AIChatModal({
             </div>
           </div>
 
+          {/* Source Document Info */}
+          {sourceDocument && (
+            <div className="source-document-info">
+              <h4>Source Document:</h4>
+              <div className="source-document-card" onClick={() => setShowSourceModal(true)}>
+                <div className="source-document-details">
+                  <span className="source-document-title">{sourceDocument.title}</span>
+                  <span className="source-document-meta">
+                    Captured: {new Date(sourceDocument.captured_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="source-document-action">
+                  <span className="view-content-hint">Click to view content</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Context Documents */}
           <div className="context-selector">
             <div className="context-header">
@@ -362,6 +389,35 @@ export function AIChatModal({
           onSelect={handleDocumentSelect}
           onCancel={() => setShowDocumentPicker(false)}
         />
+      )}
+
+      {/* Source Document Content Modal */}
+      {showSourceModal && sourceDocument && (
+        <div className="modal-overlay">
+          <div className="modal-content source-content-modal">
+            <div className="modal-header">
+              <h3>{sourceDocument.title}</h3>
+              <button className="modal-close" onClick={() => setShowSourceModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="source-content-meta">
+                <p><strong>Captured:</strong> {new Date(sourceDocument.captured_at).toLocaleString()}</p>
+                <p><strong>Document ID:</strong> {sourceDocument.document_id}</p>
+              </div>
+              <div className="source-content">
+                <h4>Content:</h4>
+                <div className="source-content-text">
+                  {sourceDocument.content_snapshot || 'No content available'}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn--secondary" onClick={() => setShowSourceModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

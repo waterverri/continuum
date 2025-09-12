@@ -22,6 +22,7 @@ export function GroupSwitcherModal({
 }: GroupSwitcherModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string>('');
   const [groupData, setGroupData] = useState<{
     groupId: string;
     documents: Document[];
@@ -31,6 +32,11 @@ export function GroupSwitcherModal({
 
   const currentPreferredType = currentReference.startsWith('group:') ? 
     currentReference.split(':')[2] || null : null;
+
+  // Initialize selectedType with current preference
+  useEffect(() => {
+    setSelectedType(currentPreferredType || '');
+  }, [currentPreferredType]);
 
   useEffect(() => {
     const fetchGroupData = async () => {
@@ -62,7 +68,8 @@ export function GroupSwitcherModal({
     return [...new Set(groupData.documents.map(d => d.document_type).filter((type): type is string => Boolean(type)))];
   }, [groupData]);
 
-  const handleTypeSelect = (preferredType?: string) => {
+  const handleApply = () => {
+    const preferredType = selectedType || undefined;
     onSwitch(componentKey, groupId, preferredType);
   };
 
@@ -119,27 +126,22 @@ export function GroupSwitcherModal({
 
             <p>Choose which document type to use from this group:</p>
             
-            <div className="form-actions">
-              <button 
-                className={`btn ${!currentPreferredType ? 'btn--primary' : 'btn--secondary'}`}
-                onClick={() => handleTypeSelect()}
-                style={{ marginBottom: '0.5rem', display: 'block', width: '100%' }}
-              >
-                Auto (Representative Document)
-                {!currentPreferredType && <span style={{ marginLeft: '0.5rem' }}>✓</span>}
-              </button>
-              
-              {availableTypes.map(type => (
-                <button 
-                  key={type}
-                  className={`btn ${currentPreferredType === type ? 'btn--primary' : 'btn--secondary'}`}
-                  onClick={() => handleTypeSelect(type)}
-                  style={{ marginBottom: '0.5rem', display: 'block', width: '100%' }}
+            <div className="form-group">
+              <label className="form-label">
+                Document Type:
+                <select 
+                  className="form-input"
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
                 >
-                  {type}
-                  {currentPreferredType === type && <span style={{ marginLeft: '0.5rem' }}>✓</span>}
-                </button>
-              ))}
+                  <option value="">Auto (Representative Document)</option>
+                  {availableTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {availableTypes.length === 0 && (
@@ -159,6 +161,9 @@ export function GroupSwitcherModal({
         <div className="modal-footer">
           <button className="btn btn--secondary" onClick={onCancel}>
             Cancel
+          </button>
+          <button className="btn btn--primary" onClick={handleApply}>
+            Apply
           </button>
         </div>
       </div>

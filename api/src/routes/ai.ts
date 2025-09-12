@@ -570,7 +570,7 @@ router.post('/chat', async (req: RequestWithUser, res) => {
         }
       };
 
-      // Create new chat document
+      // Create new chat document with inherited grouping
       const { data: newChatDoc, error: chatError } = await supabaseAdmin
         .from('documents')
         .insert({
@@ -578,7 +578,8 @@ router.post('/chat', async (req: RequestWithUser, res) => {
           title: chatTitle,
           document_type: chatDocumentType,
           interaction_mode: 'chat',
-          content: JSON.stringify(chatData, null, 2)
+          content: JSON.stringify(chatData, null, 2),
+          group_id: document.group_id // Inherit group from original document
         })
         .select()
         .single();
@@ -590,6 +591,75 @@ router.post('/chat', async (req: RequestWithUser, res) => {
 
       chatDocument = newChatDoc;
       console.log(`Created new chat document: ${newChatDoc.id} for original document: ${document.id}`);
+
+      // Copy tags from original document and add "chat" tag
+      try {
+        // First, get existing tags from original document
+        const { data: originalTags } = await supabaseAdmin
+          .from('document_tags')
+          .select('tag_id')
+          .eq('document_id', document.id);
+
+        const originalTagIds = originalTags?.map(dt => dt.tag_id) || [];
+
+        // Find or create "chat" tag
+        let chatTagId: string | null = null;
+        
+        const { data: existingChatTag } = await supabaseAdmin
+          .from('tags')
+          .select('id')
+          .eq('project_id', document.project_id)
+          .eq('name', 'chat')
+          .single();
+
+        if (existingChatTag) {
+          chatTagId = existingChatTag.id;
+        } else {
+          // Create "chat" tag if it doesn't exist
+          const { data: newChatTag, error: createTagError } = await supabaseAdmin
+            .from('tags')
+            .insert({
+              project_id: document.project_id,
+              name: 'chat',
+              color: '#6366f1' // Indigo color for chat tag
+            })
+            .select('id')
+            .single();
+
+          if (createTagError) {
+            console.error('Error creating chat tag:', createTagError);
+          } else if (newChatTag) {
+            chatTagId = newChatTag.id;
+          }
+        }
+
+        // Combine original tags with chat tag
+        const allTagIds = [...originalTagIds];
+        if (chatTagId) {
+          allTagIds.push(chatTagId);
+        }
+
+        // Create document_tags entries for the new chat document
+        if (allTagIds.length > 0) {
+          const documentTagInserts = allTagIds.map(tagId => ({
+            document_id: newChatDoc.id,
+            tag_id: tagId
+          }));
+
+          const { error: tagAssignError } = await supabaseAdmin
+            .from('document_tags')
+            .insert(documentTagInserts);
+
+          if (tagAssignError) {
+            console.error('Error assigning tags to chat document:', tagAssignError);
+          } else {
+            console.log(`Inherited ${originalTagIds.length} tags and added "chat" tag to new chat document`);
+          }
+        }
+      } catch (error) {
+        console.error('Error handling tags for chat document:', error);
+        // Don't fail the chat creation if tag handling fails
+      }
     }
 
     res.json({
