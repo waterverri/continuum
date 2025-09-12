@@ -1178,7 +1178,6 @@ export default function ProjectDetailPage() {
             state.setDocumentToDelete(null);
           }}
           onDeleteDocument={operations.handleConfirmDeleteDocument}
-          onDeleteGroup={operations.handleConfirmDeleteGroup}
         />
       )}
 
