@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Document, AIProvider, ProviderModel, CostEstimate } from '../api';
-import { estimateAICost, submitAIRequest, getUserCredits, getProviderModels, saveLLMResponse } from '../api';
+import { estimateAICost, submitAIRequest, getUserCredits, getProviderModels, saveLLMResponse, createProjectPrompt } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
 interface PromptDocumentViewerProps {
@@ -13,6 +13,7 @@ interface PromptDocumentViewerProps {
   allDocuments?: Document[];
   onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string, groupId?: string) => void;
   onRefreshDocument: () => void;
+  onEdit?: () => void;
 }
 
 export function PromptDocumentViewer({ 
@@ -24,7 +25,8 @@ export function PromptDocumentViewer({
   projectId,
   allDocuments = [],
   onCreateFromSelection,
-  onRefreshDocument
+  onRefreshDocument,
+  onEdit
 }: PromptDocumentViewerProps) {
   const [selectedProviderId, setSelectedProviderId] = useState('');
   const [selectedModel, setSelectedModel] = useState(document.ai_model || '');
@@ -41,6 +43,7 @@ export function PromptDocumentViewer({
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const responseRef = useRef<HTMLTextAreaElement>(null);
 
   // const selectedProvider = aiProviders.find(p => p.id === selectedProviderId); // Not needed for dynamic models
@@ -221,6 +224,31 @@ export function PromptDocumentViewer({
     setShowExtractModal(true);
   };
 
+  const handleRegisterAsPromptTemplate = async () => {
+    const name = prompt('Enter a name for this prompt template:', document.title);
+    if (!name || name.trim() === '') return;
+
+    const description = prompt('Enter a description (optional):', '');
+
+    setIsRegistering(true);
+    try {
+      await createProjectPrompt({
+        projectId,
+        documentId: document.id,
+        name: name.trim(),
+        description: description?.trim() || undefined,
+        variables: {} // You can enhance this to extract variables from the prompt
+      }, accessToken);
+      
+      alert('Prompt template registered successfully! It will now appear in the Transform mode.');
+    } catch (error) {
+      console.error('Failed to register prompt template:', error);
+      alert('Failed to register prompt template. Please try again.');
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   const contentToDisplay = resolvedContent || document.content || '';
   const hasResponse = aiResponse && aiResponse.trim();
   const canSubmit = selectedModel && selectedProviderId && contentToDisplay.trim() && 
@@ -232,6 +260,14 @@ export function PromptDocumentViewer({
         <h3>{document.title}</h3>
         <div className="document-viewer__info">
           <span className="document-type">Type: {document.document_type}</span>
+          <button
+            className="btn btn--secondary btn--sm"
+            onClick={handleRegisterAsPromptTemplate}
+            disabled={isRegistering}
+            style={{ marginRight: '12px' }}
+          >
+            {isRegistering ? 'Registering...' : '📝 Register as Template'}
+          </button>
           <span className="credit-balance">
             Credits: {userCredits.toLocaleString()}
             <button 
@@ -249,11 +285,18 @@ export function PromptDocumentViewer({
       <div className="document-section">
         <div className="document-section__header">
           <h4>Prompt Content</h4>
-          {document.is_composite && (
-            <button className="btn btn--secondary btn--sm" onClick={onResolve}>
-              {resolvedContent ? 'Refresh' : 'Resolve'} Components
-            </button>
-          )}
+          <div className="document-section__actions">
+            {onEdit && (
+              <button className="btn btn--secondary btn--sm" onClick={onEdit}>
+                Edit
+              </button>
+            )}
+            {document.is_composite && (
+              <button className="btn btn--secondary btn--sm" onClick={onResolve}>
+                {resolvedContent ? 'Refresh' : 'Resolve'} Components
+              </button>
+            )}
+          </div>
         </div>
         <div className="document-content">
           <pre>{contentToDisplay}</pre>

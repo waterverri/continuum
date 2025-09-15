@@ -698,6 +698,7 @@ export default function ProjectDetailPage() {
                       loadAiProviders(); // Refresh credits after AI request
                     }
                   }}
+                  onEdit={() => state.selectedDocument && state.startEdit(state.selectedDocument)}
                 />
               ) : (
                 <DocumentViewer
