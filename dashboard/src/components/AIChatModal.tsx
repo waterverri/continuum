@@ -141,19 +141,29 @@ export function AIChatModal({
       return;
     }
 
+    console.log('Starting regenerate for message index:', index);
+    console.log('Selected provider:', selectedProvider);
+    console.log('Selected model:', selectedModel);
+    
     setRegeneratingIndex(index);
     
     try {
       // Get messages up to the one being regenerated (excluding the one being regenerated)
       const messagesToSend = messages.slice(0, index);
       
+      console.log('Messages to send for regeneration:', messagesToSend);
+      console.log('Making API call...');
+      
       const response = await submitAIChat({
         documentId: document.id,
         messages: messagesToSend,
         providerId: selectedProvider,
         model: selectedModel,
-        contextDocuments
+        contextDocuments,
+        regenerateOnly: true
       }, accessToken);
+      
+      console.log('API response received:', response);
 
       // Replace the message at the index with the new response
       const updatedMessages = [...messages];

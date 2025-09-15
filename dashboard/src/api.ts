@@ -961,6 +961,7 @@ export const submitAIChat = async (data: {
   model: string;
   maxTokens?: number;
   contextDocuments?: string[];
+  regenerateOnly?: boolean;
 }, accessToken: string): Promise<{
   response: string;
   inputTokens: number;

@@ -395,8 +395,16 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       providerId, 
       model, 
       maxTokens = 4000,
-      contextDocuments = [] // Array of document IDs to include as context
+      contextDocuments = [], // Array of document IDs to include as context
+      regenerateOnly = false // If true, don't update the document, just return response
     } = req.body;
+
+    console.log('AI Chat request received:');
+    console.log('- Document ID:', documentId);
+    console.log('- Provider:', providerId);
+    console.log('- Model:', model);
+    console.log('- Messages count:', messages?.length);
+    console.log('- Regenerate only:', regenerateOnly);
 
     if (!documentId || !messages || !providerId || !model) {
       return res.status(400).json({ error: 'Document ID, messages, provider ID, and model are required' });
@@ -468,6 +476,9 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       ...messages
     ];
 
+    console.log('About to make AI request...');
+    console.log('Enhanced messages count:', enhancedMessages.length);
+    
     // Make AI request through existing proxy logic
     const response = await aiGateway.makeEnhancedProxyRequest({
       providerId,
@@ -475,6 +486,9 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       messages: enhancedMessages,
       maxTokens
     });
+
+    console.log('AI request completed. Response tokens:', response.inputTokens, response.outputTokens);
+    console.log('Response content length:', response.response?.length || 0);
 
     // Get pricing for cost calculation
     const providers = await aiGateway.getProvidersWithKeys();
@@ -490,6 +504,16 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       p_user_id: userId,
       p_credits: actualCost
     });
+
+    // If regenerateOnly is true, skip document updates and return response immediately
+    if (regenerateOnly) {
+      return res.json({
+        response: response.response,
+        inputTokens: response.inputTokens,
+        outputTokens: response.outputTokens,
+        costCredits: actualCost
+      });
+    }
 
     let chatDocument = null;
 
