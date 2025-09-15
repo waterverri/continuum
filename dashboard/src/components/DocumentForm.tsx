@@ -19,6 +19,7 @@ interface DocumentFormProps {
   addComponent: () => void;
   removeComponent: (key: string) => void;
   onOpenGroupSwitcher?: (componentKey: string, groupId: string) => void;
+  onOpenGroupPicker?: () => void;
   isCreating: boolean;
   documents: Document[];
   aiProviders?: AIProvider[];
@@ -32,6 +33,7 @@ export function DocumentForm({
   addComponent, 
   removeComponent,
   onOpenGroupSwitcher,
+  onOpenGroupPicker,
   isCreating,
   documents,
   // @ts-ignore: Keep aiProviders for interface compatibility
@@ -96,6 +98,47 @@ export function DocumentForm({
             placeholder="e.g., character bio, plot summary, world building"
           />
         </label>
+      </div>
+      
+      <div className="form-group">
+        <label className="form-label">
+          Document Group:
+        </label>
+        <div className="group-assignment">
+          <div className="current-group">
+            {formData.group_id ? 
+              (() => {
+                const groupDoc = documents.find(d => d.id === formData.group_id);
+                const groupDocuments = documents.filter(d => d.group_id === formData.group_id);
+                return groupDoc ? 
+                  `${groupDoc.title} (Group with ${groupDocuments.length} documents)` : 
+                  `Group ID: ${formData.group_id.substring(0, 8)}...`;
+              })() : 
+              'No Group (Standalone Document)'
+            }
+          </div>
+          <div className="group-assignment-actions">
+            <button 
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={() => onOpenGroupPicker?.()}
+            >
+              {formData.group_id ? 'Change Group' : 'Assign to Group'}
+            </button>
+            {formData.group_id && (
+              <button 
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={() => setFormData({ ...formData, group_id: undefined })}
+              >
+                Remove from Group
+              </button>
+            )}
+          </div>
+        </div>
+        <small className="form-help">
+          Assign this document to an existing group or create a new group by selecting a group head document with filtering capabilities.
+        </small>
       </div>
       
       <div className="form-group">

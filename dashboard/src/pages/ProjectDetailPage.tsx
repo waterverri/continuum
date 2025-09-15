@@ -379,6 +379,21 @@ export default function ProjectDetailPage() {
     state.openModal('showGroupSwitcher');
   };
 
+  const openGroupAssignmentPicker = () => {
+    state.openModal('showGroupAssignmentPicker');
+  };
+
+  const handleGroupAssignment = (groupId: string) => {
+    console.debug('ProjectDetailPage: handleGroupAssignment called', {
+      groupId,
+      isCreating: state.isCreating
+    });
+    
+    state.setFormData(prev => ({ ...prev, group_id: groupId }));
+    state.closeModal('showGroupAssignmentPicker');
+    console.debug('ProjectDetailPage: Group assignment completed');
+  };
+
   const switchGroupType = (componentKey: string, groupId: string, preferredType?: string) => {
     console.debug('ProjectDetailPage: switchGroupType called', {
       componentKey,
@@ -657,6 +672,7 @@ export default function ProjectDetailPage() {
                 addComponent={addComponent}
                 removeComponent={removeComponent}
                 onOpenGroupSwitcher={openGroupSwitcher}
+                onOpenGroupPicker={openGroupAssignmentPicker}
                 isCreating={state.isCreating}
                 documents={state.documents}
                 aiProviders={aiProviders}
@@ -696,6 +712,7 @@ export default function ProjectDetailPage() {
                     state.setSelectedDocument(document);
                     state.setResolvedContent(null);
                   }}
+                  onDocumentUpdate={operations.loadDocuments}
                   onEditDocument={(document) => {
                     state.closeAllModals();
                     state.startEdit(document);
@@ -1022,6 +1039,16 @@ export default function ProjectDetailPage() {
           componentKey={state.componentKeyToAdd}
           onSelect={selectGroupForComponent}
           onCancel={() => state.closeModal('showGroupPicker')}
+        />
+      )}
+
+      {/* Group Assignment Picker Modal */}
+      {state.modals.showGroupAssignmentPicker && (
+        <GroupPickerModal
+          documents={state.documents}
+          mode="group-assignment"
+          onSelect={handleGroupAssignment}
+          onCancel={() => state.closeModal('showGroupAssignmentPicker')}
         />
       )}
 

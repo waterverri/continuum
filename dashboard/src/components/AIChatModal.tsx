@@ -1,7 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
+import { marked } from 'marked';
 import type { Document, AIProvider } from '../api';
 import { submitAIChat, getProviderModels, updateChatMessages } from '../api';
 import { EnhancedDocumentPickerModal } from './EnhancedDocumentPickerModal';
+
+// Configure marked for safe rendering
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
+
+const renderMarkdown = (content: string): string => {
+  return marked(content) as string;
+};
 
 interface Message {
   role: 'user' | 'assistant';
@@ -21,6 +32,7 @@ interface AIChatModalProps {
   projectId: string;
   events?: any[];
   onDocumentSwitch?: (newDocument: Document) => void;
+  onDocumentUpdate?: () => void;
 }
 
 export function AIChatModal({
@@ -32,7 +44,8 @@ export function AIChatModal({
   accessToken,
   projectId: _projectId,
   events = [],
-  onDocumentSwitch
+  onDocumentSwitch,
+  onDocumentUpdate
 }: AIChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -116,6 +129,11 @@ export function AIChatModal({
     // Update the document with the new messages
     await updateChatDocument(updatedMessages);
     
+    // Refresh the document view
+    if (onDocumentUpdate) {
+      onDocumentUpdate();
+    }
+    
     setEditingMessageIndex(null);
     setEditingContent('');
   };
@@ -132,6 +150,11 @@ export function AIChatModal({
       
       // Update the document with the new messages
       await updateChatDocument(updatedMessages);
+      
+      // Refresh the document view
+      if (onDocumentUpdate) {
+        onDocumentUpdate();
+      }
     }
   };
 
@@ -172,6 +195,11 @@ export function AIChatModal({
       
       // Update the document
       await updateChatDocument(finalMessages);
+      
+      // Refresh the document view
+      if (onDocumentUpdate) {
+        onDocumentUpdate();
+      }
     } catch (error) {
       console.error('Error regenerating message:', error);
       alert('Failed to regenerate message. Please try again.');
@@ -227,6 +255,9 @@ export function AIChatModal({
       if (response.chatDocument && onDocumentSwitch) {
         console.debug('Switching to newly created chat document:', response.chatDocument.id);
         onDocumentSwitch(response.chatDocument);
+      } else if (onDocumentUpdate) {
+        // If existing chat document was updated, refresh the view
+        onDocumentUpdate();
       }
     } catch (error) {
       console.error('Chat error:', error);
@@ -487,7 +518,10 @@ export function AIChatModal({
                         </div>
                       </div>
                     ) : (
-                      message.content
+                      <div 
+                        className="chat-message__markdown"
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                      />
                     )}
                   </div>
                 </div>

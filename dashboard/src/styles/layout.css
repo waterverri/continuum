@@ -552,7 +552,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Let content determine height */
+  height: 100%;
+  /* Let content determine height but allow flex children to expand */
 }
 
 /* Webkit scrollbar styling for main content */

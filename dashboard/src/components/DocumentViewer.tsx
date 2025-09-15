@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { marked } from 'marked';
 import type { Document, DocumentHistoryResponse, DocumentHistory, AIProvider } from '../api';
 import { clearChatMessages } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
@@ -7,6 +8,16 @@ import DocumentHistoryModal from './DocumentHistoryModal';
 import { AIChatModal } from './AIChatModal';
 import { TransformModal } from './TransformModal';
 
+// Configure marked for safe rendering
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
+
+const renderMarkdown = (content: string): string => {
+  return marked(content) as string;
+};
+
 interface DocumentViewerProps {
   document: Document;
   allDocuments: Document[];
@@ -14,6 +25,7 @@ interface DocumentViewerProps {
   onResolve: () => void;
   onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string, groupId?: string) => void;
   onDocumentSelect?: (document: Document) => void;
+  onDocumentUpdate?: () => void;
   onTagUpdate?: (documentId: string, tagIds: string[]) => void;
   onEditDocument?: (document: Document) => void;
   projectId: string;
@@ -33,6 +45,7 @@ export function DocumentViewer({
   onResolve, 
   onCreateFromSelection, 
   onDocumentSelect,
+  onDocumentUpdate,
   onTagUpdate,
   onEditDocument,
   projectId,
@@ -333,7 +346,10 @@ export function DocumentViewer({
                   )}
                 </div>
                 <div className="chat-message__content">
-                  {message.content}
+                  <div 
+                    className="chat-message__markdown"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                  />
                 </div>
               </div>
             )) || <p className="no-messages">No messages yet. Start a conversation using AI Chat!</p>}
@@ -442,6 +458,7 @@ export function DocumentViewer({
           accessToken={accessToken}
           projectId={projectId}
           onDocumentSwitch={onDocumentSelect}
+          onDocumentUpdate={onDocumentUpdate}
         />
       )}
 
