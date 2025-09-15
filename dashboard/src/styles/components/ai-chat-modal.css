@@ -444,6 +444,91 @@
   justify-content: flex-end;
 }
 
+/* Regenerating message animation */
+.chat-message--regenerating {
+  position: relative;
+  opacity: 0.7;
+  background: linear-gradient(-45deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05), rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+  background-size: 400% 400%;
+  animation: regenerating-pulse 2s ease-in-out infinite;
+}
+
+.chat-message--regenerating::before {
+  content: "🔄 Regenerating...";
+  position: absolute;
+  top: -24px;
+  right: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  background: var(--color-background);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary);
+  z-index: 10;
+  animation: fade-in-out 1.5s ease-in-out infinite;
+}
+
+@keyframes regenerating-pulse {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fade-in-out {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Spinner for regenerate button */
+.regenerate-loading {
+  display: inline-block;
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-border);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Regeneration progress indicator */
+.regeneration-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(99, 102, 241, 0.9);
+  color: white;
+  padding: var(--spacing-md);
+  z-index: 1000;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  backdrop-filter: blur(4px);
+}
+
+.regeneration-progress__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.regeneration-progress .spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  width: 16px;
+  height: 16px;
+}
+
 .typing-indicator {
   display: flex;
   gap: var(--spacing-xs);

@@ -141,18 +141,11 @@ export function AIChatModal({
       return;
     }
 
-    console.log('Starting regenerate for message index:', index);
-    console.log('Selected provider:', selectedProvider);
-    console.log('Selected model:', selectedModel);
-    
     setRegeneratingIndex(index);
     
     try {
       // Get messages up to the one being regenerated (excluding the one being regenerated)
       const messagesToSend = messages.slice(0, index);
-      
-      console.log('Messages to send for regeneration:', messagesToSend);
-      console.log('Making API call...');
       
       const response = await submitAIChat({
         documentId: document.id,
@@ -162,8 +155,6 @@ export function AIChatModal({
         contextDocuments,
         regenerateOnly: true
       }, accessToken);
-      
-      console.log('API response received:', response);
 
       // Replace the message at the index with the new response
       const updatedMessages = [...messages];
@@ -292,7 +283,14 @@ export function AIChatModal({
       <div className="modal modal--large">
         <div className="modal__header">
           <h2>🤖 AI Chat - {document.title}</h2>
-          <button className="modal__close" onClick={onClose}>×</button>
+          <button 
+            className="modal__close" 
+            onClick={onClose}
+            disabled={regeneratingIndex !== null || isLoading}
+            title={regeneratingIndex !== null ? "Please wait for regeneration to complete" : "Close"}
+          >
+            ×
+          </button>
         </div>
 
         <div className="modal__body">
@@ -410,9 +408,17 @@ export function AIChatModal({
 
           {/* Chat Messages */}
           <div className="chat-container">
+            {regeneratingIndex !== null && (
+              <div className="regeneration-progress">
+                <div className="regeneration-progress__content">
+                  <span className="spinner"></span>
+                  <span>Regenerating message... This may take a few moments.</span>
+                </div>
+              </div>
+            )}
             <div className="chat-messages">
               {messages.map((message, index) => (
-                <div key={index} className={`chat-message chat-message--${message.role}`}>
+                <div key={index} className={`chat-message chat-message--${message.role} ${regeneratingIndex === index ? 'chat-message--regenerating' : ''}`}>
                   <div className="chat-message__header">
                     <strong>{message.role === 'user' ? 'You' : 'AI'}</strong>
                     <span className="chat-message__time">
@@ -427,6 +433,7 @@ export function AIChatModal({
                       <button 
                         className="btn btn--ghost btn--xs"
                         onClick={() => handleEditMessage(index, message.content)}
+                        disabled={regeneratingIndex !== null || isLoading}
                         title="Edit message"
                       >
                         ✏️
@@ -434,6 +441,7 @@ export function AIChatModal({
                       <button 
                         className="btn btn--ghost btn--xs"
                         onClick={() => handleDeleteMessage(index)}
+                        disabled={regeneratingIndex !== null || isLoading}
                         title="Delete message"
                       >
                         🗑️
@@ -442,10 +450,14 @@ export function AIChatModal({
                         <button 
                           className="btn btn--ghost btn--xs"
                           onClick={() => handleRegenerateMessage(index)}
-                          disabled={regeneratingIndex === index}
-                          title="Regenerate message"
+                          disabled={regeneratingIndex === index || isLoading}
+                          title={regeneratingIndex === index ? "Regenerating message..." : "Regenerate message"}
                         >
-                          {regeneratingIndex === index ? '⏳' : '🔄'}
+                          {regeneratingIndex === index ? (
+                            <span className="regenerate-loading">
+                              <span className="spinner"></span>
+                            </span>
+                          ) : '🔄'}
                         </button>
                       )}
                     </div>
@@ -504,16 +516,16 @@ export function AIChatModal({
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+                placeholder={regeneratingIndex !== null ? "Please wait for regeneration to complete..." : "Type your message... (Enter to send, Shift+Enter for new line)"}
                 rows={3}
-                disabled={isLoading}
+                disabled={isLoading || regeneratingIndex !== null}
               />
               <button
                 className="btn btn--primary"
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || !selectedProvider || !selectedModel || isLoading}
+                disabled={!inputMessage.trim() || !selectedProvider || !selectedModel || isLoading || regeneratingIndex !== null}
               >
-                {isLoading ? 'Sending...' : 'Send'}
+                {isLoading ? 'Sending...' : regeneratingIndex !== null ? 'Regenerating...' : 'Send'}
               </button>
             </div>
           </div>
