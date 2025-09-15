@@ -129,10 +129,8 @@ export function AIChatModal({
     // Update the document with the new messages
     await updateChatDocument(updatedMessages);
     
-    // Refresh the document view
-    if (onDocumentUpdate) {
-      onDocumentUpdate();
-    }
+    // Note: We don't call onDocumentUpdate here to avoid closing the modal
+    // The messages are already saved via updateChatDocument
     
     setEditingMessageIndex(null);
     setEditingContent('');
@@ -151,10 +149,8 @@ export function AIChatModal({
       // Update the document with the new messages
       await updateChatDocument(updatedMessages);
       
-      // Refresh the document view
-      if (onDocumentUpdate) {
-        onDocumentUpdate();
-      }
+      // Note: We don't call onDocumentUpdate here to avoid closing the modal
+      // The messages are already saved via updateChatDocument
     }
   };
 
@@ -196,10 +192,8 @@ export function AIChatModal({
       // Update the document
       await updateChatDocument(finalMessages);
       
-      // Refresh the document view
-      if (onDocumentUpdate) {
-        onDocumentUpdate();
-      }
+      // Note: We don't call onDocumentUpdate here to avoid closing the modal
+      // The messages are already saved via updateChatDocument
     } catch (error) {
       console.error('Error regenerating message:', error);
       alert('Failed to regenerate message. Please try again.');
@@ -249,23 +243,39 @@ export function AIChatModal({
         cost: response.costCredits
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      const updatedMessages = [...messages, userMessage, assistantMessage];
+      setMessages(updatedMessages);
+
+      // Save the messages to the backend
+      await updateChatDocument(updatedMessages);
 
       // If a new chat document was created, switch to it
       if (response.chatDocument && onDocumentSwitch) {
         console.debug('Switching to newly created chat document:', response.chatDocument.id);
         onDocumentSwitch(response.chatDocument);
-      } else if (onDocumentUpdate) {
-        // If existing chat document was updated, refresh the view
-        onDocumentUpdate();
+        // Only refresh document view when switching to a new document
+        if (onDocumentUpdate) {
+          onDocumentUpdate();
+        }
       }
+      // Note: We don't call onDocumentUpdate for existing documents to avoid closing the modal
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, {
+      const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, there was an error processing your message. Please try again.',
         timestamp: new Date().toISOString()
-      }]);
+      };
+      
+      const errorMessages = [...messages, userMessage, errorMessage];
+      setMessages(errorMessages);
+      
+      // Save the messages including the error message
+      try {
+        await updateChatDocument(errorMessages);
+      } catch (saveError) {
+        console.error('Error saving chat after error:', saveError);
+      }
     } finally {
       setIsLoading(false);
     }
