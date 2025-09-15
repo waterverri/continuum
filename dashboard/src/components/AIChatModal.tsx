@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Document, AIProvider } from '../api';
-import { submitAIChat, getProviderModels } from '../api';
+import { submitAIChat, getProviderModels, updateChatMessages } from '../api';
 import { EnhancedDocumentPickerModal } from './EnhancedDocumentPickerModal';
 
 interface Message {
@@ -46,6 +46,9 @@ export function AIChatModal({
   const [showDocumentPicker, setShowDocumentPicker] = useState(false);
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceDocument, setSourceDocument] = useState<any>(null);
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load existing chat data if document is chat mode
@@ -95,6 +98,93 @@ export function AIChatModal({
     } catch (error) {
       console.error('Failed to load models:', error);
       setAvailableModels([]);
+    }
+  };
+
+  const handleEditMessage = (index: number, content: string) => {
+    setEditingMessageIndex(index);
+    setEditingContent(content);
+  };
+
+  const handleSaveEditMessage = async () => {
+    if (editingMessageIndex === null) return;
+    
+    const updatedMessages = [...messages];
+    updatedMessages[editingMessageIndex].content = editingContent;
+    setMessages(updatedMessages);
+    
+    // Update the document with the new messages
+    await updateChatDocument(updatedMessages);
+    
+    setEditingMessageIndex(null);
+    setEditingContent('');
+  };
+
+  const handleCancelEditMessage = () => {
+    setEditingMessageIndex(null);
+    setEditingContent('');
+  };
+
+  const handleDeleteMessage = async (index: number) => {
+    if (confirm('Are you sure you want to delete this message?')) {
+      const updatedMessages = messages.filter((_, i) => i !== index);
+      setMessages(updatedMessages);
+      
+      // Update the document with the new messages
+      await updateChatDocument(updatedMessages);
+    }
+  };
+
+  const handleRegenerateMessage = async (index: number) => {
+    if (!selectedProvider || !selectedModel) {
+      alert('Please select a provider and model first');
+      return;
+    }
+
+    setRegeneratingIndex(index);
+    
+    try {
+      // Get messages up to the one being regenerated (excluding the one being regenerated)
+      const messagesToSend = messages.slice(0, index);
+      
+      const response = await submitAIChat({
+        documentId: document.id,
+        messages: messagesToSend,
+        providerId: selectedProvider,
+        model: selectedModel,
+        contextDocuments
+      }, accessToken);
+
+      // Replace the message at the index with the new response
+      const updatedMessages = [...messages];
+      updatedMessages[index] = {
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date().toISOString(),
+        tokens: response.outputTokens,
+        cost: response.costCredits
+      };
+      
+      // Remove any messages after the regenerated one
+      const finalMessages = updatedMessages.slice(0, index + 1);
+      setMessages(finalMessages);
+      
+      // Update the document
+      await updateChatDocument(finalMessages);
+    } catch (error) {
+      console.error('Error regenerating message:', error);
+      alert('Failed to regenerate message. Please try again.');
+    } finally {
+      setRegeneratingIndex(null);
+    }
+  };
+
+  const updateChatDocument = async (updatedMessages: Message[]) => {
+    try {
+      await updateChatMessages(document.id, updatedMessages, accessToken);
+    } catch (error) {
+      console.error('Error updating chat document:', error);
+      alert('Failed to save changes. Please try again.');
     }
   };
 
@@ -323,9 +413,60 @@ export function AIChatModal({
                         {message.tokens} tokens • {message.cost} credits
                       </span>
                     )}
+                    <div className="chat-message__actions">
+                      <button 
+                        className="btn btn--ghost btn--xs"
+                        onClick={() => handleEditMessage(index, message.content)}
+                        title="Edit message"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        className="btn btn--ghost btn--xs"
+                        onClick={() => handleDeleteMessage(index)}
+                        title="Delete message"
+                      >
+                        🗑️
+                      </button>
+                      {message.role === 'assistant' && (
+                        <button 
+                          className="btn btn--ghost btn--xs"
+                          onClick={() => handleRegenerateMessage(index)}
+                          disabled={regeneratingIndex === index}
+                          title="Regenerate message"
+                        >
+                          {regeneratingIndex === index ? '⏳' : '🔄'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="chat-message__content">
-                    {message.content}
+                    {editingMessageIndex === index ? (
+                      <div className="chat-message__edit">
+                        <textarea
+                          className="form-input"
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          rows={4}
+                        />
+                        <div className="chat-message__edit-actions">
+                          <button 
+                            className="btn btn--primary btn--sm"
+                            onClick={handleSaveEditMessage}
+                          >
+                            Save
+                          </button>
+                          <button 
+                            className="btn btn--secondary btn--sm"
+                            onClick={handleCancelEditMessage}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      message.content
+                    )}
                   </div>
                 </div>
               ))}
@@ -369,6 +510,45 @@ export function AIChatModal({
         </div>
 
         <div className="modal__footer">
+          <button 
+            className="btn btn--danger"
+            onClick={async () => {
+              if (confirm('Regenerate entire chat from the first message? This will remove all existing messages and restart the conversation.')) {
+                if (messages.length > 0) {
+                  const firstMessage = messages.find(msg => msg.role === 'user');
+                  if (firstMessage && selectedProvider && selectedModel) {
+                    setMessages([]);
+                    try {
+                      const response = await submitAIChat({
+                        documentId: document.id,
+                        messages: [firstMessage],
+                        providerId: selectedProvider,
+                        model: selectedModel,
+                        contextDocuments
+                      }, accessToken);
+
+                      const assistantMessage = {
+                        role: 'assistant' as const,
+                        content: response.response,
+                        timestamp: new Date().toISOString(),
+                        tokens: response.outputTokens,
+                        cost: response.costCredits
+                      };
+
+                      setMessages([firstMessage, assistantMessage]);
+                    } catch (error) {
+                      console.error('Error regenerating chat:', error);
+                      alert('Failed to regenerate chat. Please try again.');
+                    }
+                  }
+                }
+              }
+            }}
+            disabled={messages.length === 0 || !selectedProvider || !selectedModel}
+            title="Regenerate entire chat from the first message"
+          >
+            🔄 Regenerate Chat
+          </button>
           <button className="btn btn--secondary" onClick={onClose}>
             Close
           </button>

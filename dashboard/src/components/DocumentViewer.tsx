@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Document, DocumentHistoryResponse, DocumentHistory, AIProvider } from '../api';
+import { clearChatMessages } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 import { InlineTagManager } from './InlineTagManager';
 import DocumentHistoryModal from './DocumentHistoryModal';
@@ -278,6 +279,42 @@ export function DocumentViewer({
               {chatData.active_context?.length > 0 && (
                 <span>📄 {chatData.active_context.length} context docs</span>
               )}
+            </div>
+            <div className="chat-document-actions">
+              <button 
+                className="btn btn--primary"
+                onClick={() => setShowAIModal(true)}
+                title="Continue this chat conversation"
+              >
+                💬 Continue Chat
+              </button>
+              <button 
+                className="btn btn--secondary"
+                onClick={() => setShowAIModal(true)}
+                title="Regenerate entire chat conversation from the beginning"
+              >
+                🔄 Regenerate Chat
+              </button>
+              <button 
+                className="btn btn--danger btn--secondary"
+                onClick={async () => {
+                  if (confirm('Are you sure you want to clear all messages from this chat? This cannot be undone.')) {
+                    try {
+                      if (accessToken) {
+                        await clearChatMessages(document.id, accessToken);
+                        // Refresh the page or update the document to reflect the cleared chat
+                        window.location.reload();
+                      }
+                    } catch (error) {
+                      console.error('Error clearing chat:', error);
+                      alert('Failed to clear chat messages. Please try again.');
+                    }
+                  }
+                }}
+                title="Clear all chat messages"
+              >
+                🗑️ Clear Chat
+              </button>
             </div>
           </div>
           

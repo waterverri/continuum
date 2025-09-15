@@ -984,6 +984,39 @@ export const submitAIChat = async (data: {
   return await response.json();
 };
 
+export const updateChatMessages = async (documentId: string, messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string; tokens?: number; cost?: number }>, accessToken: string): Promise<Document> => {
+  const response = await fetch(`${API_URL}/api/ai/chat/${documentId}/messages`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update chat messages');
+  }
+  return await response.json();
+};
+
+export const clearChatMessages = async (documentId: string, accessToken: string): Promise<Document> => {
+  const response = await fetch(`${API_URL}/api/ai/chat/${documentId}/clear`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to clear chat messages');
+  }
+  return await response.json();
+};
+
 export const getProjectPrompts = async (projectId: string, accessToken: string): Promise<{
   prompts: Array<{
     id: string;

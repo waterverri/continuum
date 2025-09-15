@@ -531,7 +531,12 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       await supabaseAdmin
         .from('documents')
         .update({
-          content: JSON.stringify(chatData, null, 2)
+          content: JSON.stringify(chatData, null, 2),
+          last_ai_provider_id: providerId,
+          last_ai_model_id: model,
+          last_ai_response: response.response,
+          last_ai_max_tokens: maxTokens,
+          last_ai_response_timestamp: new Date().toISOString()
         })
         .eq('id', documentId);
 
@@ -602,7 +607,12 @@ router.post('/chat', async (req: RequestWithUser, res) => {
           document_type: chatDocumentType,
           interaction_mode: 'chat',
           content: JSON.stringify(chatData, null, 2),
-          group_id: document.group_id // Inherit group from original document
+          group_id: document.group_id, // Inherit group from original document
+          last_ai_provider_id: providerId,
+          last_ai_model_id: model,
+          last_ai_response: response.response,
+          last_ai_max_tokens: maxTokens,
+          last_ai_response_timestamp: new Date().toISOString()
         })
         .select()
         .single();
@@ -876,6 +886,23 @@ router.post('/transform', async (req: RequestWithUser, res) => {
       p_credits: actualCost
     });
 
+    // Update document with AI transformation tracking info (not content)
+    await supabaseAdmin
+      .from('documents')
+      .update({
+        last_ai_response: response.response,
+        last_ai_provider_id: providerId,
+        last_ai_model_id: model,
+        last_ai_max_tokens: maxTokens,
+        last_ai_cost_estimate: {
+          input_tokens: response.inputTokens,
+          output_tokens: response.outputTokens,
+          total_cost_credits: actualCost
+        },
+        last_ai_response_timestamp: new Date().toISOString()
+      })
+      .eq('id', documentId);
+
     res.json({
       response: response.response,
       inputTokens: response.inputTokens,
@@ -949,6 +976,165 @@ router.get('/context/:documentId', async (req: RequestWithUser, res) => {
   } catch (error) {
     console.error('Error getting context preview:', error);
     res.status(500).json({ error: 'Failed to get context preview' });
+  }
+});
+
+// PUT /ai/chat/:documentId/messages - Update chat messages
+router.put('/chat/:documentId/messages', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    const { documentId } = req.params;
+    const { messages } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Messages array is required' });
+    }
+
+    // Verify user has access to the document
+    const { data: document, error: docError } = await supabaseAdmin
+      .from('documents')
+      .select('*, projects!inner(id)')
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Verify user has access to the project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', document.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Only allow updates to chat documents
+    if (document.interaction_mode !== 'chat') {
+      return res.status(400).json({ error: 'Document is not a chat document' });
+    }
+
+    // Parse existing chat data
+    let chatData;
+    try {
+      chatData = document.content ? JSON.parse(document.content) : {
+        messages: [],
+        primary_context: null,
+        additional_context: [],
+        total_cost: 0,
+        conversation_summary: ''
+      };
+    } catch {
+      chatData = {
+        messages: [],
+        primary_context: null,
+        additional_context: [],
+        total_cost: 0,
+        conversation_summary: ''
+      };
+    }
+
+    // Update messages
+    chatData.messages = messages;
+
+    // Update the document
+    const { data: updatedDocument, error: updateError } = await supabaseAdmin
+      .from('documents')
+      .update({
+        content: JSON.stringify(chatData, null, 2),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', documentId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating chat document:', updateError);
+      return res.status(500).json({ error: 'Failed to update chat document' });
+    }
+
+    res.json({ document: updatedDocument });
+  } catch (error) {
+    console.error('Error updating chat messages:', error);
+    res.status(500).json({ error: 'Failed to update chat messages' });
+  }
+});
+
+// DELETE /ai/chat/:documentId/clear - Clear all chat messages
+router.delete('/chat/:documentId/clear', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    const { documentId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Verify user has access to the document
+    const { data: document, error: docError } = await supabaseAdmin
+      .from('documents')
+      .select('*, projects!inner(id)')
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Verify user has access to the project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', document.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Only allow clearing chat documents
+    if (document.interaction_mode !== 'chat') {
+      return res.status(400).json({ error: 'Document is not a chat document' });
+    }
+
+    // Clear chat data
+    const clearedChatData = {
+      messages: [],
+      primary_context: null,
+      additional_context: [],
+      total_cost: 0,
+      conversation_summary: ''
+    };
+
+    // Update the document
+    const { data: updatedDocument, error: updateError } = await supabaseAdmin
+      .from('documents')
+      .update({
+        content: JSON.stringify(clearedChatData, null, 2),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', documentId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error clearing chat document:', updateError);
+      return res.status(500).json({ error: 'Failed to clear chat document' });
+    }
+
+    res.json({ document: updatedDocument });
+  } catch (error) {
+    console.error('Error clearing chat messages:', error);
+    res.status(500).json({ error: 'Failed to clear chat messages' });
   }
 });
 
