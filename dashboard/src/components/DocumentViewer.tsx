@@ -399,13 +399,14 @@ export function DocumentViewer({
             
             <div 
               ref={contentRef}
-              className="content-display content-display--raw" 
+              className="document-reader document-reader--raw" 
               onMouseUp={handleTextSelection}
               onKeyUp={handleTextSelection}
               style={{ userSelect: 'text', cursor: 'text' }}
-            >
-              {currentDocument.content || 'No content'}
-            </div>
+              dangerouslySetInnerHTML={{ 
+                __html: renderMarkdown(currentDocument.content || '*No content*') 
+              }}
+            />
           </div>
           
           {currentDocument.is_composite && resolvedContent && (
@@ -413,13 +414,14 @@ export function DocumentViewer({
               <h4>Resolved Content:</h4>
               <div 
                 ref={resolvedContentRef}
-                className="content-display content-display--resolved"
+                className="document-reader document-reader--resolved"
                 onMouseUp={handleTextSelection}
                 onKeyUp={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
-              >
-                {resolvedContent}
-              </div>
+                dangerouslySetInnerHTML={{ 
+                  __html: renderMarkdown(resolvedContent) 
+                }}
+              />
             </div>
           )}
         </>
