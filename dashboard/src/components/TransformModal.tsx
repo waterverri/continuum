@@ -44,6 +44,10 @@ export function TransformModal({
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
   
+  // Template search state
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  
   // New document form fields
   const [showNewDocForm, setShowNewDocForm] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
@@ -140,8 +144,19 @@ export function TransformModal({
     try {
       const models = await getProviderModels(providerId, accessToken);
       setAvailableModels(models);
-      setSelectedModel('');
-      setModelSearch('');
+      
+      // Only clear model if we don't have one set from document/project config
+      // If we have a model set, keep it and find the display name
+      if (!selectedModel) {
+        setSelectedModel('');
+        setModelSearch('');
+      } else {
+        // Find the model name for the search field
+        const model = models.find(m => m.id === selectedModel);
+        if (model) {
+          setModelSearch(model.name);
+        }
+      }
     } catch (error) {
       console.error('Failed to load models:', error);
       setAvailableModels([]);
@@ -165,6 +180,37 @@ export function TransformModal({
   const filteredModels = availableModels.filter(model =>
     model.name.toLowerCase().includes(modelSearch.toLowerCase())
   );
+
+  const filteredTemplates = prompts.filter(template =>
+    template.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+    template.document_title.toLowerCase().includes(templateSearch.toLowerCase()) ||
+    (template.description && template.description.toLowerCase().includes(templateSearch.toLowerCase()))
+  );
+
+  const handleTemplateSelect = (template: ProjectPrompt) => {
+    setSelectedPromptId(template.id);
+    setTemplateSearch(template.name);
+    setShowTemplateDropdown(false);
+  };
+
+  const handleTemplateSearchChange = (value: string) => {
+    setTemplateSearch(value);
+    setShowTemplateDropdown(true);
+    if (!value) {
+      setSelectedPromptId('');
+    } else {
+      // If the search exactly matches a template name, auto-select it
+      const exactMatch = prompts.find(p => p.name.toLowerCase() === value.toLowerCase());
+      if (exactMatch) {
+        setSelectedPromptId(exactMatch.id);
+      }
+    }
+  };
+
+  const clearTemplateSelection = () => {
+    setSelectedPromptId('');
+    setTemplateSearch('');
+  };
 
   const handleTransform = async () => {
     if (!selectedProvider || !selectedModel) {
@@ -249,42 +295,78 @@ export function TransformModal({
           {/* Prompt Template Selection */}
           <div className="form-section">
             <h3>Select Prompt Template (Optional)</h3>
-            <div className="template-option">
-              <div 
-                className={`prompt-card ${selectedPromptId === '' ? 'prompt-card--selected' : ''}`}
-                onClick={() => setSelectedPromptId('')}
-              >
-                <div className="prompt-card__header">
-                  <h4>No Template</h4>
-                </div>
-                <p className="prompt-card__description">Use only your custom instruction below</p>
-              </div>
-            </div>
-            {prompts.length > 0 && (
-              <div className="prompt-list">
-                {prompts.map(prompt => (
-                  <div 
-                    key={prompt.id}
-                    className={`prompt-card ${selectedPromptId === prompt.id ? 'prompt-card--selected' : ''}`}
-                    onClick={() => setSelectedPromptId(prompt.id)}
-                  >
-                    <div className="prompt-card__header">
-                      <h4>{prompt.name}</h4>
-                      <span className="prompt-card__date">
-                        {new Date(prompt.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {prompt.description && (
-                      <p className="prompt-card__description">{prompt.description}</p>
-                    )}
-                    <div className="prompt-card__meta">
-                      <span>📄 {prompt.document_title}</span>
-                      {Object.keys(prompt.variables || {}).length > 0 && (
-                        <span>🔧 {Object.keys(prompt.variables).length} variables</span>
+            <div className="form-group">
+              <label className="form-label">
+                Template:
+                <div className="searchable-select">
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={templateSearch}
+                    onChange={(e) => handleTemplateSearchChange(e.target.value)}
+                    onFocus={() => setShowTemplateDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowTemplateDropdown(false), 200)}
+                    placeholder={prompts.length === 0 ? "No templates available" : "Search templates or leave empty for no template..."}
+                    disabled={prompts.length === 0}
+                  />
+                  {templateSearch && (
+                    <button
+                      type="button"
+                      className="searchable-clear"
+                      onClick={clearTemplateSelection}
+                      title="Clear template selection"
+                    >
+                      ×
+                    </button>
+                  )}
+                  {showTemplateDropdown && prompts.length > 0 && (
+                    <div className="searchable-dropdown">
+                      {filteredTemplates.length === 0 ? (
+                        <div className="dropdown-item dropdown-item--no-results">
+                          No templates match your search
+                        </div>
+                      ) : (
+                        filteredTemplates.map(template => (
+                          <div
+                            key={template.id}
+                            className="dropdown-item"
+                            onClick={() => handleTemplateSelect(template)}
+                          >
+                            <div className="template-name">{template.name}</div>
+                            <div className="template-source">📄 {template.document_title}</div>
+                            {template.description && (
+                              <div className="template-description">{template.description}</div>
+                            )}
+                            {Object.keys(template.variables || {}).length > 0 && (
+                              <div className="template-vars">🔧 {Object.keys(template.variables).length} variables</div>
+                            )}
+                          </div>
+                        ))
                       )}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
+              </label>
+            </div>
+            
+            {/* Show template details when one is selected */}
+            {selectedPrompt && (
+              <div className="template-details">
+                <div className="template-meta">
+                  <strong>{selectedPrompt.name}</strong>
+                  <span className="template-date">
+                    Created {new Date(selectedPrompt.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                {selectedPrompt.description && (
+                  <p className="template-description">{selectedPrompt.description}</p>
+                )}
+                <div className="template-info">
+                  <span>📄 Source: {selectedPrompt.document_title}</span>
+                  {Object.keys(selectedPrompt.variables || {}).length > 0 && (
+                    <span>🔧 {Object.keys(selectedPrompt.variables).length} variables</span>
+                  )}
+                </div>
               </div>
             )}
           </div>
