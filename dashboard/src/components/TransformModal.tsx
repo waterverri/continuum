@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Document, AIProvider, ProviderModel } from '../api';
 import { getProjectPrompts, submitAITransform, getProviderModels, createDocument, getProjectAIConfig } from '../api';
 
@@ -19,6 +19,7 @@ interface TransformModalProps {
   aiProviders: AIProvider[];
   accessToken: string;
   projectId: string;
+  documents: Document[];
   onSuccess?: (newDocument: Document) => void;
 }
 
@@ -29,6 +30,7 @@ export function TransformModal({
   aiProviders,
   accessToken,
   projectId,
+  documents,
   onSuccess
 }: TransformModalProps) {
   const [prompts, setPrompts] = useState<ProjectPrompt[]>([]);
@@ -54,6 +56,32 @@ export function TransformModal({
   const [newDocType, setNewDocType] = useState('');
   const [newDocGroupId, setNewDocGroupId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Group selection state
+  const [groupSearch, setGroupSearch] = useState('');
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
+  
+  // Available groups (group heads and non-group documents)
+  const availableGroups = useMemo(() => {
+    return documents.filter(doc => {
+      // Show group head documents (documents that can be group heads)
+      // These are documents without group_id or documents where group_id equals their own id
+      return !doc.group_id || doc.group_id === doc.id;
+    }).map(doc => {
+      // Enhance with group information
+      const groupDocuments = documents.filter(d => d.group_id === doc.id);
+      const groupSize = groupDocuments.length;
+      const isExistingGroup = groupSize > 0;
+      
+      return {
+        ...doc,
+        displayName: isExistingGroup 
+          ? `${doc.title} (Group with ${groupSize} documents)`
+          : doc.title,
+        isGroup: isExistingGroup
+      };
+    });
+  }, [documents]);
 
   // Load everything at once when modal opens
   useEffect(() => {
@@ -133,9 +161,31 @@ export function TransformModal({
     if (result && !newDocTitle) {
       setNewDocTitle(`${document.title} (Transformed)`);
       setNewDocType(document.document_type || 'document');
-      setNewDocGroupId(document.group_id || '');
+      
+      // Default to current document's group, or the current document itself if it can be a group head
+      let defaultGroupId = '';
+      let defaultGroupName = '';
+      
+      if (document.group_id) {
+        // Document is in a group, use that group
+        defaultGroupId = document.group_id;
+        const groupDoc = availableGroups.find(g => g.id === document.group_id);
+        if (groupDoc) {
+          defaultGroupName = groupDoc.displayName;
+        }
+      } else {
+        // Document is not in a group, use the document itself as the group
+        defaultGroupId = document.id;
+        const docAsGroup = availableGroups.find(g => g.id === document.id);
+        if (docAsGroup) {
+          defaultGroupName = docAsGroup.displayName;
+        }
+      }
+      
+      setNewDocGroupId(defaultGroupId);
+      setGroupSearch(defaultGroupName);
     }
-  }, [result, document]);
+  }, [result, document, availableGroups]);
 
   // Update variables when prompt changes
   useEffect(() => {
@@ -217,6 +267,30 @@ export function TransformModal({
   const clearTemplateSelection = () => {
     setSelectedPromptId('');
     setTemplateSearch('');
+  };
+
+  const filteredGroups = availableGroups.filter(group =>
+    group.displayName.toLowerCase().includes(groupSearch.toLowerCase()) ||
+    group.document_type?.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
+  const handleGroupSelect = (group: any) => {
+    setNewDocGroupId(group.id);
+    setGroupSearch(group.displayName);
+    setShowGroupDropdown(false);
+  };
+
+  const handleGroupSearchChange = (value: string) => {
+    setGroupSearch(value);
+    setShowGroupDropdown(true);
+    if (!value) {
+      setNewDocGroupId('');
+    }
+  };
+
+  const clearGroupSelection = () => {
+    setNewDocGroupId('');
+    setGroupSearch('');
   };
 
   const handleTransform = async () => {
@@ -547,14 +621,57 @@ export function TransformModal({
                 </div>
                 <div className="form-group">
                   <label className="form-label">
-                    Group ID (Optional):
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={newDocGroupId}
-                      onChange={(e) => setNewDocGroupId(e.target.value)}
-                      placeholder="Leave empty for no group"
-                    />
+                    Group (Optional):
+                    <div className="searchable-select">
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={groupSearch}
+                        onChange={(e) => handleGroupSearchChange(e.target.value)}
+                        onFocus={() => setShowGroupDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowGroupDropdown(false), 200)}
+                        placeholder={availableGroups.length === 0 ? "No groups available" : "Search groups or leave empty for no group..."}
+                        disabled={availableGroups.length === 0}
+                      />
+                      {groupSearch && (
+                        <button
+                          type="button"
+                          className="searchable-clear"
+                          onClick={clearGroupSelection}
+                          title="Clear group selection"
+                        >
+                          ×
+                        </button>
+                      )}
+                      {showGroupDropdown && availableGroups.length > 0 && (
+                        <div className="searchable-dropdown">
+                          {filteredGroups.length === 0 ? (
+                            <div className="dropdown-item dropdown-item--no-results">
+                              No groups match your search
+                            </div>
+                          ) : (
+                            filteredGroups.map(group => (
+                              <div
+                                key={group.id}
+                                className="dropdown-item"
+                                onClick={() => handleGroupSelect(group)}
+                              >
+                                <div className="group-name">{group.title}</div>
+                                <div className="group-meta">
+                                  {group.isGroup ? 
+                                    `📁 Existing group with ${documents.filter(d => d.group_id === group.id).length} documents` :
+                                    '📄 Can become group head'
+                                  }
+                                </div>
+                                {group.document_type && (
+                                  <div className="group-type">Type: {group.document_type}</div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </label>
                 </div>
               </div>

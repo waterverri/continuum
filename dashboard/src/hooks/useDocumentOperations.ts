@@ -141,8 +141,39 @@ export function useDocumentOperations({
     
     try {
       const token = await getAccessToken();
+      
+      // Get the original document to check if group assignment changed
+      const originalDoc = documents.find(doc => doc.id === documentId);
+      const isGroupAssignmentChange = originalDoc && originalDoc.group_id !== formData.group_id;
+      
+      // Update the main document
       const updatedDoc = await updateDocument(projectId, documentId, formData, token);
-      setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+      
+      // If group assignment changed and a new group was assigned, ensure the target document is a group head
+      if (isGroupAssignmentChange && formData.group_id) {
+        const targetGroupDoc = documents.find(doc => doc.id === formData.group_id);
+        if (targetGroupDoc && (!targetGroupDoc.group_id || targetGroupDoc.group_id !== targetGroupDoc.id)) {
+          // Make the target document a group head by setting its group_id to its own id
+          await updateDocument(projectId, targetGroupDoc.id, {
+            ...targetGroupDoc,
+            group_id: targetGroupDoc.id,
+          }, token);
+          
+          // Update the target document in our local state
+          setDocuments(documents.map(doc => 
+            doc.id === targetGroupDoc.id 
+              ? { ...doc, group_id: targetGroupDoc.id }
+              : doc.id === updatedDoc.id ? updatedDoc : doc
+          ));
+        } else {
+          // Just update the main document in local state
+          setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+        }
+      } else {
+        // No group assignment change, just update the main document
+        setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+      }
+      
       setSelectedDocument(updatedDoc);
       return updatedDoc;
     } catch (err) {

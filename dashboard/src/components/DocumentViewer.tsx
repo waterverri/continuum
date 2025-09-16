@@ -467,6 +467,7 @@ export function DocumentViewer({
           isOpen={showTransformModal}
           onClose={() => setShowTransformModal(false)}
           document={document}
+          documents={allDocuments}
           aiProviders={aiProviders}
           accessToken={accessToken}
           projectId={projectId}
