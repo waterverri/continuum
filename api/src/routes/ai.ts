@@ -2,6 +2,7 @@ import express from 'express';
 import { RequestWithUser } from '../index';
 import { AIGatewayService } from '../services/aiGatewayService';
 import { contextAssemblyService } from '../services/contextAssemblyService';
+import { ProjectAIConfigService } from '../services/projectAIConfigService';
 import { supabaseAdmin } from '../db/supabaseClient';
 
 const router = express.Router();
@@ -706,6 +707,14 @@ router.post('/chat', async (req: RequestWithUser, res) => {
       }
     }
 
+    // Update project AI config for future use
+    await ProjectAIConfigService.updateProjectAIConfig(
+      document.project_id,
+      providerId,
+      model,
+      userId
+    );
+
     res.json({
       response: response.response,
       inputTokens: response.inputTokens,
@@ -825,30 +834,44 @@ router.post('/transform', async (req: RequestWithUser, res) => {
       documentId, 
       promptTemplateId, 
       variables = {}, 
+      instruction = '',
       providerId, 
       model, 
       maxTokens = 4000 
     } = req.body;
 
-    if (!documentId || !promptTemplateId || !providerId || !model) {
-      return res.status(400).json({ error: 'Document ID, prompt template ID, provider ID, and model are required' });
+    if (!documentId || !providerId || !model) {
+      return res.status(400).json({ error: 'Document ID, provider ID, and model are required' });
     }
 
-    // Get document and prompt template
+    if (!promptTemplateId && !instruction.trim()) {
+      return res.status(400).json({ error: 'Either a prompt template or instruction is required' });
+    }
+
+    // Get document
     const { data: document } = await supabaseAdmin
       .from('documents')
       .select('*')
       .eq('id', documentId)
       .single();
 
-    const { data: promptTemplate } = await supabaseAdmin
-      .from('prompt_templates_with_documents')
-      .select('*')
-      .eq('id', promptTemplateId)
-      .single();
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
 
-    if (!document || !promptTemplate) {
-      return res.status(404).json({ error: 'Document or prompt template not found' });
+    // Get prompt template if provided
+    let promptTemplate = null;
+    if (promptTemplateId) {
+      const { data } = await supabaseAdmin
+        .from('prompt_templates_with_documents')
+        .select('*')
+        .eq('id', promptTemplateId)
+        .single();
+      promptTemplate = data;
+      
+      if (!promptTemplate) {
+        return res.status(404).json({ error: 'Prompt template not found' });
+      }
     }
 
     // Verify access to project
@@ -863,17 +886,37 @@ router.post('/transform', async (req: RequestWithUser, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Replace template variables in prompt
-    let promptContent = promptTemplate.document_content || '';
-    Object.entries(variables).forEach(([key, value]) => {
-      promptContent = promptContent.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
-    });
+    // Build system message from template and/or instruction
+    let systemContent = '';
+    
+    if (promptTemplate) {
+      // Replace template variables in prompt
+      let promptContent = promptTemplate.document_content || '';
+      Object.entries(variables).forEach(([key, value]) => {
+        promptContent = promptContent.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
+      });
+      systemContent = promptContent;
+    }
+    
+    if (instruction.trim()) {
+      if (systemContent) {
+        systemContent += '\n\n' + instruction.trim();
+      } else {
+        systemContent = instruction.trim();
+      }
+    }
 
     // Prepare messages with document context
-    const messages: Array<{ role: 'user' | 'system' | 'assistant'; content: string }> = [
-      { role: 'system', content: promptContent },
-      { role: 'user', content: `Document Title: ${document.title}\nDocument Type: ${document.document_type || 'Document'}\nContent:\n${document.content || ''}` }
-    ];
+    const messages: Array<{ role: 'user' | 'system' | 'assistant'; content: string }> = [];
+    
+    if (systemContent) {
+      messages.push({ role: 'system', content: systemContent });
+    }
+    
+    messages.push({ 
+      role: 'user', 
+      content: `Document Title: ${document.title}\nDocument Type: ${document.document_type || 'Document'}\nContent:\n${document.content || ''}` 
+    });
 
     // Make AI request
     const response = await aiGateway.makeEnhancedProxyRequest({
@@ -914,6 +957,14 @@ router.post('/transform', async (req: RequestWithUser, res) => {
       })
       .eq('id', documentId);
 
+    // Update project AI config for future use
+    await ProjectAIConfigService.updateProjectAIConfig(
+      document.project_id,
+      providerId,
+      model,
+      userId
+    );
+
     res.json({
       response: response.response,
       inputTokens: response.inputTokens,
@@ -924,6 +975,38 @@ router.post('/transform', async (req: RequestWithUser, res) => {
   } catch (error) {
     console.error('Error in AI transform:', error);
     res.status(500).json({ error: 'Transform request failed' });
+  }
+});
+
+// GET /ai/project-config/:projectId - Get project AI configuration
+router.get('/project-config/:projectId', async (req: RequestWithUser, res) => {
+  try {
+    const userId = req.user?.id;
+    const { projectId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Verify user has access to project
+    const { data: membership } = await supabaseAdmin
+      .from('project_members')
+      .select('role')
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get project AI config
+    const aiConfig = await ProjectAIConfigService.getProjectAIConfig(projectId);
+
+    res.json({ aiConfig });
+  } catch (error) {
+    console.error('Error getting project AI config:', error);
+    res.status(500).json({ error: 'Failed to get project AI config' });
   }
 });
 

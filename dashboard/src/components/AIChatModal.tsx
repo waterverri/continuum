@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 import type { Document, AIProvider } from '../api';
-import { submitAIChat, getProviderModels, updateChatMessages } from '../api';
+import { submitAIChat, getProviderModels, updateChatMessages, getProjectAIConfig } from '../api';
 import { EnhancedDocumentPickerModal } from './EnhancedDocumentPickerModal';
 
 // Configure marked for safe rendering
@@ -64,7 +64,7 @@ export function AIChatModal({
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load existing chat data if document is chat mode
+  // Load existing chat data if document is chat mode and initialize AI config from document
   useEffect(() => {
     if (document.interaction_mode === 'chat' && document.content) {
       try {
@@ -86,6 +86,15 @@ export function AIChatModal({
         console.warn('Failed to parse chat data:', error);
       }
     }
+
+    // Initialize AI picker from document AI columns if available
+    if (document.last_ai_provider_id) {
+      setSelectedProvider(document.last_ai_provider_id);
+    }
+    if (document.last_ai_model_id) {
+      setSelectedModel(document.last_ai_model_id);
+      setModelSearch(document.last_ai_model_id);
+    }
   }, [document]);
 
   // Load models when provider changes
@@ -102,6 +111,32 @@ export function AIChatModal({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Load project AI config to initialize provider/model if document doesn't have AI columns filled
+  useEffect(() => {
+    if (isOpen && _projectId && (!document.last_ai_provider_id || !document.last_ai_model_id)) {
+      loadProjectAIConfig();
+    }
+  }, [isOpen, _projectId, document]);
+
+  const loadProjectAIConfig = async () => {
+    try {
+      const { aiConfig } = await getProjectAIConfig(_projectId, accessToken);
+      if (aiConfig) {
+        // Only set if document doesn't have AI columns or they're empty
+        if (!document.last_ai_provider_id && aiConfig.provider_id) {
+          setSelectedProvider(aiConfig.provider_id);
+        }
+        if (!document.last_ai_model_id && aiConfig.model_id) {
+          setSelectedModel(aiConfig.model_id);
+          setModelSearch(aiConfig.model_id); // Set the search field too
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load project AI config:', error);
+      // Don't show error to user - this is optional functionality
+    }
+  };
 
   const loadProviderModels = async (providerId: string) => {
     try {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Document, AIProvider } from '../api';
-import { getProjectPrompts, submitAITransform, getProviderModels } from '../api';
+import { getProjectPrompts, submitAITransform, getProviderModels, createDocument, getProjectAIConfig } from '../api';
 
 interface ProjectPrompt {
   id: string;
@@ -19,7 +19,7 @@ interface TransformModalProps {
   aiProviders: AIProvider[];
   accessToken: string;
   projectId: string;
-  onSuccess?: (result: string) => void;
+  onSuccess?: (newDocument: Document) => void;
 }
 
 export function TransformModal({
@@ -36,17 +36,42 @@ export function TransformModal({
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [modelSearch, setModelSearch] = useState('');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [variables, setVariables] = useState<Record<string, string>>({});
+  const [instruction, setInstruction] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
+  
+  // New document form fields
+  const [showNewDocForm, setShowNewDocForm] = useState(false);
+  const [newDocTitle, setNewDocTitle] = useState('');
+  const [newDocType, setNewDocType] = useState('');
+  const [newDocGroupId, setNewDocGroupId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load project prompts
   useEffect(() => {
     if (isOpen) {
       loadPrompts();
+      loadProjectAIConfigIfNeeded();
     }
   }, [isOpen, projectId]);
+
+  // Initialize AI config from document or project
+  useEffect(() => {
+    if (isOpen) {
+      // Initialize from document AI columns if available
+      if (document.last_ai_provider_id) {
+        setSelectedProvider(document.last_ai_provider_id);
+      }
+      if (document.last_ai_model_id) {
+        setSelectedModel(document.last_ai_model_id);
+        setModelSearch(document.last_ai_model_id);
+      }
+    }
+  }, [isOpen, document]);
 
   // Load models when provider changes
   useEffect(() => {
@@ -55,8 +80,18 @@ export function TransformModal({
     } else {
       setAvailableModels([]);
       setSelectedModel('');
+      setModelSearch('');
     }
   }, [selectedProvider]);
+
+  // Set default new document values when result is generated
+  useEffect(() => {
+    if (result && !newDocTitle) {
+      setNewDocTitle(`${document.title} (Transformed)`);
+      setNewDocType(document.document_type || 'document');
+      setNewDocGroupId(document.group_id || '');
+    }
+  }, [result, document]);
 
   // Update variables when prompt changes
   useEffect(() => {
@@ -80,45 +115,115 @@ export function TransformModal({
     }
   };
 
+  const loadProjectAIConfigIfNeeded = async () => {
+    // Only load project config if document doesn't have AI columns
+    if (!document.last_ai_provider_id || !document.last_ai_model_id) {
+      try {
+        const { aiConfig } = await getProjectAIConfig(projectId, accessToken);
+        if (aiConfig) {
+          if (!document.last_ai_provider_id && aiConfig.provider_id) {
+            setSelectedProvider(aiConfig.provider_id);
+          }
+          if (!document.last_ai_model_id && aiConfig.model_id) {
+            setSelectedModel(aiConfig.model_id);
+            setModelSearch(aiConfig.model_id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load project AI config:', error);
+        // Don't show error to user - this is optional functionality
+      }
+    }
+  };
+
   const loadProviderModels = async (providerId: string) => {
     try {
       const models = await getProviderModels(providerId, accessToken);
       setAvailableModels(models);
       setSelectedModel('');
+      setModelSearch('');
     } catch (error) {
       console.error('Failed to load models:', error);
       setAvailableModels([]);
     }
   };
 
+  const handleModelSelect = (model: any) => {
+    setSelectedModel(model.id);
+    setModelSearch(model.name);
+    setShowModelDropdown(false);
+  };
+
+  const handleModelSearchChange = (value: string) => {
+    setModelSearch(value);
+    setShowModelDropdown(true);
+    if (!value) {
+      setSelectedModel('');
+    }
+  };
+
+  const filteredModels = availableModels.filter(model =>
+    model.name.toLowerCase().includes(modelSearch.toLowerCase())
+  );
+
   const handleTransform = async () => {
-    if (!selectedPromptId || !selectedProvider || !selectedModel) {
-      setError('Please select a prompt template, provider, and model');
+    if (!selectedProvider || !selectedModel) {
+      setError('Please select a provider and model');
       return;
     }
 
     setIsLoading(true);
     setError('');
     setResult('');
+    setShowNewDocForm(false);
 
     try {
       const response = await submitAITransform({
         documentId: document.id,
-        promptTemplateId: selectedPromptId,
+        promptTemplateId: selectedPromptId || undefined,
         variables,
+        instruction,
         providerId: selectedProvider,
         model: selectedModel
       }, accessToken);
 
       setResult(response.response);
-      if (onSuccess) {
-        onSuccess(response.response);
-      }
+      setShowNewDocForm(true);
     } catch (error) {
       console.error('Transform error:', error);
       setError(error instanceof Error ? error.message : 'Transform failed');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveAsNewDocument = async () => {
+    if (!newDocTitle.trim() || !result) {
+      setError('Please provide a title for the new document');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const newDocument = await createDocument(projectId, {
+        title: newDocTitle.trim(),
+        document_type: newDocType || 'document',
+        content: result,
+        group_id: newDocGroupId || undefined,
+        interaction_mode: 'document'
+      }, accessToken);
+
+      if (onSuccess) {
+        onSuccess(newDocument);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Save document error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save document');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -143,12 +248,19 @@ export function TransformModal({
 
           {/* Prompt Template Selection */}
           <div className="form-section">
-            <h3>Select Prompt Template</h3>
-            {prompts.length === 0 ? (
-              <p className="no-prompts">
-                No prompt templates available. Create prompt templates by registering existing documents.
-              </p>
-            ) : (
+            <h3>Select Prompt Template (Optional)</h3>
+            <div className="template-option">
+              <div 
+                className={`prompt-card ${selectedPromptId === '' ? 'prompt-card--selected' : ''}`}
+                onClick={() => setSelectedPromptId('')}
+              >
+                <div className="prompt-card__header">
+                  <h4>No Template</h4>
+                </div>
+                <p className="prompt-card__description">Use only your custom instruction below</p>
+              </div>
+            </div>
+            {prompts.length > 0 && (
               <div className="prompt-list">
                 {prompts.map(prompt => (
                   <div 
@@ -203,52 +315,99 @@ export function TransformModal({
             </div>
           )}
 
-          {/* AI Configuration */}
-          {selectedPromptId && (
-            <div className="form-section">
-              <h3>AI Configuration</h3>
-              <div className="ai-config">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">
-                      AI Provider:
-                      <select
-                        className="form-input"
-                        value={selectedProvider}
-                        onChange={(e) => setSelectedProvider(e.target.value)}
-                      >
-                        <option value="">Select provider...</option>
-                        {aiProviders.map(provider => (
-                          <option key={provider.id} value={provider.id}>
-                            {provider.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+          {/* Document Content Preview */}
+          <div className="form-section">
+            <h3>Document Content</h3>
+            <div className="document-preview">
+              <div className="document-meta">
+                <strong>{document.title}</strong> ({document.document_type || 'Document'})
+              </div>
+              <div className="document-content">
+                {document.content ? (
+                  <pre className="content-preview">{document.content.slice(0, 500)}{document.content.length > 500 ? '...' : ''}</pre>
+                ) : (
+                  <em>No content</em>
+                )}
+              </div>
+            </div>
+          </div>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      Model:
-                      <select
+          {/* Custom Instruction */}
+          <div className="form-section">
+            <h3>Custom Instruction</h3>
+            <div className="form-group">
+              <label className="form-label">
+                What would you like to do with this document?
+                <textarea
+                  className="form-input"
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                  placeholder="e.g., Rewrite this in first person from Alice's perspective, or Summarize the key points, or Translate to Spanish..."
+                  rows={4}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* AI Configuration */}
+          <div className="form-section">
+            <h3>AI Configuration</h3>
+            <div className="ai-config">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">
+                    AI Provider:
+                    <select
+                      className="form-input"
+                      value={selectedProvider}
+                      onChange={(e) => setSelectedProvider(e.target.value)}
+                    >
+                      <option value="">Select provider...</option>
+                      {aiProviders.map(provider => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Model:
+                    <div className="searchable-select">
+                      <input
+                        type="text"
                         className="form-input"
-                        value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
+                        value={modelSearch}
+                        onChange={(e) => handleModelSearchChange(e.target.value)}
+                        onFocus={() => setShowModelDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowModelDropdown(false), 200)}
+                        placeholder={!selectedProvider ? "Select provider first..." : "Search models..."}
                         disabled={!selectedProvider}
-                      >
-                        <option value="">Select model...</option>
-                        {availableModels.map(model => (
-                          <option key={model.id} value={model.id}>
-                            {model.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+                      />
+                      {showModelDropdown && selectedProvider && filteredModels.length > 0 && (
+                        <div className="searchable-dropdown">
+                          {filteredModels.map(model => (
+                            <div
+                              key={model.id}
+                              className="dropdown-item"
+                              onClick={() => handleModelSelect(model)}
+                            >
+                              <div className="model-name">{model.name}</div>
+                              {model.description && (
+                                <div className="model-description">{model.description}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Transform Result */}
           {result && (
@@ -265,19 +424,75 @@ export function TransformModal({
               </div>
             </div>
           )}
+
+          {/* New Document Form */}
+          {showNewDocForm && result && (
+            <div className="form-section">
+              <h3>Save as New Document</h3>
+              <div className="new-document-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">
+                      Title:
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={newDocTitle}
+                        onChange={(e) => setNewDocTitle(e.target.value)}
+                        placeholder="Enter document title..."
+                      />
+                    </label>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      Type:
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={newDocType}
+                        onChange={(e) => setNewDocType(e.target.value)}
+                        placeholder="document"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Group ID (Optional):
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newDocGroupId}
+                      onChange={(e) => setNewDocGroupId(e.target.value)}
+                      placeholder="Leave empty for no group"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="modal__footer">
           <button className="btn btn--secondary" onClick={onClose}>
             Close
           </button>
-          {selectedPromptId && selectedProvider && selectedModel && (
+          {!result && selectedProvider && selectedModel && (instruction.trim() || selectedPromptId) && (
             <button
               className="btn btn--ai"
               onClick={handleTransform}
               disabled={isLoading}
             >
               {isLoading ? 'Transforming...' : '⚡ Transform'}
+            </button>
+          )}
+          {result && showNewDocForm && (
+            <button
+              className="btn btn--primary"
+              onClick={handleSaveAsNewDocument}
+              disabled={isSaving || !newDocTitle.trim()}
+            >
+              {isSaving ? 'Saving...' : '💾 Save as New Document'}
             </button>
           )}
         </div>

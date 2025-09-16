@@ -1,0 +1,210 @@
+/* Transform Modal Styles */
+.transform-modal {
+  /* Inherits base modal styles */
+}
+
+/* Document Preview */
+.document-preview {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  background-color: var(--background-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.document-meta {
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.document-content {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.content-preview {
+  background-color: var(--background-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+/* Template Selection */
+.template-option {
+  margin-bottom: var(--spacing-md);
+}
+
+.prompt-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--background-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.prompt-card:hover {
+  border-color: var(--primary-color);
+  background-color: var(--background-secondary);
+}
+
+.prompt-card--selected {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+}
+
+.prompt-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
+}
+
+.prompt-card__header h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.prompt-card__date {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.prompt-card__description {
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.prompt-card__meta {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Searchable Select */
+.searchable-select {
+  position: relative;
+}
+
+.searchable-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  box-shadow: var(--shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.dropdown-item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--background-secondary);
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.model-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.model-description {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* Transform Result */
+.transform-result {
+  position: relative;
+}
+
+.transform-result textarea {
+  font-family: var(--font-mono);
+  background-color: var(--background-tertiary);
+  border: 1px solid var(--border-color);
+  resize: vertical;
+}
+
+/* New Document Form */
+.new-document-form {
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+}
+
+.new-document-form .form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.new-document-form .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* AI Configuration */
+.ai-config .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+/* No prompts message */
+.no-prompts {
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: var(--spacing-lg);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ai-config .form-row,
+  .new-document-form .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .prompt-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+  
+  .prompt-card__meta {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+}

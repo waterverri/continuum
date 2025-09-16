@@ -23,6 +23,7 @@
 @import './components/DocumentHistoryModal.css';
 @import './components/EventDependencyModal.css';
 @import './components/ai-chat-modal.css';
+@import './components/transform-modal.css';
 @import './components/document-group-deletion-modal.css';
 @import './layout.css';
 

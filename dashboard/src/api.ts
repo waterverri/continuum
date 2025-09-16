@@ -1042,6 +1042,26 @@ export const getProjectPrompts = async (projectId: string, accessToken: string):
   return await response.json();
 };
 
+export const getProjectAIConfig = async (projectId: string, accessToken: string): Promise<{
+  aiConfig: {
+    provider_id: string;
+    model_id: string;
+    last_updated: string;
+    updated_by: string;
+  } | null;
+}> => {
+  const response = await fetch(`${API_URL}/api/ai/project-config/${projectId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch project AI config');
+  }
+  return await response.json();
+};
+
 export const createProjectPrompt = async (data: {
   projectId: string;
   documentId: string;
@@ -1069,8 +1089,9 @@ export const createProjectPrompt = async (data: {
 
 export const submitAITransform = async (data: {
   documentId: string;
-  promptTemplateId: string;
+  promptTemplateId?: string;
   variables?: Record<string, any>;
+  instruction?: string;
   providerId: string;
   model: string;
   maxTokens?: number;

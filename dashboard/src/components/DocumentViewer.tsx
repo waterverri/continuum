@@ -470,9 +470,13 @@ export function DocumentViewer({
           aiProviders={aiProviders}
           accessToken={accessToken}
           projectId={projectId}
-          onSuccess={(result) => {
-            // You could show the result or create a new document here
-            console.log('Transform result:', result);
+          onSuccess={(newDocument) => {
+            console.log('Transform successful, new document created:', newDocument);
+            setShowTransformModal(false);
+            // Notify parent component to refresh documents
+            if (onDocumentUpdate) {
+              onDocumentUpdate();
+            }
           }}
         />
       )}
