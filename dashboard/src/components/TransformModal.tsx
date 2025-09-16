@@ -99,14 +99,14 @@ export function TransformModal({
     
     if (selectedProvider) {
       console.log('🔧 Loading models for provider:', selectedProvider);
-      loadProviderModels(selectedProvider);
+      loadProviderModels(selectedProvider, selectedModel); // Pass current selectedModel
     } else {
       console.log('🔧 No provider selected, clearing models');
       setAvailableModels([]);
       setSelectedModel('');
       setModelSearch('');
     }
-  }, [selectedProvider]);
+  }, [selectedProvider, selectedModel]); // Also depend on selectedModel
 
   // Set default new document values when result is generated
   useEffect(() => {
@@ -170,10 +170,12 @@ export function TransformModal({
     }
   };
 
-  const loadProviderModels = async (providerId: string) => {
+  const loadProviderModels = async (providerId: string, modelToFind?: string) => {
+    const targetModel = modelToFind || selectedModel;
     console.log('🔧 loadProviderModels called', {
       providerId,
-      currentSelectedModel: selectedModel,
+      targetModel,
+      stateSelectedModel: selectedModel,
       accessToken: accessToken ? 'present' : 'missing'
     });
     
@@ -184,21 +186,21 @@ export function TransformModal({
       
       // Only clear model if we don't have one set from document/project config
       // If we have a model set, keep it and find the display name
-      if (!selectedModel) {
-        console.log('🔧 No selected model, clearing fields');
+      if (!targetModel) {
+        console.log('🔧 No target model, clearing fields');
         setSelectedModel('');
         setModelSearch('');
       } else {
-        console.log('🔧 Have selected model, finding name for:', selectedModel);
+        console.log('🔧 Have target model, finding name for:', targetModel);
         // Find the model name for the search field
-        const model = models.find(m => m.id === selectedModel);
+        const model = models.find(m => m.id === targetModel);
         console.log('🔧 Found model for ID:', model);
         if (model) {
           console.log('🔧 Setting model search to:', model.name);
           setModelSearch(model.name);
         } else {
           console.log('🔧 Model not found in loaded models, keeping ID as search');
-          setModelSearch(selectedModel);
+          setModelSearch(targetModel);
         }
       }
     } catch (error) {
