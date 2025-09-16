@@ -86,6 +86,16 @@ export function TransformModal({
         setSelectedModel(document.last_ai_model_id);
         // Don't set modelSearch here - wait for models to load to get the proper name
       }
+      
+      // Debug: Log the state after setting
+      setTimeout(() => {
+        console.log('🔧 State after initialization:', {
+          selectedProvider,
+          selectedModel,
+          documentProvider: document.last_ai_provider_id,
+          documentModel: document.last_ai_model_id
+        });
+      }, 100);
     }
   }, [isOpen, document]);
 
