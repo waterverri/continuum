@@ -205,6 +205,13 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
     } = req.body;
     const userToken = req.token!;
     
+    console.log('🔧 Backend: Updating document', {
+      documentId,
+      projectId,
+      group_id,
+      requestBody: req.body
+    });
+    
     // If updating to composite or updating components, validate for cycles
     if (is_composite && components) {
       const { valid, error: validationError } = await validateNoCyclicDependencies(
@@ -269,23 +276,36 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
     }
     
     // Update the document
+    const updateData = {
+      title,
+      content,
+      group_id,
+      document_type,
+      is_composite: is_composite || false,
+      is_prompt: is_prompt || false,
+      ai_model: is_prompt ? ai_model : null,
+      components: is_composite ? components : null,
+      event_id
+    };
+    
+    console.log('🔧 Backend: Supabase update data:', updateData);
+    
     const { data: document, error } = await userSupabase
       .from('documents')
-      .update({
-        title,
-        content,
-        group_id,
-        document_type,
-        is_composite: is_composite || false,
-        is_prompt: is_prompt || false,
-        ai_model: is_prompt ? ai_model : null,
-        components: is_composite ? components : null,
-        event_id
-      })
+      .update(updateData)
       .eq('id', documentId)
       .eq('project_id', projectId)
       .select()
       .single();
+    
+    console.log('🔧 Backend: Supabase response:', {
+      document: document ? {
+        id: document.id,
+        title: document.title,
+        group_id: document.group_id
+      } : null,
+      error
+    });
     
     if (error) {
       console.error('Error updating document:', error);

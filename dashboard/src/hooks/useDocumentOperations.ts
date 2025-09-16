@@ -152,20 +152,34 @@ export function useDocumentOperations({
       // If group assignment changed and a new group was assigned, ensure the target document is a group head
       if (isGroupAssignmentChange && formData.group_id) {
         const targetGroupDoc = documents.find(doc => doc.id === formData.group_id);
-        if (targetGroupDoc && (!targetGroupDoc.group_id || targetGroupDoc.group_id !== targetGroupDoc.id)) {
-          // Make the target document a group head by setting its group_id to its own id
-          await updateDocument(projectId, targetGroupDoc.id, {
-            ...targetGroupDoc,
+        
+        if (targetGroupDoc) {
+          console.log('🔧 Making target document a group head:', {
+            documentId: targetGroupDoc.id,
+            currentGroupId: targetGroupDoc.group_id,
+            newGroupId: targetGroupDoc.id
+          });
+          
+          // Always make the target document a group head by setting its group_id to its own id
+          const updatedTargetDoc = await updateDocument(projectId, targetGroupDoc.id, {
             group_id: targetGroupDoc.id,
           }, token);
           
-          // Update the target document in our local state
+          console.log('🔧 Target document updated successfully:', {
+            id: updatedTargetDoc.id,
+            title: updatedTargetDoc.title,
+            group_id: updatedTargetDoc.group_id,
+            expectedGroupId: targetGroupDoc.id
+          });
+          
+          // Update both documents in our local state
           setDocuments(documents.map(doc => 
             doc.id === targetGroupDoc.id 
               ? { ...doc, group_id: targetGroupDoc.id }
               : doc.id === updatedDoc.id ? updatedDoc : doc
           ));
         } else {
+          console.log('🔧 Target document not found');
           // Just update the main document in local state
           setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
         }
