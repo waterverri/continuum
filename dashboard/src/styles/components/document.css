@@ -233,7 +233,8 @@
   background: linear-gradient(145deg, #fefefe, #f8f8f8);
   border: none;
   border-radius: var(--radius-2xl);
-  padding: var(--spacing-4xl) var(--spacing-3xl);
+  padding: var(--spacing-4xl) var(--spacing-4xl);
+  margin: var(--spacing-2xl) 0 !important;
   min-height: 300px;
   max-height: 80vh;
   overflow-y: auto;
@@ -253,6 +254,7 @@
   -webkit-hyphens: auto;
   -moz-hyphens: auto;
   -ms-hyphens: auto;
+  scroll-behavior: smooth;
 }
 
 .document-reader--raw {
@@ -415,10 +417,7 @@
   color: var(--color-text-primary);
 }
 
-/* Smooth scrolling for reader */
-.document-reader {
-  scroll-behavior: smooth;
-}
+/* Smooth scrolling for reader - merged into main rule above */
 
 .document-reader::-webkit-scrollbar {
   width: 8px;
@@ -572,7 +571,8 @@
 
   /* Mobile adjustments for document reader */
   .document-reader {
-    padding: var(--spacing-2xl) var(--spacing-xl);
+    padding: var(--spacing-3xl) var(--spacing-2xl);
+    margin: var(--spacing-xl) 0 !important;
     font-size: 16px;
     line-height: 1.6;
     max-height: 70vh;
