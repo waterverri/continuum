@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Document, AIProvider } from '../api';
+import type { Document, AIProvider, ProviderModel } from '../api';
 import { getProjectPrompts, submitAITransform, getProviderModels, createDocument, getProjectAIConfig } from '../api';
 
 interface ProjectPrompt {
@@ -55,77 +55,78 @@ export function TransformModal({
   const [newDocGroupId, setNewDocGroupId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load project prompts
+  // Load everything at once when modal opens
   useEffect(() => {
     if (isOpen) {
-      loadPrompts();
-      loadProjectAIConfigIfNeeded();
+      initializeModalData();
     }
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, document.id]);
 
-  // Initialize AI config from document or project  
-  useEffect(() => {
-    if (isOpen) {
-      console.log('🔧 TransformModal: Initializing AI config', {
-        isOpen,
-        documentId: document.id,
-        documentTitle: document.title,
-        last_ai_provider_id: document.last_ai_provider_id,
-        last_ai_model_id: document.last_ai_model_id,
-        currentSelectedProvider: selectedProvider,
-        currentSelectedModel: selectedModel
-      });
-      
-      // Reset state first to ensure clean initialization
-      setSelectedProvider('');
-      setSelectedModel('');
-      setModelSearch('');
-      setAvailableModels([]);
-      
-      // Initialize from document AI columns if available
-      if (document.last_ai_provider_id) {
-        console.log('🔧 Setting provider from document:', document.last_ai_provider_id);
-        setSelectedProvider(document.last_ai_provider_id);
-      }
-      if (document.last_ai_model_id) {
-        console.log('🔧 Setting model from document:', document.last_ai_model_id);
-        setSelectedModel(document.last_ai_model_id);
-        // Don't set modelSearch here - wait for models to load to get the proper name
-      }
-    }
-  }, [isOpen, document.id]); // Use document.id instead of whole document object
-
-  // Load models when provider changes (only clear when no provider)
-  useEffect(() => {
-    console.log('🔧 Provider effect triggered', {
-      selectedProvider,
-      currentSelectedModel: selectedModel,
-      availableModelsCount: availableModels.length
-    });
-    
-    if (!selectedProvider) {
-      console.log('🔧 No provider selected, clearing models');
-      setAvailableModels([]);
-      setSelectedModel('');
-      setModelSearch('');
-    }
-  }, [selectedProvider]);
-
-  // Separate effect to load models when we have both provider and model
-  useEffect(() => {
-    console.log('🔧 Provider+Model effect triggered', {
-      selectedProvider,
-      selectedModel,
-      hasProvider: !!selectedProvider,
-      hasModel: !!selectedModel,
-      modelsAlreadyLoaded: availableModels.length > 0
+  const initializeModalData = async () => {
+    console.log('🔧 TransformModal: Initializing all data', {
+      documentId: document.id,
+      documentTitle: document.title,
+      last_ai_provider_id: document.last_ai_provider_id,
+      last_ai_model_id: document.last_ai_model_id
     });
 
-    if (selectedProvider && selectedModel && availableModels.length === 0) {
-      console.log('🔧 Loading models with target model:', selectedModel);
-      loadProviderModels(selectedProvider, selectedModel);
+    try {
+      // Prepare all async operations
+      const loadPromptsPromise = getProjectPrompts(projectId, accessToken);
+      
+      // Determine which provider/model to use
+      let targetProvider = document.last_ai_provider_id;
+      let targetModel = document.last_ai_model_id;
+      
+      // If document doesn't have AI config, try project config
+      let projectConfigPromise: Promise<{ aiConfig: { provider_id: string; model_id: string; last_updated: string; updated_by: string } | null } | null> = Promise.resolve(null);
+      if (!targetProvider || !targetModel) {
+        projectConfigPromise = getProjectAIConfig(projectId, accessToken);
+      }
+      
+      // Load project config if needed
+      const [promptsResponse, projectConfigResponse] = await Promise.all([
+        loadPromptsPromise,
+        projectConfigPromise
+      ]);
+      
+      // Use project config as fallback
+      if (projectConfigResponse?.aiConfig) {
+        targetProvider = targetProvider || projectConfigResponse.aiConfig.provider_id;
+        targetModel = targetModel || projectConfigResponse.aiConfig.model_id;
+      }
+      
+      console.log('🔧 Final AI config determined:', { targetProvider, targetModel });
+      
+      // Load models if we have a provider
+      let modelsResponse: ProviderModel[] = [];
+      if (targetProvider) {
+        modelsResponse = await getProviderModels(targetProvider, accessToken);
+        console.log('🔧 Models loaded:', modelsResponse.length);
+      }
+      
+      // Find the model name
+      let modelDisplayName = '';
+      if (targetModel && modelsResponse.length > 0) {
+        const modelObj = modelsResponse.find(m => m.id === targetModel);
+        modelDisplayName = modelObj ? modelObj.name : targetModel;
+        console.log('🔧 Model name resolved:', modelDisplayName);
+      }
+      
+      // SET ALL STATE AT ONCE - NO MORE TIMING ISSUES!
+      setPrompts(promptsResponse.prompts);
+      setSelectedProvider(targetProvider || '');
+      setSelectedModel(targetModel || '');
+      setModelSearch(modelDisplayName);
+      setAvailableModels(modelsResponse);
+      
+      console.log('🔧 All state set successfully!');
+      
+    } catch (error) {
+      console.error('🔧 Failed to initialize modal data:', error);
+      setError('Failed to load AI configuration');
     }
-  }, [selectedProvider, selectedModel, availableModels.length]);
+  };
 
   // Set default new document values when result is generated
   useEffect(() => {
@@ -148,82 +149,23 @@ export function TransformModal({
     }
   }, [selectedPromptId, prompts]);
 
-  const loadPrompts = async () => {
-    try {
-      const response = await getProjectPrompts(projectId, accessToken);
-      setPrompts(response.prompts);
-    } catch (error) {
-      console.error('Failed to load prompts:', error);
-      setError('Failed to load prompt templates');
+  // Load models when user manually changes provider
+  useEffect(() => {
+    if (selectedProvider && availableModels.length === 0) {
+      console.log('🔧 User changed provider, loading models for:', selectedProvider);
+      loadModelsForProvider(selectedProvider);
     }
-  };
+  }, [selectedProvider]);
 
-  const loadProjectAIConfigIfNeeded = async () => {
-    console.log('🔧 Loading project AI config if needed', {
-      documentProviderId: document.last_ai_provider_id,
-      documentModelId: document.last_ai_model_id,
-      shouldLoadConfig: !document.last_ai_provider_id || !document.last_ai_model_id
-    });
-    
-    // Only load project config if document doesn't have AI columns
-    if (!document.last_ai_provider_id || !document.last_ai_model_id) {
-      try {
-        const { aiConfig } = await getProjectAIConfig(projectId, accessToken);
-        console.log('🔧 Project AI config loaded:', aiConfig);
-        
-        if (aiConfig) {
-          if (!document.last_ai_provider_id && aiConfig.provider_id) {
-            console.log('🔧 Setting provider from project config:', aiConfig.provider_id);
-            setSelectedProvider(aiConfig.provider_id);
-          }
-          if (!document.last_ai_model_id && aiConfig.model_id) {
-            console.log('🔧 Setting model from project config:', aiConfig.model_id);
-            setSelectedModel(aiConfig.model_id);
-            // Don't set modelSearch here - wait for models to load to get the proper name
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load project AI config:', error);
-        // Don't show error to user - this is optional functionality
-      }
-    }
-  };
-
-  const loadProviderModels = async (providerId: string, modelToFind?: string) => {
-    const targetModel = modelToFind || selectedModel;
-    console.log('🔧 loadProviderModels called', {
-      providerId,
-      targetModel,
-      stateSelectedModel: selectedModel,
-      accessToken: accessToken ? 'present' : 'missing'
-    });
-    
+  const loadModelsForProvider = async (providerId: string) => {
     try {
       const models = await getProviderModels(providerId, accessToken);
-      console.log('🔧 Models loaded:', models.length, 'models');
       setAvailableModels(models);
-      
-      // Only clear model if we don't have one set from document/project config
-      // If we have a model set, keep it and find the display name
-      if (!targetModel) {
-        console.log('🔧 No target model, clearing fields');
-        setSelectedModel('');
-        setModelSearch('');
-      } else {
-        console.log('🔧 Have target model, finding name for:', targetModel);
-        // Find the model name for the search field
-        const model = models.find(m => m.id === targetModel);
-        console.log('🔧 Found model for ID:', model);
-        if (model) {
-          console.log('🔧 Setting model search to:', model.name);
-          setModelSearch(model.name);
-        } else {
-          console.log('🔧 Model not found in loaded models, keeping ID as search');
-          setModelSearch(targetModel);
-        }
-      }
+      // Clear model selection when provider changes
+      setSelectedModel('');
+      setModelSearch('');
     } catch (error) {
-      console.error('🔧 Failed to load models:', error);
+      console.error('Failed to load models for provider:', error);
       setAvailableModels([]);
     }
   };
