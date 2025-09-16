@@ -63,7 +63,7 @@ export function TransformModal({
     }
   }, [isOpen, projectId]);
 
-  // Initialize AI config from document or project
+  // Initialize AI config from document or project  
   useEffect(() => {
     if (isOpen) {
       console.log('🔧 TransformModal: Initializing AI config', {
@@ -76,6 +76,12 @@ export function TransformModal({
         currentSelectedModel: selectedModel
       });
       
+      // Reset state first to ensure clean initialization
+      setSelectedProvider('');
+      setSelectedModel('');
+      setModelSearch('');
+      setAvailableModels([]);
+      
       // Initialize from document AI columns if available
       if (document.last_ai_provider_id) {
         console.log('🔧 Setting provider from document:', document.last_ai_provider_id);
@@ -86,18 +92,8 @@ export function TransformModal({
         setSelectedModel(document.last_ai_model_id);
         // Don't set modelSearch here - wait for models to load to get the proper name
       }
-      
-      // Debug: Log the state after setting
-      setTimeout(() => {
-        console.log('🔧 State after initialization:', {
-          selectedProvider,
-          selectedModel,
-          documentProvider: document.last_ai_provider_id,
-          documentModel: document.last_ai_model_id
-        });
-      }, 100);
     }
-  }, [isOpen, document]);
+  }, [isOpen, document.id]); // Use document.id instead of whole document object
 
   // Load models when provider changes (only clear when no provider)
   useEffect(() => {
