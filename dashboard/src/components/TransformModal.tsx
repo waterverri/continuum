@@ -89,24 +89,37 @@ export function TransformModal({
     }
   }, [isOpen, document]);
 
-  // Load models when provider changes
+  // Load models when provider changes (only clear when no provider)
   useEffect(() => {
-    console.log('🔧 Provider changed effect triggered', {
+    console.log('🔧 Provider effect triggered', {
       selectedProvider,
       currentSelectedModel: selectedModel,
       availableModelsCount: availableModels.length
     });
     
-    if (selectedProvider) {
-      console.log('🔧 Loading models for provider:', selectedProvider);
-      loadProviderModels(selectedProvider, selectedModel); // Pass current selectedModel
-    } else {
+    if (!selectedProvider) {
       console.log('🔧 No provider selected, clearing models');
       setAvailableModels([]);
       setSelectedModel('');
       setModelSearch('');
     }
-  }, [selectedProvider, selectedModel]); // Also depend on selectedModel
+  }, [selectedProvider]);
+
+  // Separate effect to load models when we have both provider and model
+  useEffect(() => {
+    console.log('🔧 Provider+Model effect triggered', {
+      selectedProvider,
+      selectedModel,
+      hasProvider: !!selectedProvider,
+      hasModel: !!selectedModel,
+      modelsAlreadyLoaded: availableModels.length > 0
+    });
+
+    if (selectedProvider && selectedModel && availableModels.length === 0) {
+      console.log('🔧 Loading models with target model:', selectedModel);
+      loadProviderModels(selectedProvider, selectedModel);
+    }
+  }, [selectedProvider, selectedModel, availableModels.length]);
 
   // Set default new document values when result is generated
   useEffect(() => {
