@@ -150,40 +150,58 @@ export function useDocumentOperations({
       const updatedDoc = await updateDocument(projectId, documentId, formData, token);
       
       // If group assignment changed and a new group was assigned, ensure the target document is a group head
+      console.log('🔧 Checking group assignment:', {
+        isGroupAssignmentChange,
+        newGroupId: formData.group_id,
+        shouldUpdateTarget: isGroupAssignmentChange && formData.group_id
+      });
+      
       if (isGroupAssignmentChange && formData.group_id) {
         const targetGroupDoc = documents.find(doc => doc.id === formData.group_id);
+        console.log('🔧 Target document search result:', targetGroupDoc ? {
+          id: targetGroupDoc.id,
+          title: targetGroupDoc.title,
+          currentGroupId: targetGroupDoc.group_id
+        } : 'NOT FOUND');
         
         if (targetGroupDoc) {
-          console.log('🔧 Making target document a group head:', {
+          console.log('🔧 About to make second API call for target document B:', {
             documentId: targetGroupDoc.id,
             currentGroupId: targetGroupDoc.group_id,
             newGroupId: targetGroupDoc.id
           });
           
-          // Always make the target document a group head by setting its group_id to its own id
-          const updatedTargetDoc = await updateDocument(projectId, targetGroupDoc.id, {
-            group_id: targetGroupDoc.id,
-          }, token);
-          
-          console.log('🔧 Target document updated successfully:', {
-            id: updatedTargetDoc.id,
-            title: updatedTargetDoc.title,
-            group_id: updatedTargetDoc.group_id,
-            expectedGroupId: targetGroupDoc.id
-          });
-          
-          // Update both documents in our local state
-          setDocuments(documents.map(doc => 
-            doc.id === targetGroupDoc.id 
-              ? { ...doc, group_id: targetGroupDoc.id }
-              : doc.id === updatedDoc.id ? updatedDoc : doc
-          ));
+          try {
+            // Always make the target document a group head by setting its group_id to its own id
+            const updatedTargetDoc = await updateDocument(projectId, targetGroupDoc.id, {
+              group_id: targetGroupDoc.id,
+            }, token);
+            
+            console.log('🔧 Second API call SUCCESS - Target document updated:', {
+              id: updatedTargetDoc.id,
+              title: updatedTargetDoc.title,
+              group_id: updatedTargetDoc.group_id,
+              expectedGroupId: targetGroupDoc.id
+            });
+            
+            // Update both documents in our local state
+            setDocuments(documents.map(doc => 
+              doc.id === targetGroupDoc.id 
+                ? { ...doc, group_id: targetGroupDoc.id }
+                : doc.id === updatedDoc.id ? updatedDoc : doc
+            ));
+          } catch (secondUpdateError) {
+            console.error('🔧 Second API call FAILED:', secondUpdateError);
+            // Still update the main document in local state even if second call fails
+            setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+          }
         } else {
-          console.log('🔧 Target document not found');
+          console.log('🔧 Target document not found in documents array');
           // Just update the main document in local state
           setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
         }
       } else {
+        console.log('🔧 No group assignment change detected');
         // No group assignment change, just update the main document
         setDocuments(documents.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
       }
