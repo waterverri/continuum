@@ -31,6 +31,7 @@ import { EventFilter } from '../components/EventFilter';
 import { DocumentEvolution } from '../components/DocumentEvolution';
 import { ProjectSettingsModal } from '../components/ProjectSettingsModal';
 import { DocumentGroupDeletionModal } from '../components/DocumentGroupDeletionModal';
+import { ensureBidirectionalGroupAssignment } from '../utils/groupAssignment';
 import '../styles/ProjectDetailPage.css';
 
 
@@ -392,34 +393,24 @@ export default function ProjectDetailPage() {
     // Update form data with new group assignment
     state.setFormData(prev => ({ ...prev, group_id: groupId }));
     
-    // If we're editing (not creating) and assigning to a group, ensure target document becomes group head
-    if (!state.isCreating && groupId) {
-      const targetGroupDoc = state.documents.find(doc => doc.id === groupId);
-      console.log('🔧 Group assignment - Making target document a group head:', {
-        targetDocId: groupId,
-        targetDoc: targetGroupDoc ? {
-          id: targetGroupDoc.id,
-          title: targetGroupDoc.title,
-          currentGroupId: targetGroupDoc.group_id
-        } : 'NOT FOUND'
-      });
-      
-      if (targetGroupDoc && (!targetGroupDoc.group_id || targetGroupDoc.group_id !== targetGroupDoc.id)) {
-        try {
-          console.log('🔧 Making second API call to update target document B');
-          await operations.handleUpdateDocument(targetGroupDoc.id, {
-            title: targetGroupDoc.title,
-            content: targetGroupDoc.content || '',
-            document_type: targetGroupDoc.document_type || '',
-            is_composite: targetGroupDoc.is_composite,
-            is_prompt: targetGroupDoc.is_prompt,
-            components: targetGroupDoc.components || {},
-            group_id: targetGroupDoc.id, // This is the key change - set group_id to its own id
-          });
-          console.log('🔧 Target document B updated successfully');
-        } catch (error) {
-          console.error('🔧 Failed to update target document B:', error);
-        }
+    // If we're editing (not creating), ensure bidirectional group assignment
+    if (!state.isCreating && groupId && accessToken && projectId) {
+      try {
+        await ensureBidirectionalGroupAssignment(
+          groupId,
+          state.documents,
+          projectId,
+          accessToken,
+          // Update local state when document is updated
+          (updatedDoc) => {
+            state.setDocuments(prev => prev.map(doc => 
+              doc.id === updatedDoc.id ? updatedDoc : doc
+            ));
+          }
+        );
+      } catch (error) {
+        console.error('🔧 Bidirectional group assignment failed:', error);
+        // Don't block the UI, just log the error
       }
     }
     

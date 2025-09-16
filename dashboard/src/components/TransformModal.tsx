@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Document, AIProvider, ProviderModel } from '../api';
 import { getProjectPrompts, submitAITransform, getProviderModels, createDocument, getProjectAIConfig } from '../api';
+import { ensureBidirectionalGroupAssignment } from '../utils/groupAssignment';
 
 interface ProjectPrompt {
   id: string;
@@ -334,6 +335,7 @@ export function TransformModal({
     setError('');
 
     try {
+      // Create the new document
       const newDocument = await createDocument(projectId, {
         title: newDocTitle.trim(),
         document_type: newDocType || 'document',
@@ -341,6 +343,22 @@ export function TransformModal({
         group_id: newDocGroupId || undefined,
         interaction_mode: 'document'
       }, accessToken);
+
+      // If assigning to a group, ensure bidirectional group assignment
+      if (newDocGroupId) {
+        try {
+          await ensureBidirectionalGroupAssignment(
+            newDocGroupId,
+            documents,
+            projectId,
+            accessToken
+            // No state update callback needed here as parent will refresh
+          );
+        } catch (groupError) {
+          console.error('🔧 Bidirectional group assignment failed in transform modal:', groupError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
 
       if (onSuccess) {
         onSuccess(newDocument);
