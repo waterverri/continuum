@@ -72,7 +72,7 @@ export function TransformModal({
       }
       if (document.last_ai_model_id) {
         setSelectedModel(document.last_ai_model_id);
-        setModelSearch(document.last_ai_model_id);
+        // Don't set modelSearch here - wait for models to load to get the proper name
       }
     }
   }, [isOpen, document]);
@@ -130,7 +130,7 @@ export function TransformModal({
           }
           if (!document.last_ai_model_id && aiConfig.model_id) {
             setSelectedModel(aiConfig.model_id);
-            setModelSearch(aiConfig.model_id);
+            // Don't set modelSearch here - wait for models to load to get the proper name
           }
         }
       } catch (error) {
