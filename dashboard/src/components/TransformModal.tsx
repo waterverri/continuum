@@ -66,11 +66,23 @@ export function TransformModal({
   // Initialize AI config from document or project
   useEffect(() => {
     if (isOpen) {
+      console.log('🔧 TransformModal: Initializing AI config', {
+        isOpen,
+        documentId: document.id,
+        documentTitle: document.title,
+        last_ai_provider_id: document.last_ai_provider_id,
+        last_ai_model_id: document.last_ai_model_id,
+        currentSelectedProvider: selectedProvider,
+        currentSelectedModel: selectedModel
+      });
+      
       // Initialize from document AI columns if available
       if (document.last_ai_provider_id) {
+        console.log('🔧 Setting provider from document:', document.last_ai_provider_id);
         setSelectedProvider(document.last_ai_provider_id);
       }
       if (document.last_ai_model_id) {
+        console.log('🔧 Setting model from document:', document.last_ai_model_id);
         setSelectedModel(document.last_ai_model_id);
         // Don't set modelSearch here - wait for models to load to get the proper name
       }
@@ -79,9 +91,17 @@ export function TransformModal({
 
   // Load models when provider changes
   useEffect(() => {
+    console.log('🔧 Provider changed effect triggered', {
+      selectedProvider,
+      currentSelectedModel: selectedModel,
+      availableModelsCount: availableModels.length
+    });
+    
     if (selectedProvider) {
+      console.log('🔧 Loading models for provider:', selectedProvider);
       loadProviderModels(selectedProvider);
     } else {
+      console.log('🔧 No provider selected, clearing models');
       setAvailableModels([]);
       setSelectedModel('');
       setModelSearch('');
@@ -120,15 +140,25 @@ export function TransformModal({
   };
 
   const loadProjectAIConfigIfNeeded = async () => {
+    console.log('🔧 Loading project AI config if needed', {
+      documentProviderId: document.last_ai_provider_id,
+      documentModelId: document.last_ai_model_id,
+      shouldLoadConfig: !document.last_ai_provider_id || !document.last_ai_model_id
+    });
+    
     // Only load project config if document doesn't have AI columns
     if (!document.last_ai_provider_id || !document.last_ai_model_id) {
       try {
         const { aiConfig } = await getProjectAIConfig(projectId, accessToken);
+        console.log('🔧 Project AI config loaded:', aiConfig);
+        
         if (aiConfig) {
           if (!document.last_ai_provider_id && aiConfig.provider_id) {
+            console.log('🔧 Setting provider from project config:', aiConfig.provider_id);
             setSelectedProvider(aiConfig.provider_id);
           }
           if (!document.last_ai_model_id && aiConfig.model_id) {
+            console.log('🔧 Setting model from project config:', aiConfig.model_id);
             setSelectedModel(aiConfig.model_id);
             // Don't set modelSearch here - wait for models to load to get the proper name
           }
@@ -141,24 +171,38 @@ export function TransformModal({
   };
 
   const loadProviderModels = async (providerId: string) => {
+    console.log('🔧 loadProviderModels called', {
+      providerId,
+      currentSelectedModel: selectedModel,
+      accessToken: accessToken ? 'present' : 'missing'
+    });
+    
     try {
       const models = await getProviderModels(providerId, accessToken);
+      console.log('🔧 Models loaded:', models.length, 'models');
       setAvailableModels(models);
       
       // Only clear model if we don't have one set from document/project config
       // If we have a model set, keep it and find the display name
       if (!selectedModel) {
+        console.log('🔧 No selected model, clearing fields');
         setSelectedModel('');
         setModelSearch('');
       } else {
+        console.log('🔧 Have selected model, finding name for:', selectedModel);
         // Find the model name for the search field
         const model = models.find(m => m.id === selectedModel);
+        console.log('🔧 Found model for ID:', model);
         if (model) {
+          console.log('🔧 Setting model search to:', model.name);
           setModelSearch(model.name);
+        } else {
+          console.log('🔧 Model not found in loaded models, keeping ID as search');
+          setModelSearch(selectedModel);
         }
       }
     } catch (error) {
-      console.error('Failed to load models:', error);
+      console.error('🔧 Failed to load models:', error);
       setAvailableModels([]);
     }
   };
