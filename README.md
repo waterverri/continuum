@@ -1,87 +1,104 @@
-# Continuum: The Writer's Context Engine
+# Continuum: AI-Powered Writing Platform
 
-A private, multi-project application designed to serve as an intelligent "story bible," providing precise, dynamic, and contextually-aware information to assist writers in their long-form storytelling process with Large Language Models (LLMs).
+A comprehensive AI-powered writing platform that serves as an intelligent "story bible," providing precise, dynamic, and contextually-aware information to assist writers in their long-form storytelling process. Features integrated AI chat, document versioning, advanced timeline management, and seamless collaboration tools.
 
 ## The Scene, and the Frustration
 
-The cursor blinks. It’s 2 AM, and you’re deep into chapter seventy-three of your epic fantasy series. Your protagonist, Elara, a cynical war orphan turned formidable spy, is about to have a clandestine meeting with a mentor she hasn’t seen in a decade. The emotional weight of this scene rests on a mountain of history.
+The cursor blinks. It's 2 AM, and you're deep into chapter seventy-three of your epic fantasy series. Your protagonist, Elara, a cynical war orphan turned formidable spy, is about to have a clandestine meeting with a mentor she hasn't seen in a decade. The emotional weight of this scene rests on a mountain of history.
 
 You turn to your AI writing partner, ready to draft the dialogue. But first, the ritual of context-building begins. You need the AI to remember:
 
-* Elara’s core personality: her distrust of authority, stemming from the betrayal that led to her parents' death.
+* Elara's core personality: her distrust of authority, stemming from the betrayal that led to her parents' death.
 * The significance of the silver locket she always wears, a memento from her mother.
-* The mentor’s complex history: he was once her father's best friend, but went into hiding after the betrayal, leaving many to think him a coward.
+* The mentor's complex history: he was once her father's best friend, but went into hiding after the betrayal, leaving many to think him a coward.
 * The specific events of their last encounter ten years ago, a brief, cryptic warning given in a crowded market.
 
 You open a sprawling, 200-page document of notes, a chaotic mix of timelines, character sketches, and discarded scenes. You begin the frantic copy-paste dance, desperately trying to assemble a coherent context block. The result is a jumbled mess of text. You feed it to the LLM, cross your fingers, and hit 'generate'.
 
-The output is… fine. Technically correct, but hollow. The dialogue is generic. The AI misses the subtle undercurrent of resentment and longing in Elara's voice because it doesn’t truly *understand* the subtext. It has a collection of facts, not a tapestry of experience. Even worse, it has her mention an event from a different character's backstory, a continuity error that sends a chill down your spine. The flow is broken. The magic is gone.
+The output is… fine. Technically correct, but hollow. The dialogue is generic. The AI misses the subtle undercurrent of resentment and longing in Elara's voice because it doesn't truly *understand* the subtext. It has a collection of facts, not a tapestry of experience. Even worse, it has her mention an event from a different character's backstory, a continuity error that sends a chill down your spine. The flow is broken. The magic is gone.
 
-What if your story bible wasn’t a dead archive? What if it were a living, intelligent partner in your storytelling?
+What if your story bible wasn't a dead archive? What if it were a living, intelligent partner in your storytelling?
 
 ## A New Continuum
 
-**Continuum** was born from that frustration. It’s a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
+**Continuum** was born from that frustration. It's a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
 
-Within each project, you create living **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. You map out your entire history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at time `1052`.
+Within each project, you create organized **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. But here's where Continuum gets clever—you don't just create one massive character file. Instead, you create a **group** for Elara containing multiple documents: a detailed psychological profile, a quick summary for reference, and a focused backstory about her formative experiences. Each serves a different purpose, but they're all connected.
+
+You map out your story's history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at year 1052. But this isn't just planning—it's organization. Tag your documents and events, then filter by time periods. Need everything relevant to the war? Filter to 1050-1055 and see all related characters, locations, and events at a glance.
 
 But what about the scene itself? The context for "Elara Meets Mentor" isn't just one document; it's a mosaic of many.
 
-With Continuum, you create a new kind of document—a **Blueprint**. You title it "Elara Meets Mentor - Scene Context". Its content isn't a wall of text you have to maintain. Instead, it’s a simple, elegant template that you compose:
+With Continuum, you create a new kind of document—a **Composite Blueprint**. You title it "Elara Meets Mentor - Scene Context". Its content isn't a wall of text you have to maintain. Instead, it's a simple, elegant template:
 
 > #### Scene Context: A clandestine meeting in the port city of Kai's Landing.
 >
 > **Protagonist Mindset: Elara**
-> A cynical but resourceful spy, shaped by the loss of her parents. She trusts actions, not words, and harbors a deep-seated resentment for the mentor she believes abandoned her.
-> *Full Profile: {{group:elara_docs:summary}}* _(Uses condensed version from Elara's document group)_
+> {{group:elara_docs:psychological}} - Focus on trust issues and abandonment
 >
 > **Relevant History:**
-> A summary of the last time they met, ten years prior during the Festival of Silver Sails.
-> *Full Event Details: {{event_last_mentor_meeting}}*
+> {{group:mentor_docs:history}} - His role in her past
+> {{event:last_meeting}} - What happened ten years ago
 >
 > **Key Items:**
-> Elara clutches the silver locket her mother gave her, a constant, physical reminder of her loss.
-> *Description: {{item_silver_locket}}*
+> {{item:silver_locket}} - Physical reminder of loss
 
-Each `{{...}}` is a living link to another document in your world. There is no copy-pasting. You are not duplicating information; you are **weaving it together**. Notice the `{{group:elara_docs:summary}}` reference—this pulls from a group of documents about Elara, specifically choosing the "summary" version. You might have a full character profile, a brief summary, and detailed backstory all grouped together. Continuum intelligently selects the right version for your context. If you update any document in Elara's group, this blueprint is automatically updated the moment you next need it.
+Each `{{...}}` is a living link. There is no copy-pasting. You are not duplicating information; you are **weaving it together**. Notice `{{group:elara_docs:psychological}}`—this pulls specifically the psychological analysis from Elara's document group. If you update any document in the group, this blueprint automatically reflects the changes.
 
-This blueprint document is what you save as a **Preset**.
+Now, let's revisit that 2 AM writing session. Instead of the chaotic copy-paste dance, you open your composite blueprint and start an **AI chat about this document**. "Help me write dialogue for this reunion scene," you type. The AI receives the perfectly assembled context—Elara's psychological state, the mentor's history, their last meeting, the significance of the locket—all woven together coherently.
 
-Now, let's revisit that 2 AM writing session. Instead of the chaotic copy-paste, you open Continuum and simply retrieve the stable URL for your "Elara Meets Mentor" preset.
+But here's the magic: that AI conversation becomes its own document—a **Chat Document** capturing both your questions and the AI's responses. A week later, you want to refine the dialogue. You don't start over. Instead, you open a new AI chat **about that previous chat document**: "Make Elara show more vulnerability in this dialogue." The AI has the full context of your previous conversation and can build on it.
 
-You turn back to your AI prompt. You delete the wall of jumbled text and paste in just that one line. The API at that URL delivers the perfectly assembled package. Continuum has followed your blueprint, resolving every link in an instant to create the exact context the LLM needs.
+Need a summary version of your 50-page world history for a different scene? Use Continuum's **Transform** feature. Select your detailed history, choose your "Summarization" prompt template, and transform it into a concise version. This creates a new document in your world history group—now you have both detailed and summary versions, and your composite documents can reference whichever fits best.
 
-You hit 'generate' again. This time, the magic is there. The dialogue crackles with the unspoken history between the characters. Elara’s cynicism is sharp, but undercut with a flicker of the hope she’d long buried. It's perfect.
+Everything connects. Chat documents can reference other chat documents. Transformations create new grouped documents. Your timeline helps you find exactly what's relevant for any moment in your story. Your composite blueprints pull it all together into perfect context packages.
+
+You hit 'generate' again. This time, the magic is there. The dialogue crackles with the unspoken history between the characters. Elara's cynicism is sharp, but undercut with a flicker of the hope she'd long buried. It's perfect—because the AI had access to your story bible not as scattered fragments, but as an intelligent, interconnected knowledge system.
 
 This is Continuum. It's not just a place to store your notes. It's an engine that turns your story bible from a static reference into the dynamic, living context your creative process deserves.
 
 ## Features
 
-* **User Authentication:** Full user sign-up and login with email/password and Google.
+### Core Platform Features
+* **User Authentication:** Full user sign-up and login with email/password and Google OAuth integration.
 * **Project Management:** Complete collaboration system with role-based access control, member management, and secure invitation system.
-* **Document Management:** Complete CRUD system for static and composite documents with text extraction and rename functionality.
-* **Document Groups:** Create derivative documents (summaries, translations, etc.) organized by groups with intelligent type selection.
-* **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents or entire document groups using {{placeholder}} syntax.
-* **Advanced Group Selection:** Choose specific document types within groups or use intelligent auto-selection for composite documents.
-* **Tagging System:** Comprehensive document and event organization with color-coded tags, real-time filtering, and intuitive tag management interface.
-* **Interactive Events & Timeline System:** Professional Gantt chart with advanced pan/zoom controls, touch/trackpad support, click-to-create events, and comprehensive filtering.
-* **Advanced Timeline Features:** Industry-standard project management interface with real-time interaction, parent-child event collapsing, precise time positioning, and mobile optimization.
-* **Document Text Extraction:** Select text from any document to automatically create new linked documents with proper modal interfaces.
-* **Event Management:** Comprehensive event tagging, filtering, and document association system with real-time timeline updates.
-* **Preset System:** Advanced context generation with recursive component resolution, namespaced overrides, and PDF export functionality.
-* **Professional Landing Page:** Security-focused landing page addressing Google OAuth security requirements with progressive disclosure.
-* **Cyclic Dependency Protection:** Server-side validation prevents infinite loops in document and group references.
-* **Real-time Resolution:** View how composite documents resolve into final assembled content with group-based substitutions.
-* **Secure API:** Backend API protected with JWT authentication and Row Level Security.
-* **Automated Deployments:** Full CI/CD pipelines for the frontend, backend, and database migrations.
+* **AI Integration:** Universal chat system with multiple provider support (OpenAI, Google Vertex AI), user credits management, and dynamic model selection.
+
+### Document Management System
+* **Modern Document Interface:** Redesigned viewer with markdown rendering, hide/show functionality, and professional reading experience.
+* **Document Types:** Static, composite, and AI prompt documents with boolean flag architecture (`is_prompt`).
+* **Document Groups:** Create derivative documents organized by groups with bidirectional assignment and intelligent type selection.
+* **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents using {{placeholder}} syntax.
+* **Document History:** Complete versioning system with rollback capabilities, audit trails, and seamless restoration.
+* **Advanced Tagging:** Comprehensive organization with color-coded tags, advanced filtering integration, and auto-inheritance from events.
+
+### AI-Powered Features
+* **Universal AI Chat:** Document-context aware conversations with regeneration, provider tracking, and source integration.
+* **Document Transformation:** AI-powered document modification using searchable template system and project-level configuration.
+* **Multiple AI Providers:** Support for OpenAI, Google Vertex AI with dynamic model fetching and secure key management.
+* **Usage Credits:** User credit system with transparent usage tracking and pricing management.
+
+### Timeline & Event Management
+* **Rewritten Timeline Architecture:** Centralized TimelineCalculator with collapsible time scales and enhanced visualization.
+* **Event Dependencies:** Comprehensive dependency system with cycle detection, duration support, and client-side RLS compliance.
+* **Advanced Timeline Controls:** Smart positioning, center-focused zoom, and enhanced pan/zoom with touch/trackpad support.
+* **Event-Document Integration:** Auto-inheritance of document tags when creating events with seamless association management.
+* **Datetime Precision:** Events converted to datetime format with fractional day precision for accurate scheduling.
+
+### Collaboration & Presets
+* **Advanced Preset System:** Recursive component resolution, namespaced overrides, and PDF export functionality.
+* **Professional Interfaces:** Complete modal system with modern UX patterns and mobile optimization.
+* **Secure API Architecture:** Backend API protected with JWT authentication, Row Level Security, and AI provider key management.
+* **Automated Deployments:** Full CI/CD pipelines for frontend, backend, and database migrations.
 
 ## Architectural Overview
 
-Continuum is a full-stack application composed of three main parts:
+Continuum is a full-stack AI-powered application composed of four main components:
 
-* **Frontend:** A web-based dashboard built with a modern JavaScript framework.
-* **Backend:** A serverless API using Node.js and TypeScript, deployed as a container to Google Cloud Run.
-* **Database & Auth:** A Supabase (PostgreSQL) instance for the database and user authentication.
+* **Frontend (React + Vite):** Web dashboard with AI chat interfaces, modern document viewer, and advanced timeline visualization.
+* **Backend API (Node.js + TypeScript):** Serverless API handling complex operations, event dependencies, and preset generation.
+* **AI Proxy System:** Comprehensive AI integration with multiple provider support, credit management, and structured message processing.
+* **Database & Auth (Supabase):** PostgreSQL database with Row Level Security, user authentication, and AI request logging optimization.
 
 ## Getting Started
 
@@ -103,47 +120,40 @@ Prerequisites for development:
 
 1.  Navigate to the `/dashboard` directory.
 2.  Run `npm install` to install dependencies.
-3.  Create a `.env.local` file and add your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. For local development, also add `VITE_API_URL=http://localhost:8080`.
+3.  Create a `.env.local` file and add your `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_URL=http://localhost:8080` for local development.
 4.  Run `npm run dev` to start the local development server, typically available at `http://localhost:5173`.
 
 ## System Overview
 
-**Core Infrastructure:**
-- Full-stack architecture with React frontend, Node.js API, and Supabase database
-- User authentication with JWT-based security and Row Level Security (RLS)
-- Project management with multi-tenancy and role-based access control
+**AI-Powered Writing Platform:**
+- Universal AI chat system with document context integration and multiple provider support
+- Document transformation workflows with searchable templates and project-level AI configuration
+- User credits system with transparent usage tracking and secure provider key management
+- AI request logging with performance optimization and structured message support
 
-**Document Management:**
-- Complete CRUD operations for both static and composite documents
-- Document groups with derivative creation and intelligent type selection
-- Composite document engine with recursive {{placeholder}} resolution
-- Advanced group references (`group:groupId:preferredType`) for precise control
-- Cyclic dependency validation and professional mobile-responsive UI
+**Advanced Document Management:**
+- Modern document viewer with markdown rendering and hide/show functionality
+- Complete versioning system with rollback capabilities and audit trails
+- Document types refactored to boolean flag architecture with AI prompt template support
+- Enhanced tagging with auto-inheritance from events and advanced filtering integration
+- Bidirectional group assignment utilities for improved relationship management
 
-**Event & Timeline System:**
-- Professional Gantt chart with industry-standard project management capabilities
-- Interactive controls with advanced pan/zoom and touch/trackpad support
-- Hierarchical event organization with parent-child relationships
-- Real-time timeline manipulation with comprehensive filtering
-- Document integration accessible directly from timeline interface
+**Timeline System Architecture:**
+- Complete timeline rewrite with centralized TimelineCalculator for all positioning
+- Collapsible time scale visualization with smart positioning and center-focused zoom
+- Comprehensive event dependency system with cycle detection and duration support
+- Events converted to datetime format with fractional day precision
+- Enhanced pan/zoom controls with touch/trackpad support and mobile optimization
 
-**Collaboration & Presets:**
-- Complete member management with role-based access control
-- Advanced preset system with recursive component resolution
-- PDF export functionality with professional styling
-- Namespaced overrides for precise component control
-- Secure invitation system with backend validation
+**Collaboration & Integration:**
+- Complete member management with role-based access control and secure invitation system
+- Advanced preset system with recursive component resolution and PDF export
+- Event-document relationship system with auto-tag inheritance and intuitive UX
+- Professional modal interfaces with modern UX patterns throughout
+- Mobile-first responsive design with comprehensive touch optimization
 
-**Enhanced Features:**
-- Comprehensive tagging system with color-coded organization
-- Text extraction and automatic document creation
-- Professional modal interfaces throughout
-- Mobile-first responsive design with touch optimization
-
-### 🚀 Next Phase
-- Advanced preset rule builder interface
-- Enhanced collaboration tools and real-time editing
-- Document versioning and change tracking
+**Current Status:**
+Production-ready AI-powered writing platform with comprehensive document management, timeline visualization, event dependencies, AI chat integration, and advanced collaboration tools.
 
 ## Testing
 

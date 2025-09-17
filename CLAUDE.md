@@ -38,28 +38,34 @@ Navigate to `/dashboard` directory:
 
 ## Architecture Overview
 
-Continuum is a full-stack application for writers to manage story context with three main components:
+Continuum is a full-stack AI-powered writing platform with four main components:
 
-**Frontend (React + Vite)**: Web dashboard deployed to Firebase Hosting. Handles user authentication and direct CRUD operations with Supabase using Row Level Security.
+**Frontend (React + Vite)**: Web dashboard deployed to Firebase Hosting. Handles user authentication, direct CRUD operations with Supabase using Row Level Security, and AI chat interfaces.
 
-**Backend (Node.js + TypeScript)**: Serverless API deployed to Google Cloud Run. Reserved for complex server-side logic like the "Preset Engine" that dynamically assembles context from related documents.
+**Backend (Node.js + TypeScript)**: Serverless API deployed to Google Cloud Run. Handles complex server-side logic including the "Preset Engine", AI proxy system, and event dependency management.
 
-**Database (Supabase/PostgreSQL)**: Handles data persistence, user authentication, and authorization via Row Level Security policies.
+**AI Proxy System**: Comprehensive AI integration with multiple provider support (OpenAI, Google Vertex AI), user credits management, and structured message processing for chat and document transformation.
+
+**Database (Supabase/PostgreSQL)**: Handles data persistence, user authentication, authorization via Row Level Security policies, and AI request logging with performance optimization.
 
 ## Data Access Patterns
 
 **Frontend → Supabase Direct**: Standard CRUD operations use supabase-js client directly. Security enforced by RLS policies in migrations.
 
-**Frontend → Backend API → Supabase**: Complex operations (like preset context generation) go through the backend API at `/api/presets/:id/context` endpoints.
+**Frontend → Backend API → Supabase**: Complex operations (preset context generation, event dependencies, AI chat) go through backend APIs.
+
+**Frontend → AI Proxy → External Providers**: AI chat, document transformation, and content generation use the AI proxy system with credit management and provider abstraction.
 
 ## Key Data Model Concepts
 
 **Project-Based Isolation**: All data is scoped to projects via `project_id` foreign keys. Users access projects through the `project_members` table with role-based permissions.
 
-**Document Relationships**: The `documents` table supports three relationship patterns:
-1. **Derivative**: Documents grouped by `group_id` with different `document_type` values
+**Document Relationships**: The `documents` table supports multiple relationship patterns:
+1. **Derivative**: Documents grouped by `group_id` with different document types
 2. **Composite**: Dynamic documents with `is_composite=true` that resolve content from other documents via `components` JSONB field
-3. **Event Links**: Many-to-many relationships between events and documents via `event_documents` join table
+3. **Event Links**: Many-to-many relationships between events and documents via `event_documents` join table with automatic tag inheritance
+4. **Prompt Documents**: Special documents with `is_prompt=true` for AI chat and transformation templates
+5. **Document History**: Full versioning system with rollback capabilities and audit trails
 
 ## Security & Authentication
 
@@ -67,7 +73,9 @@ Continuum is a full-stack application for writers to manage story context with t
 - Frontend uses supabase-js client with automatic JWT attachment
 - Backend validates JWTs via Supabase `/auth/v1/user` endpoint
 - Row Level Security policies enforce project-based data isolation
-- Never commit secrets - use environment variables for API keys
+- AI provider keys managed securely in database with user-level isolation
+- User credits system prevents unauthorized AI usage
+- Never commit secrets - use environment variables for system keys
 
 ## Current Implementation Status
 
@@ -75,20 +83,35 @@ Continuum is a full-stack application for writers to manage story context with t
 
 **Core Infrastructure:**
 - User authentication and project management with role-based access control
-- Complete document management with static and composite document support
-- Professional responsive UI with mobile-first design
+- Complete document management with static, composite, and prompt document support
+- Professional responsive UI with modern document viewer and markdown rendering
+- AI credits system with usage tracking and provider management
 
 **Document System:**
-- Document filtering with reusable components and custom hooks
-- Document groups with derivative creation and intelligent type selection
+- Modern document viewer with hide/show functionality and markdown rendering
+- Document groups with derivative creation and bidirectional assignment
 - Composite documents with recursive resolution and group references
-- Comprehensive tagging system with color-coded organization
+- Comprehensive tagging system with advanced filtering integration
+- Document history and versioning with rollback capabilities
+- AI-powered document transformation and chat integration
 - Text extraction and automatic document creation
 
 **Events & Timeline:**
-- Professional Gantt chart with industry-standard project management features
-- Interactive timeline with pan/zoom and touch/trackpad support
-- Hierarchical event organization with comprehensive filtering
+- Complete timeline architecture rewrite with centralized TimelineCalculator
+- Collapsible time scale visualization with smart positioning
+- Comprehensive event dependency system with cycle detection
+- Events converted to datetime format with fractional day precision
+- Interactive timeline with enhanced pan/zoom and center-focused controls
+- Hierarchical event organization with parent-child relationships
+- Auto-inheritance of document tags when creating events
+
+**AI & Chat System:**
+- Universal AI chat system with document context integration
+- Multiple AI provider support (OpenAI, Google Vertex AI) with dynamic model fetching
+- Project-level AI configuration with searchable model selection
+- Chat message management with regeneration and provider tracking
+- Document transformation system with template-based workflows
+- AI request logging with performance optimization
 
 **Collaboration & Presets:**
 - Complete project member management with secure invitation system
@@ -96,15 +119,15 @@ Continuum is a full-stack application for writers to manage story context with t
 - PDF export functionality with professional styling
 - Namespaced overrides for precise component control
 
-**Next**: Advanced preset rule builder interface, enhanced collaboration tools, document versioning system
-
-**Current Status**: Production-ready story development platform with complete collaboration, preset, and event management systems.
+**Current Status**: Production-ready AI-powered writing platform with comprehensive document management, timeline visualization, event dependencies, AI chat integration, and advanced collaboration tools.
 
 ## Environment Setup
 
 API requires `.env` with:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
+- AI provider keys (configured per-project in database)
+- Google Cloud service account for Vertex AI
 
 Dashboard requires `.env.local` with:
 - `VITE_SUPABASE_URL` 
@@ -118,20 +141,28 @@ Dashboard requires `.env.local` with:
 - All database schema changes implemented as Supabase migrations
 - **Component Architecture**: Small, focused components with custom hooks for state management
 - **Styling Convention**: CSS design system with variables, utilities, and component-specific styles
-- **Document Groups**: Support derivative relationships with `group:groupId:preferredType` format
-- **Tagging Architecture**: Many-to-many relationship design for flexible content organization
+- **Document Groups**: Support derivative relationships with bidirectional assignment utilities
+- **Document Types**: Boolean flag architecture with `is_prompt` for AI templates
+- **Tagging Architecture**: Many-to-many relationship design with auto-inheritance from events
+- **Timeline Architecture**: Centralized TimelineCalculator with collapsible time scales
+- **Event Dependencies**: Client-side dependency management with comprehensive cycle detection
+- **AI Integration**: Proxy architecture with structured message support and credit management
 - **Testing Approach**: Focus on unit tests for business logic validation
-- **Document Evolution**: Event-based document versioning with group relationships
-- **Security**: Backend APIs for administrative operations, RLS for data isolation
+- **Document Versioning**: Complete history tracking with rollback functionality
+- **Security**: Backend APIs for administrative operations, RLS for data isolation, secure AI key management
 **Current System Capabilities:**
 
-**Interactive Events & Timeline**: Professional Gantt chart with pan/zoom controls, touch support, hierarchical organization, and real-time filtering
+**AI-Powered Writing Assistant**: Universal chat system with document context, multiple provider support, transformation templates, and usage credits
+
+**Advanced Timeline Management**: Rewritten architecture with collapsible time scales, event dependencies, cycle detection, and centralized calculations
+
+**Document Versioning**: Complete history tracking with rollback capabilities, audit trails, and seamless restoration
+
+**Enhanced Document Interface**: Modern viewer with markdown rendering, hide/show controls, and advanced tag filtering integration
 
 **Project Collaboration**: Complete member management with role-based access control and secure invitation system
 
 **Advanced Presets**: Recursive component resolution, namespaced overrides, PDF export, and enhanced group references
-
-**Document Operations**: Smart text extraction, automatic document creation, rename functionality, and professional modal interfaces
 
 ## Frontend Architecture Patterns
 
@@ -148,9 +179,9 @@ The application follows a modular component architecture with clear separation o
 src/
 ├── components/
 │   ├── DocumentForm.tsx           # Document creation/editing
-│   ├── DocumentViewer.tsx          # Document display
+│   ├── DocumentViewer.tsx          # Modern document display with markdown rendering
 │   ├── DocumentList.tsx            # Document lists with actions
-│   ├── DocumentFilters.tsx         # Reusable filter components
+│   ├── DocumentFilters.tsx         # Advanced filter components with tag integration
 │   ├── DocumentPickerModal.tsx     # Document selection modal
 │   ├── ComponentKeyInputModal.tsx  # Component key input
 │   ├── DerivativeModal.tsx         # Derivative document creation
@@ -160,14 +191,20 @@ src/
 │   ├── TagSelector.tsx             # Document-tag associations
 │   ├── TagFilter.tsx               # Tag-based filtering
 │   ├── EventsWidget.tsx            # Inline event management with document actions
-│   ├── EventTimelineModal.tsx      # Professional Gantt chart timeline with interactive features
+│   ├── EventTimelineModal.tsx      # Rewritten timeline with collapsible scales
+│   ├── EventDependencyModal.tsx    # Event dependency management with cycle detection
 │   ├── EventSelector.tsx           # Document-event associations
 │   ├── EventFilter.tsx             # Event-based filtering
-│   └── DocumentEvolution.tsx       # Document version management across events
+│   ├── DocumentEvolution.tsx       # Document version management across events
+│   ├── DocumentHistoryModal.tsx    # Document history with rollback functionality
+│   ├── AIChatModal.tsx             # Universal AI chat with document context
+│   └── TransformModal.tsx          # AI document transformation with templates
 ├── hooks/
 │   ├── useProjectDetailState.ts    # Centralized state management
 │   ├── useDocumentOperations.ts    # Business logic & API calls
-│   └── useDocumentFilter.ts        # Filtering logic
+│   ├── useDocumentFilter.ts        # Advanced filtering logic
+│   ├── useAIChat.ts               # AI chat and transformation logic
+│   └── useTimelineCalculations.ts  # Centralized timeline calculations
 └── styles/
     ├── variables.css               # Design system tokens
     ├── utilities.css               # Utility classes
@@ -210,17 +247,25 @@ src/
 
 **Complete System Implementation:**
 
-1. **Project Collaboration Infrastructure**: Full member management with secure backend APIs, role-based access control, and invitation system
+1. **Complete AI Integration**: Universal chat system with multiple provider support, user credits, dynamic model fetching, and document transformation workflows
 
-2. **Advanced Preset System**: Recursive component resolution, namespaced overrides, PDF export, and professional dashboard interface
+2. **Timeline System Rewrite**: Centralized architecture with collapsible time scales, enhanced pan/zoom, and smart positioning algorithms
 
-3. **Enhanced Event Management**: Comprehensive tagging, advanced filtering, professional timeline interface with touch/trackpad support
+3. **Event Dependency Management**: Comprehensive dependency system with cycle detection, duration support, and client-side RLS compliance
 
-4. **Document Operation Enhancements**: Text extraction, rename functionality, automatic document creation with relationship preservation
+4. **Document Versioning System**: Complete history tracking with rollback capabilities, audit trails, and seamless restoration
 
-5. **Professional UI/UX**: Security-focused landing page, mobile optimization, touch support, and complete modal system
+5. **Enhanced Document Interface**: Modern viewer with markdown rendering, hide/show functionality, and advanced tag filtering integration
+
+6. **Document Type Architecture**: Refactored to boolean flag system with `is_prompt` for AI templates and improved type management
 
 **Architectural Evolution:**
-The system has evolved from component extraction and refactoring to complete feature implementation across all major subsystems. The codebase now demonstrates production-ready patterns with comprehensive testing, security validation, and mobile-first responsive design throughout all interfaces.
+The system has evolved from a document management platform to a comprehensive AI-powered writing assistant. Major architectural changes include:
 
-This evolution establishes the foundation for advanced features like preset rule builders and real-time collaboration tools.
+- **AI-First Architecture**: Complete integration of AI chat and transformation systems with secure provider management
+- **Timeline System Rewrite**: Centralized calculations and collapsible visualizations replacing fragmented positioning logic
+- **Event Dependency Graph**: Full dependency management with cycle detection and intelligent scheduling
+- **Document Versioning**: Complete history tracking system with rollback capabilities
+- **Modern UI/UX**: Document viewer redesign with markdown rendering and advanced filtering
+
+The codebase demonstrates production-ready patterns with comprehensive testing, security validation, AI provider management, and responsive design throughout all interfaces.
