@@ -316,13 +316,11 @@ export function DocumentViewer({
         </div>
       )}
       {!headerVisible && (
-        <button
-          className="document-viewer__toggle-btn"
-          onClick={toggleHeader}
-          title="Show header"
-        >
-          ↓
-        </button>
+        <div className="document-viewer__hover-trigger">
+          <div className="document-viewer__show-hint" onClick={toggleHeader}>
+            ↓ Show Header
+          </div>
+        </div>
       )}
       
       {/* Chat Document View */}
