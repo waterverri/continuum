@@ -9,47 +9,62 @@ The cursor blinks. It's 2 AM, and you're deep into chapter seventy-three of your
 You turn to your AI writing partner, ready to draft the dialogue. But first, the ritual of context-building begins. You need the AI to remember:
 
 * Elara's core personality: her distrust of authority, stemming from the betrayal that led to her parents' death.
+
 * The significance of the silver locket she always wears, a memento from her mother.
+
 * The mentor's complex history: he was once her father's best friend, but went into hiding after the betrayal, leaving many to think him a coward.
+
 * The specific events of their last encounter ten years ago, a brief, cryptic warning given in a crowded market.
 
-You open a sprawling, 200-page document of notes, a chaotic mix of timelines, character sketches, and discarded scenes. You begin the frantic copy-paste dance, desperately trying to assemble a coherent context block. The result is a jumbled mess of text. You feed it to the LLM, cross your fingers, and hit 'generate'.
+You face the daunting task of context gathering, with crucial scenes scattered across 72 previously written chapters and character backgrounds hiding in your sprawling 200-page document of notes. Desperate and exhausted, you first try the brute force approach—dumping entire chapters and your complete notes document into the AI. 
 
-The output is… fine. Technically correct, but hollow. The dialogue is generic. The AI misses the subtle undercurrent of resentment and longing in Elara's voice because it doesn't truly *understand* the subtext. It has a collection of facts, not a tapestry of experience. Even worse, it has her mention an event from a different character's backstory, a continuity error that sends a chill down your spine. The flow is broken. The magic is gone.
+The response costs a small fortune in tokens and is... fine. Technically correct, but hollow. The dialogue is generic. The AI misses the subtle undercurrent of resentment and longing in Elara's voice because it doesn't truly understand the subtext. Even worse, it has her mention an event from a different character's backstory, a continuity error that sends a chill down your spine.
+
+Back to square one. You resign yourself to the copy-paste dance—two hours of meticulously hunting through your manuscript and notes, manually extracting relevant scenes, dialogue exchanges, and character details. You assemble them into a coherent context document, carefully arranging and annotating each fragment. By the time you finish this painstaking curation and get a usable AI response, your creative momentum has long since evaporated.
 
 What if your story bible wasn't a dead archive? What if it were a living, intelligent partner in your storytelling?
 
 ## A New Continuum
 
-**Continuum** was born from that frustration. It's a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
+Continuum was born from that frustration. It's a tool built on the belief that your world's lore should be as dynamic and accessible as your imagination. It starts by letting you manage each of your stories in its own, self-contained universe on a clean, simple dashboard. Your sprawling fantasy epic will never bleed into your hardboiled sci-fi noir.
 
-Within each project, you create organized **documents**: a profile for Elara, a history of her village, a detailed description of the silver locket. But here's where Continuum gets clever—you don't just create one massive character file. Instead, you create a **group** for Elara containing multiple documents: a detailed psychological profile, a quick summary for reference, and a focused backstory about her formative experiences. Each serves a different purpose, but they're all connected.
+Within each project, you work the way writers naturally think—in scenes, moments, and character beats, not massive chapter files. As you craft your epic fantasy, you're no longer trapped in monolithic documents where crucial details get buried. 
 
-You map out your story's history with a flexible **timeline**, creating discrete **events** like "The Sacking of Silverwood" at year 1052. But this isn't just planning—it's organization. Tag your documents and events, then filter by time periods. Need everything relevant to the war? Filter to 1050-1055 and see all related characters, locations, and events at a glance.
+Remember that frustrating 2 AM hunt for Elara's backstory? Those days are gone. Now, as you develop her world, you create natural story fragments—her childhood in the war-torn province, the day she discovered her parents' betrayal, her first meeting with the mentor. Each becomes its own small document, tagged and linked to timeline events.
 
-But what about the scene itself? The context for "Elara Meets Mentor" isn't just one document; it's a mosaic of many.
+Later, when you're deep in chapter seventy-three and need that perfect reference to her past, you simply filter for "Elara + backstory" and watch as every relevant scene materializes before you. No more frantic searching, no more lost creative momentum.
 
-With Continuum, you create a new kind of document—a **Composite Blueprint**. You title it "Elara Meets Mentor - Scene Context". Its content isn't a wall of text you have to maintain. Instead, it's a simple, elegant template:
+But Continuum truly shines when confronting the writer's eternal struggle with detail management. That comprehensive 20-page document detailing Elara's childhood? Too overwhelming when you just need to reference her relationship with her father.
+
+This is where Continuum's AI Transform feature becomes invaluable. Simply select that detailed document, choose your "Summarization" prompt template, and instantly transform it into different versions—a thoughtful summary for scene planning or a one-line essence for quick dialogue reference. Each version is automatically stored within your project, ready to be referenced whenever needed.
+
+Need to update Elara's psychological profile after writing a pivotal scene that changes her outlook? Instead of manually revising multiple documents, open an AI chat with both her current profile AND the new scene as context. "Update Elara's psychological profile based on how this confrontation with her uncle changed her," you type. The AI analyzes both documents together and suggests comprehensive updates that maintain continuity with her established character while incorporating this new development.
+
+As you write more scenes involving Elara's trust issues evolving, simply add each relevant document to your AI chat context: "Given these three scenes showing Elara's gradual change, help me update her psychological profile." The AI integrates all this information, providing you with coherent character development that honors every moment you've written.
+
+As your narrative universe expands, you organize Elara's world in the way storytellers naturally think. Her psychological profile with all its complexity, her physical appearance that evolves throughout the story, her distinctive speech patterns that reveal her origins, and pivotal moments in her history—each becomes its own document, all nested within an "elara_docs" group.
+
+When crafting that critical reunion scene, instead of dumping entire character histories into your AI prompt, you create a Composite Blueprint. You title it "Elara Meets Mentor - Scene Context". Its content isn't a wall of text you manually maintain, but an elegant template:
 
 > #### Scene Context: A clandestine meeting in the port city of Kai's Landing.
->
-> **Protagonist Mindset: Elara**
+
+> Protagonist Mindset: Elara  
+
 > {{group:elara_docs:psychological}} - Focus on trust issues and abandonment
->
-> **Relevant History:**
-> {{group:mentor_docs:history}} - His role in her past
-> {{event:last_meeting}} - What happened ten years ago
->
-> **Key Items:**
-> {{item:silver_locket}} - Physical reminder of loss
 
-Each `{{...}}` is a living link. There is no copy-pasting. You are not duplicating information; you are **weaving it together**. Notice `{{group:elara_docs:psychological}}`—this pulls specifically the psychological analysis from Elara's document group. If you update any document in the group, this blueprint automatically reflects the changes.
+> Relevant History:  
 
-Now, let's revisit that 2 AM writing session. Instead of the chaotic copy-paste dance, you open your composite blueprint and start an **AI chat about this document**. "Help me write dialogue for this reunion scene," you type. The AI receives the perfectly assembled context—Elara's psychological state, the mentor's history, their last meeting, the significance of the locket—all woven together coherently.
+> {{group:mentor_history:summary}} - His role in her past  
 
-But here's the magic: that AI conversation becomes its own document—a **Chat Document** capturing both your questions and the AI's responses. A week later, you want to refine the dialogue. You don't start over. Instead, you open a new AI chat **about that previous chat document**: "Make Elara show more vulnerability in this dialogue." The AI has the full context of your previous conversation and can build on it.
+> {{group:mentor_meeting_5126:full}} - What happened ten years ago
 
-Need a summary version of your 50-page world history for a different scene? Use Continuum's **Transform** feature. Select your detailed history, choose your "Summarization" prompt template, and transform it into a concise version. This creates a new document in your world history group—now you have both detailed and summary versions, and your composite documents can reference whichever fits best.
+> Key Items:  
+
+> {{group:items:silver_locket}} - Physical reminder of loss
+
+Each {{...}} is a living link. When creating your composite, you SELECT which specific document from each group to include—the detailed analysis or just a quick summary, depending on what the scene requires. There is no copy-pasting. You are not duplicating information; you are dynamically assembling exactly what you need. If you update any source document, your composite blueprint automatically reflects those changes.
+
+Now, let's revisit that 2 AM writing session. Instead of the chaotic copy-paste dance, you open your composite blueprint and start an AI chat about this document. "Help me write dialogue for this reunion scene," you type. The AI receives the perfectly assembled context—Elara's psychological state, the mentor's history, their last meeting, the significance of the locket—all woven together coherently.
 
 Everything connects. Chat documents can reference other chat documents. Transformations create new grouped documents. Your timeline helps you find exactly what's relevant for any moment in your story. Your composite blueprints pull it all together into perfect context packages.
 
@@ -66,7 +81,7 @@ This is Continuum. It's not just a place to store your notes. It's an engine tha
 
 ### Document Management System
 * **Modern Document Interface:** Redesigned viewer with markdown rendering, hide/show functionality, and professional reading experience.
-* **Document Types:** Static, composite, and AI prompt documents with boolean flag architecture (`is_prompt`).
+* **Document Types:** Static, composite, and AI prompt documents, or chat.
 * **Document Groups:** Create derivative documents organized by groups with bidirectional assignment and intelligent type selection.
 * **Composite Documents:** Dynamic "blueprint" documents that assemble content from other documents using {{placeholder}} syntax.
 * **Document History:** Complete versioning system with rollback capabilities, audit trails, and seamless restoration.
