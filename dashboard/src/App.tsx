@@ -33,11 +33,14 @@ export const useProjectActions = () => useContext(ProjectActionsContext);
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [headerVisible, setHeaderVisible] = useState(true);
   const [projectActions, setProjectActions] = useState<{
     onToggleSidebar?: () => void;
     onToggleRightSidebar?: () => void;
   }>({});
   const [currentProject, setCurrentProject] = useState<{ id: string; title: string } | null>(null);
+
+  const toggleHeader = () => setHeaderVisible(!headerVisible);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -60,29 +63,38 @@ function App() {
 
   return (
     <ProjectActionsContext.Provider value={{ setProjectActions, projectActions, setCurrentProject, currentProject }}>
-      <div className="app-container">
-        <AppHeader session={session} />
+      <div className={`app-container ${headerVisible ? '' : 'header-hidden'}`}>
+        {headerVisible && <AppHeader session={session} onToggleHeader={toggleHeader} />}
+        {!headerVisible && (
+          <button
+            className="header-toggle-btn"
+            onClick={toggleHeader}
+            title="Show header"
+          >
+            ↓
+          </button>
+        )}
         <main>
           <Routes>
-            <Route 
-              path="/" 
-              element={!session ? <Auth /> : <ProjectNavigationPage />} 
+            <Route
+              path="/"
+              element={!session ? <Auth /> : <ProjectNavigationPage />}
             />
-            <Route 
-              path="/projects/:projectId" 
-              element={!session ? <Navigate to="/" /> : <ProjectDetailPage />} 
+            <Route
+              path="/projects/:projectId"
+              element={!session ? <Navigate to="/" /> : <ProjectDetailPage />}
             />
-            <Route 
-              path="/invite/:invitationId" 
-              element={<InvitationPage />} 
+            <Route
+              path="/invite/:invitationId"
+              element={<InvitationPage />}
             />
-            <Route 
-              path="/login" 
-              element={<Auth />} 
+            <Route
+              path="/login"
+              element={<Auth />}
             />
-            <Route 
-              path="/register" 
-              element={<Auth />} 
+            <Route
+              path="/register"
+              element={<Auth />}
             />
           </Routes>
         </main>
@@ -91,7 +103,7 @@ function App() {
   );
 }
 
-const AppHeader = ({ session }: { session: Session | null }) => {
+const AppHeader = ({ session, onToggleHeader }: { session: Session | null; onToggleHeader: () => void }) => {
   const location = useLocation();
   const { projectActions, currentProject } = useProjectActions();
   const { onToggleSidebar, onToggleRightSidebar } = projectActions;
@@ -139,7 +151,7 @@ const AppHeader = ({ session }: { session: Session | null }) => {
       
       <div className="app-header__right">
         {isProjectDetailPage && session && (
-          <button 
+          <button
             className="app-header__sidebar-toggle"
             onClick={onToggleRightSidebar}
             title="Toggle widgets sidebar"
@@ -153,6 +165,13 @@ const AppHeader = ({ session }: { session: Session | null }) => {
             <button onClick={handleSignOut}>Sign out</button>
           </>
         )}
+        <button
+          className="app-header__hide-btn"
+          onClick={onToggleHeader}
+          title="Hide header"
+        >
+          ↑
+        </button>
       </div>
     </header>
   );
