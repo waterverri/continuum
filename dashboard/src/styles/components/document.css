@@ -545,6 +545,84 @@
   background: var(--color-primary-dark);
 }
 
+/* Document Viewer Header Toggle */
+.document-viewer__hide-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  transition: all 0.2s;
+  margin-left: 0.5rem;
+}
+
+.document-viewer__hide-btn:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.document-viewer__toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+  transition: all 0.2s;
+}
+
+.document-viewer__toggle-btn:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(1px);
+}
+
+/* Document viewer when header is hidden */
+.document-viewer.header-hidden {
+  position: relative;
+}
+
+.document-viewer.header-hidden .chat-document-view,
+.document-viewer.header-hidden .content-section {
+  margin-top: 0;
+  padding-top: 50px; /* Space for toggle button */
+}
+
+.document-viewer.header-hidden .document-reader {
+  max-height: calc(100vh - 100px); /* Expand to use available space */
+  margin-top: 0 !important;
+}
+
+/* Chat document view adjustments when header hidden */
+.document-viewer.header-hidden .chat-document-view {
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+
+.document-viewer.header-hidden .chat-messages-readonly {
+  flex: 1;
+  overflow-y: auto;
+  max-height: none;
+}
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .document-form,
@@ -605,5 +683,19 @@
   .document-reader blockquote {
     margin: 1em 0;
     padding: 0.8em 1em;
+  }
+
+  /* Mobile adjustments for document viewer toggle */
+  .document-viewer__toggle-btn {
+    top: 10px;
+    right: 10px;
+  }
+
+  .document-viewer.header-hidden .document-reader {
+    max-height: calc(100vh - 80px);
+  }
+
+  .document-viewer.header-hidden .chat-document-view {
+    height: calc(100vh - 80px);
   }
 }

@@ -65,6 +65,8 @@ export function DocumentViewer({
   const [showTransformModal, setShowTransformModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const toggleHeader = () => setHeaderVisible(!headerVisible);
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
 
@@ -197,8 +199,9 @@ export function DocumentViewer({
   }
 
   return (
-    <div className="document-viewer">
-      <div className="document-viewer__header">
+    <div className={`document-viewer ${headerVisible ? '' : 'header-hidden'}`}>
+      {headerVisible && (
+        <div className="document-viewer__header">
         <h3 className="document-viewer__title">
           {document.title}
           {isChatDocument && <span className="chat-indicator"> 💬</span>}
@@ -279,8 +282,25 @@ export function DocumentViewer({
               📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
             </button>
           )}
+          <button
+            className="document-viewer__hide-btn"
+            onClick={toggleHeader}
+            title="Hide header"
+          >
+            ↑
+          </button>
         </div>
-      </div>
+        </div>
+      )}
+      {!headerVisible && (
+        <button
+          className="document-viewer__toggle-btn"
+          onClick={toggleHeader}
+          title="Show header"
+        >
+          ↓
+        </button>
+      )}
       
       {/* Chat Document View */}
       {isChatDocument && chatData ? (
