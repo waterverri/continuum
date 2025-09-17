@@ -411,7 +411,6 @@ export function DocumentViewer({
           {/* For non-composite documents, show raw content at top */}
           {!currentDocument.is_composite && (
             <div className="content-section">
-              <h4>Raw Content</h4>
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
@@ -428,7 +427,6 @@ export function DocumentViewer({
           {/* For composite documents, show resolved content first */}
           {currentDocument.is_composite && resolvedContent && (
             <div className="content-section">
-              <h4>Resolved Content:</h4>
               <div
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
@@ -463,7 +461,6 @@ export function DocumentViewer({
           {/* Components section - appears at bottom when toggled for composite docs */}
           {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && componentsVisible && (
             <div className="document-components">
-              <h4>Components:</h4>
               <div className="components-list">
                 {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
                   <div key={key} className="component-mapping">
@@ -477,7 +474,6 @@ export function DocumentViewer({
           {/* Raw Content section - appears at bottom when toggled for composite docs */}
           {currentDocument.is_composite && rawContentVisible && (
             <div className="content-section">
-              <h4>Raw Content</h4>
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
