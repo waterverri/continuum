@@ -66,11 +66,9 @@ export function DocumentViewer({
   const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
-  const [contentMetaVisible, setContentMetaVisible] = useState(true);
   const [rawContentVisible, setRawContentVisible] = useState(!document.is_composite); // Hidden by default for composite
   const [componentsVisible, setComponentsVisible] = useState(!document.is_composite); // Hidden by default for composite
   const toggleHeader = () => setHeaderVisible(!headerVisible);
-  const toggleContentMeta = () => setContentMetaVisible(!contentMetaVisible);
   const toggleRawContent = () => setRawContentVisible(!rawContentVisible);
   const toggleComponents = () => setComponentsVisible(!componentsVisible);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -215,7 +213,23 @@ export function DocumentViewer({
           {document.title}
           {isChatDocument && <span className="chat-indicator"> 💬</span>}
         </h3>
-        
+
+        {/* Document Metadata */}
+        <div className="document-viewer__meta">
+          <strong>Type:</strong> {currentDocument.document_type || 'No type'} •
+          <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
+        </div>
+
+        {/* Inline Tag Manager */}
+        <div className="document-viewer__tags">
+          <InlineTagManager
+            projectId={projectId}
+            documentId={document.id}
+            currentTags={document.tags || []}
+            onTagUpdate={onTagUpdate}
+          />
+        </div>
+
         {/* Document Type Dropdown */}
         {availableTypes.length > 1 && (
           <div className="document-viewer__type-selector">
@@ -394,50 +408,10 @@ export function DocumentViewer({
       ) : (
         // Regular Document View
         <>
-          {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && componentsVisible && (
-            <div className="document-components">
-              <h4>Components:</h4>
-              <div className="components-list">
-                {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
-                  <div key={key} className="component-mapping">
-                    <strong>{`{{${key}}}`}</strong> → {docId}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {rawContentVisible && (
+          {/* For non-composite documents, show raw content at top */}
+          {!currentDocument.is_composite && (
             <div className="content-section">
-              <div className="document-content-header">
-                <h4>Raw Content</h4>
-                {contentMetaVisible && (
-                  <div className="document-content-meta">
-                    <strong>Type:</strong> {currentDocument.document_type || 'No type'} •
-                    <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
-                  </div>
-                )}
-                <button
-                  className="document-content__meta-toggle"
-                  onClick={toggleContentMeta}
-                  title={contentMetaVisible ? "Hide metadata" : "Show metadata"}
-                >
-                  {contentMetaVisible ? "⊖" : "⊕"} Meta
-                </button>
-              </div>
-
-              {/* Inline Tag Manager */}
-              {contentMetaVisible && (
-                <div className="document-content-tags">
-                  <InlineTagManager
-                    projectId={projectId}
-                    documentId={document.id}
-                    currentTags={document.tags || []}
-                    onTagUpdate={onTagUpdate}
-                  />
-                </div>
-              )}
-
+              <h4>Raw Content</h4>
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
@@ -450,7 +424,8 @@ export function DocumentViewer({
               />
             </div>
           )}
-          
+
+          {/* For composite documents, show resolved content first */}
           {currentDocument.is_composite && resolvedContent && (
             <div className="content-section">
               <h4>Resolved Content:</h4>
@@ -482,6 +457,37 @@ export function DocumentViewer({
                   {rawContentVisible ? "⊖" : "⊕"} Raw Content
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Components section - appears at bottom when toggled for composite docs */}
+          {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && componentsVisible && (
+            <div className="document-components">
+              <h4>Components:</h4>
+              <div className="components-list">
+                {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
+                  <div key={key} className="component-mapping">
+                    <strong>{`{{${key}}}`}</strong> → {docId}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Raw Content section - appears at bottom when toggled for composite docs */}
+          {currentDocument.is_composite && rawContentVisible && (
+            <div className="content-section">
+              <h4>Raw Content</h4>
+              <div
+                ref={contentRef}
+                className="document-reader document-reader--raw"
+                onMouseUp={handleTextSelection}
+                onKeyUp={handleTextSelection}
+                style={{ userSelect: 'text', cursor: 'text' }}
+                dangerouslySetInnerHTML={{
+                  __html: renderMarkdown(currentDocument.content || '*No content*')
+                }}
+              />
             </div>
           )}
         </>

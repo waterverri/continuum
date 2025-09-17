@@ -623,26 +623,9 @@
   max-height: none;
 }
 
-/* Document Content Meta Toggle */
-.document-content__meta-toggle {
-  background: none;
-  border: 1px solid var(--color-border);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  color: #6c757d;
-  transition: all 0.2s;
-  margin-left: 1rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.document-content__meta-toggle:hover {
-  background-color: #f8f9fa;
-  color: #495057;
-  border-color: var(--color-primary);
+/* Document Viewer Header Tags */
+.document-viewer__tags {
+  margin: var(--spacing-md) 0;
 }
 
 /* Document Section Toggles */
@@ -660,18 +643,6 @@
   padding: var(--spacing-sm) var(--spacing-md);
 }
 
-/* Content header improvements */
-.document-content-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-lg);
-}
-
-.document-content-header h4 {
-  margin: 0;
-  flex: 1;
-}
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
@@ -750,17 +721,6 @@
   }
 
   /* Mobile adjustments for document content toggles */
-  .document-content-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-sm);
-  }
-
-  .document-content__meta-toggle {
-    margin-left: 0;
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-  }
 
   .document-section-toggles {
     flex-direction: column;
