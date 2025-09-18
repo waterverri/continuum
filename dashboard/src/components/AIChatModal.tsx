@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 import type { Document, AIProvider } from '../api';
-import { submitAIChat, getProviderModels, updateChatMessages, getProjectAIConfig } from '../api';
+import { submitAIChat, getProviderModels, updateChatMessages, getProjectAIConfig, createDocument } from '../api';
 import { EnhancedDocumentPickerModal } from './EnhancedDocumentPickerModal';
+import { ensureBidirectionalGroupAssignment } from '../utils/groupAssignment';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -63,6 +64,36 @@ export function AIChatModal({
   const [editingContent, setEditingContent] = useState('');
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Save as document state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveMessageIndex, setSaveMessageIndex] = useState<number | null>(null);
+  const [newDocTitle, setNewDocTitle] = useState('');
+  const [newDocType, setNewDocType] = useState('');
+  const [newDocGroupId, setNewDocGroupId] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Available groups (reusing logic from TransformModal)
+  const availableGroups = allDocuments.filter(doc => {
+    // Show group head documents (documents that can be group heads)
+    // These are documents without group_id or documents where group_id equals their own id
+    return !doc.group_id || doc.group_id === doc.id;
+  }).map(doc => {
+    // Enhance with group information
+    const groupDocuments = allDocuments.filter(d => d.group_id === doc.id);
+    const groupSize = groupDocuments.length;
+    const isExistingGroup = groupSize > 0;
+
+    return {
+      ...doc,
+      displayName: isExistingGroup
+        ? `${doc.title} (Group with ${groupSize} documents)`
+        : doc.title,
+      isGroup: isExistingGroup
+    };
+  });
 
   // Load existing chat data if document is chat mode and initialize AI config from document
   useEffect(() => {
@@ -334,7 +365,7 @@ export function AIChatModal({
     setContextDocuments(prev => prev.filter(id => id !== docId));
   };
 
-  const handleModelSelect = (model: any) => {
+  const handleModelSelect = (model: { id: string; name: string }) => {
     setSelectedModel(model.id);
     setModelSearch(model.name);
     setShowModelDropdown(false);
@@ -351,6 +382,120 @@ export function AIChatModal({
   const filteredModels = availableModels.filter(model =>
     model.name.toLowerCase().includes(modelSearch.toLowerCase())
   );
+
+  // Save as document handlers (reusing logic from TransformModal)
+  const handleSaveAsDocument = (messageIndex: number) => {
+    const message = messages[messageIndex];
+    if (message?.role === 'assistant') {
+      setSaveMessageIndex(messageIndex);
+      setNewDocTitle(`${document.title} - AI Response`);
+      setNewDocType(document.document_type || 'document');
+
+      // Default to current document's group, or the current document itself if it can be a group head
+      let defaultGroupId = '';
+      let defaultGroupName = '';
+
+      if (document.group_id) {
+        // Document is in a group, use that group
+        defaultGroupId = document.group_id;
+        const groupDoc = availableGroups.find(g => g.id === document.group_id);
+        if (groupDoc) {
+          defaultGroupName = groupDoc.displayName;
+        }
+      } else {
+        // Document is not in a group, use the document itself as the group
+        defaultGroupId = document.id;
+        const docAsGroup = availableGroups.find(g => g.id === document.id);
+        if (docAsGroup) {
+          defaultGroupName = docAsGroup.displayName;
+        }
+      }
+
+      setNewDocGroupId(defaultGroupId);
+      setGroupSearch(defaultGroupName);
+      setShowSaveModal(true);
+    }
+  };
+
+  const filteredGroups = availableGroups.filter(group =>
+    group.displayName.toLowerCase().includes(groupSearch.toLowerCase()) ||
+    group.document_type?.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
+  const handleGroupSelect = (group: { id: string; displayName: string }) => {
+    setNewDocGroupId(group.id);
+    setGroupSearch(group.displayName);
+    setShowGroupDropdown(false);
+  };
+
+  const handleGroupSearchChange = (value: string) => {
+    setGroupSearch(value);
+    setShowGroupDropdown(true);
+    if (!value) {
+      setNewDocGroupId('');
+    }
+  };
+
+  const clearGroupSelection = () => {
+    setNewDocGroupId('');
+    setGroupSearch('');
+  };
+
+  const handleSaveAsNewDocument = async () => {
+    if (!newDocTitle.trim() || saveMessageIndex === null) {
+      return;
+    }
+
+    const messageToSave = messages[saveMessageIndex];
+    if (!messageToSave) {
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Create the new document
+      await createDocument(_projectId, {
+        title: newDocTitle.trim(),
+        document_type: newDocType || 'document',
+        content: messageToSave.content,
+        group_id: newDocGroupId || undefined,
+        interaction_mode: 'document'
+      }, accessToken);
+
+      // If assigning to a group, ensure bidirectional group assignment
+      if (newDocGroupId) {
+        try {
+          await ensureBidirectionalGroupAssignment(
+            newDocGroupId,
+            allDocuments,
+            _projectId,
+            accessToken
+          );
+        } catch (groupError) {
+          console.error('🔧 Bidirectional group assignment failed in chat modal:', groupError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
+
+      if (onDocumentUpdate) {
+        onDocumentUpdate();
+      }
+
+      // Close the save modal and reset state
+      setShowSaveModal(false);
+      setSaveMessageIndex(null);
+      setNewDocTitle('');
+      setNewDocType('');
+      setNewDocGroupId('');
+      setGroupSearch('');
+    } catch (error) {
+      console.error('Save document error:', error);
+      alert('Failed to save document. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -523,18 +668,28 @@ export function AIChatModal({
                         🗑️
                       </button>
                       {message.role === 'assistant' && (
-                        <button 
-                          className="btn btn--ghost btn--xs"
-                          onClick={() => handleRegenerateMessage(index)}
-                          disabled={regeneratingIndex === index || isLoading}
-                          title={regeneratingIndex === index ? "Regenerating message..." : "Regenerate message"}
-                        >
-                          {regeneratingIndex === index ? (
-                            <span className="regenerate-loading">
-                              <span className="spinner"></span>
-                            </span>
-                          ) : '🔄'}
-                        </button>
+                        <>
+                          <button
+                            className="btn btn--ghost btn--xs"
+                            onClick={() => handleRegenerateMessage(index)}
+                            disabled={regeneratingIndex === index || isLoading}
+                            title={regeneratingIndex === index ? "Regenerating message..." : "Regenerate message"}
+                          >
+                            {regeneratingIndex === index ? (
+                              <span className="regenerate-loading">
+                                <span className="spinner"></span>
+                              </span>
+                            ) : '🔄'}
+                          </button>
+                          <button
+                            className="btn btn--ghost btn--xs"
+                            onClick={() => handleSaveAsDocument(index)}
+                            disabled={regeneratingIndex !== null || isLoading}
+                            title="Save as new document"
+                          >
+                            💾
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -695,6 +850,133 @@ export function AIChatModal({
             <div className="modal-footer">
               <button className="btn btn--secondary" onClick={() => setShowSourceModal(false)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save as Document Modal */}
+      {showSaveModal && saveMessageIndex !== null && (
+        <div className="modal-overlay">
+          <div className="modal modal--medium">
+            <div className="modal__header">
+              <h2>💾 Save Message as Document</h2>
+              <button className="modal__close" onClick={() => setShowSaveModal(false)}>×</button>
+            </div>
+
+            <div className="modal__body">
+              <div className="form-section">
+                <h3>Message Content</h3>
+                <div className="transform-result">
+                  <textarea
+                    className="form-input"
+                    value={messages[saveMessageIndex]?.content || ''}
+                    readOnly
+                    rows={8}
+                    style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h3>Document Details</h3>
+                <div className="new-document-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">
+                        Title:
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={newDocTitle}
+                          onChange={(e) => setNewDocTitle(e.target.value)}
+                          placeholder="Enter document title..."
+                        />
+                      </label>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">
+                        Type:
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={newDocType}
+                          onChange={(e) => setNewDocType(e.target.value)}
+                          placeholder="document"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      Group (Optional):
+                      <div className="searchable-select">
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={groupSearch}
+                          onChange={(e) => handleGroupSearchChange(e.target.value)}
+                          onFocus={() => setShowGroupDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowGroupDropdown(false), 200)}
+                          placeholder={availableGroups.length === 0 ? "No groups available" : "Search groups or leave empty for no group..."}
+                          disabled={availableGroups.length === 0}
+                        />
+                        {groupSearch && (
+                          <button
+                            type="button"
+                            className="searchable-clear"
+                            onClick={clearGroupSelection}
+                            title="Clear group selection"
+                          >
+                            ×
+                          </button>
+                        )}
+                        {showGroupDropdown && availableGroups.length > 0 && (
+                          <div className="searchable-dropdown">
+                            {filteredGroups.length === 0 ? (
+                              <div className="dropdown-item dropdown-item--no-results">
+                                No groups match your search
+                              </div>
+                            ) : (
+                              filteredGroups.map(group => (
+                                <div
+                                  key={group.id}
+                                  className="dropdown-item"
+                                  onClick={() => handleGroupSelect(group)}
+                                >
+                                  <div className="group-name">{group.title}</div>
+                                  <div className="group-meta">
+                                    {group.isGroup ?
+                                      `📁 Existing group with ${allDocuments.filter(d => d.group_id === group.id).length} documents` :
+                                      '📄 Can become group head'
+                                    }
+                                  </div>
+                                  {group.document_type && (
+                                    <div className="group-type">Type: {group.document_type}</div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal__footer">
+              <button className="btn btn--secondary" onClick={() => setShowSaveModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn--primary"
+                onClick={handleSaveAsNewDocument}
+                disabled={isSaving || !newDocTitle.trim()}
+              >
+                {isSaving ? 'Saving...' : '💾 Save as Document'}
               </button>
             </div>
           </div>
