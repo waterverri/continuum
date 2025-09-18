@@ -230,11 +230,11 @@ export function DocumentViewer({
           />
         </div>
 
-        {/* Document Type Dropdown */}
-        {availableTypes.length > 1 && (
+        {/* Document Type Dropdown - Show for groups with multiple types OR for chat documents */}
+        {(availableTypes.length > 1 || isChatDocument) && (
           <div className="document-viewer__type-selector">
             <div className="dropdown">
-              <button 
+              <button
                 className="dropdown-button"
                 onClick={() => setShowTypeDropdown(!showTypeDropdown)}
                 onBlur={() => setTimeout(() => setShowTypeDropdown(false), 200)}
@@ -243,22 +243,45 @@ export function DocumentViewer({
               </button>
               {showTypeDropdown && (
                 <div className="dropdown-menu">
-                  {availableTypes.map(type => (
-                    <button
-                      key={type}
-                      className={`dropdown-item ${activeTab === type ? 'dropdown-item--active' : ''}`}
-                      onClick={() => {
-                        setActiveTab(type);
-                        setShowTypeDropdown(false);
-                        const targetDoc = groupDocuments.find(doc => doc.document_type === type);
-                        if (targetDoc && onDocumentSelect) {
-                          onDocumentSelect(targetDoc);
-                        }
-                      }}
-                    >
-                      {type}
-                    </button>
-                  ))}
+                  {availableTypes.length > 1 ? (
+                    // For groups with multiple document types, show existing group types
+                    availableTypes.map(type => (
+                      <button
+                        key={type}
+                        className={`dropdown-item ${activeTab === type ? 'dropdown-item--active' : ''}`}
+                        onClick={() => {
+                          setActiveTab(type);
+                          setShowTypeDropdown(false);
+                          const targetDoc = groupDocuments.find(doc => doc.document_type === type);
+                          if (targetDoc && onDocumentSelect) {
+                            onDocumentSelect(targetDoc);
+                          }
+                        }}
+                      >
+                        {type}
+                      </button>
+                    ))
+                  ) : (
+                    // For single documents (like chat), show common document types
+                    ['document', 'note', 'draft', 'outline', 'summary', 'report', 'analysis'].map(type => (
+                      <button
+                        key={type}
+                        className={`dropdown-item ${activeTab === type ? 'dropdown-item--active' : ''}`}
+                        onClick={() => {
+                          setActiveTab(type);
+                          setShowTypeDropdown(false);
+                          // For single documents, we need to update the document type
+                          if (onEditDocument && type !== document.document_type) {
+                            // Create updated document object
+                            const updatedDoc = { ...document, document_type: type };
+                            onEditDocument(updatedDoc);
+                          }
+                        }}
+                      >
+                        {type}
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
