@@ -188,7 +188,7 @@ describe('DocumentListItem', () => {
   it('handles composite documents correctly', () => {
     const compositeDocument: Document = {
       ...mockDocument,
-      is_composite: true
+      components: { placeholder: 'doc-id-123' }
     };
 
     render(<DocumentListItem {...mockProps} document={compositeDocument} />);

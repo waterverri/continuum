@@ -10,8 +10,6 @@ export interface Document {
   group_id?: string;
   document_type?: string;
   content?: string;
-  is_composite: boolean;
-  is_prompt: boolean;
   interaction_mode?: 'document' | 'chat' | 'canvas';
   components?: Record<string, string>;
   created_at: string;
@@ -110,7 +108,6 @@ export interface DocumentHistory {
   content?: string;
   document_type?: string;
   group_id?: string;
-  is_composite: boolean;
   components?: Record<string, string>;
   event_id?: string;
   change_type: 'create' | 'update_content' | 'update_title' | 'update_type' | 'update_components' | 'move_group' | 'link_event' | 'unlink_event' | 'delete';

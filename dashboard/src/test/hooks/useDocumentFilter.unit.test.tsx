@@ -10,7 +10,7 @@ const mockDocuments: Document[] = [
     title: 'Character Profile: Alice',
     document_type: 'character',
     content: 'Alice is a brave warrior with a mysterious past.',
-    is_composite: false,
+    components: {},
     created_at: '2023-01-01T00:00:00.000Z',
     tags: [
       { id: 'tag-1', project_id: 'project-1', name: 'Character', color: '#6366f1', created_at: '2023-01-01T00:00:00.000Z' },
@@ -23,7 +23,7 @@ const mockDocuments: Document[] = [
     title: 'The Ancient Forest',
     document_type: 'location',
     content: 'A dark forest filled with ancient trees and hidden secrets.',
-    is_composite: false,
+    components: {},
     created_at: '2023-01-02T00:00:00.000Z',
     tags: [
       { id: 'tag-3', project_id: 'project-1', name: 'Location', color: '#ec4899', created_at: '2023-01-01T00:00:00.000Z' }
@@ -35,7 +35,7 @@ const mockDocuments: Document[] = [
     title: 'Master Template',
     document_type: 'template',
     content: 'Template content with {{placeholder}}',
-    is_composite: true,
+    components: { placeholder: 'some-doc-id' },
     created_at: '2023-01-03T00:00:00.000Z',
     tags: [
       { id: 'tag-1', project_id: 'project-1', name: 'Character', color: '#6366f1', created_at: '2023-01-01T00:00:00.000Z' },
@@ -48,7 +48,7 @@ const mockDocuments: Document[] = [
     title: 'Untagged Document',
     document_type: 'note',
     content: 'This document has no tags.',
-    is_composite: false,
+    components: {},
     created_at: '2023-01-04T00:00:00.000Z',
     tags: []
   }
@@ -94,7 +94,7 @@ describe('useDocumentFilter', () => {
     });
     
     expect(result.current.filteredDocuments).toHaveLength(1);
-    expect(result.current.filteredDocuments[0].is_composite).toBe(true);
+    expect(result.current.filteredDocuments[0].components).toEqual({ placeholder: 'some-doc-id' });
     expect(result.current.hasActiveFilters).toBe(true);
   });
 

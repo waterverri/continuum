@@ -47,7 +47,7 @@ export function ExtractTextModal({ sourceDocument, selectedText, allDocuments = 
     const allGroups = Array.from(groupMap.values());
     
     // Filter groups based on source document type
-    if (sourceDocument.is_composite && sourceDocument.components) {
+    if (sourceDocument.components && Object.keys(sourceDocument.components).length > 0) {
       // For composite documents, only show component root groups
       const componentGroupIds = new Set(
         Object.values(sourceDocument.components)
@@ -181,7 +181,7 @@ export function ExtractTextModal({ sourceDocument, selectedText, allDocuments = 
                   )}
                 </div>
 
-                {sourceDocument?.is_composite && (
+                {sourceDocument?.components && Object.keys(sourceDocument.components || {}).length > 0 && (
                   <small className="group-selection-hint">
                     ℹ️ Showing only groups from this composite document's components
                   </small>

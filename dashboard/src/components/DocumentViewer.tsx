@@ -66,8 +66,9 @@ export function DocumentViewer({
   const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
-  const [rawContentVisible, setRawContentVisible] = useState(!document.is_composite); // Hidden by default for composite
-  const [componentsVisible, setComponentsVisible] = useState(!document.is_composite); // Hidden by default for composite
+  const hasComponents = document.components && Object.keys(document.components).length > 0;
+  const [rawContentVisible, setRawContentVisible] = useState(!hasComponents); // Hidden by default for templates
+  const [componentsVisible, setComponentsVisible] = useState(!hasComponents); // Hidden by default for templates
   const toggleHeader = () => setHeaderVisible(!headerVisible);
   const toggleRawContent = () => setRawContentVisible(!rawContentVisible);
   const toggleComponents = () => setComponentsVisible(!componentsVisible);
@@ -89,9 +90,10 @@ export function DocumentViewer({
   useEffect(() => {
     setActiveTab(document.document_type || '');
     // Reset visibility states when document changes
-    setRawContentVisible(!document.is_composite);
-    setComponentsVisible(!document.is_composite);
-  }, [document.id, document.document_type, document.is_composite]);
+    const hasComponents = document.components && Object.keys(document.components).length > 0;
+    setRawContentVisible(!hasComponents);
+    setComponentsVisible(!hasComponents);
+  }, [document.id, document.document_type, document.components]);
 
   const handleTextSelection = useCallback(() => {
     try {
@@ -217,7 +219,7 @@ export function DocumentViewer({
         {/* Document Metadata */}
         <div className="document-viewer__meta">
           <strong>Type:</strong> {currentDocument.document_type || 'No type'} •
-          <strong>Format:</strong> {currentDocument.is_composite ? 'Composite Document' : 'Static Document'}
+          <strong>Format:</strong> {currentDocument.components && Object.keys(currentDocument.components).length > 0 ? 'Composite Document' : 'Static Document'}
         </div>
 
         {/* Inline Tag Manager */}
@@ -284,7 +286,7 @@ export function DocumentViewer({
               📜 History
             </button>
           )}
-          {currentDocument.is_composite && (
+          {currentDocument.components && Object.keys(currentDocument.components).length > 0 && (
             <button className="btn btn--primary" onClick={onResolve}>
               🔗 Resolve Template
             </button>
@@ -412,7 +414,7 @@ export function DocumentViewer({
         // Regular Document View
         <>
           {/* For non-composite documents, show raw content at top */}
-          {!currentDocument.is_composite && (
+          {!(currentDocument.components && Object.keys(currentDocument.components).length > 0) && (
             <div className="content-section">
               <div
                 ref={contentRef}
@@ -428,7 +430,7 @@ export function DocumentViewer({
           )}
 
           {/* For composite documents, show resolved content first */}
-          {currentDocument.is_composite && resolvedContent && (
+          {currentDocument.components && Object.keys(currentDocument.components).length > 0 && resolvedContent && (
             <div className="content-section">
               <div
                 ref={resolvedContentRef}
@@ -462,7 +464,7 @@ export function DocumentViewer({
           )}
 
           {/* Components section - appears at bottom when toggled for composite docs */}
-          {currentDocument.is_composite && Object.keys(currentDocument.components || {}).length > 0 && componentsVisible && (
+          {currentDocument.components && Object.keys(currentDocument.components).length > 0 && componentsVisible && (
             <div className="document-components">
               <div className="components-list">
                 {Object.entries(currentDocument.components || {}).map(([key, docId]) => (
@@ -475,7 +477,7 @@ export function DocumentViewer({
           )}
 
           {/* Raw Content section - appears at bottom when toggled for composite docs */}
-          {currentDocument.is_composite && rawContentVisible && (
+          {currentDocument.components && Object.keys(currentDocument.components).length > 0 && rawContentVisible && (
             <div className="content-section">
               <div
                 ref={contentRef}

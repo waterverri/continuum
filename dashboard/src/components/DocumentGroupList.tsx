@@ -100,7 +100,7 @@ function DocumentGroupItem({
         <div className="document-group-item__header">
           <h4>{group.title}</h4>
           <div className="document-group-item__meta">
-            {mainDocument.is_composite ? '🔗 Composite' : '📄 Static'}
+            {mainDocument.components && Object.keys(mainDocument.components).length > 0 ? '🔗 Composite' : '📄 Static'}
             {hasMultipleTypes && (
               <span className="group-types-indicator">
                 {' • '}👥 {group.availableTypes.join(', ')}

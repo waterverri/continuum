@@ -120,7 +120,7 @@ export function PromptDocumentViewer({
     if (!selectedModel || !selectedProviderId) return;
     
     // Warn if estimating cost for unresolved composite document
-    if (document.is_composite && !resolvedContent) {
+    if (document.components && Object.keys(document.components).length > 0 && !resolvedContent) {
       const shouldContinue = window.confirm(
         'This composite document has unresolved placeholders. Cost estimation will be based on the raw template. ' +
         'Click "Resolve Components" first for accurate cost estimation. Continue anyway?'
@@ -145,7 +145,7 @@ export function PromptDocumentViewer({
     if (!selectedModel || !selectedProviderId) return;
     
     // Check if we're submitting a composite document without resolved content
-    if (document.is_composite && !resolvedContent) {
+    if (document.components && Object.keys(document.components).length > 0 && !resolvedContent) {
       const shouldContinue = window.confirm(
         'This is a composite document with unresolved placeholders. The AI will receive the raw template with {{placeholder}} text instead of resolved content. ' +
         'Click "Resolve Components" first for best results. Continue anyway?'
@@ -291,7 +291,7 @@ export function PromptDocumentViewer({
                 Edit
               </button>
             )}
-            {document.is_composite && (
+            {document.components && Object.keys(document.components).length > 0 && (
               <button className="btn btn--secondary btn--sm" onClick={onResolve}>
                 {resolvedContent ? 'Refresh' : 'Resolve'} Components
               </button>

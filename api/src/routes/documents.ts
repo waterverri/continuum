@@ -64,8 +64,8 @@ router.get('/:projectId/:documentId', async (req: RequestWithUser, res: Response
       return res.status(404).json({ error: 'Document not found' });
     }
     
-    // If resolve=true and it's a composite document, resolve it
-    if (resolve === 'true' && document.is_composite) {
+    // If resolve=true and it has components, resolve it
+    if (resolve === 'true' && document.components && Object.keys(document.components).length > 0) {
       const { content: resolvedContent, error: resolveError } = await resolveCompositeDocument(
         document as Document,
         projectId,
@@ -98,15 +98,13 @@ router.get('/:projectId/:documentId', async (req: RequestWithUser, res: Response
 router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { 
-      title, 
-      content, 
-      group_id, 
-      document_type, 
-      is_composite, 
-      is_prompt,
+    const {
+      title,
+      content,
+      group_id,
+      document_type,
       ai_model,
-      components 
+      components
     } = req.body;
     const userToken = req.token!;
     
@@ -115,11 +113,11 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
       return res.status(400).json({ error: 'Title is required' });
     }
     
-    // If composite, validate components and check for cycles
-    if (is_composite) {
-      if (!components || typeof components !== 'object') {
-        return res.status(400).json({ 
-          error: 'Components object is required for composite documents' 
+    // If components provided, validate them and check for cycles
+    if (components && Object.keys(components).length > 0) {
+      if (typeof components !== 'object') {
+        return res.status(400).json({
+          error: 'Components must be a valid object'
         });
       }
       
@@ -149,10 +147,8 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
         content,
         group_id,
         document_type,
-        is_composite: is_composite || false,
-        is_prompt: is_prompt || false,
-        ai_model: is_prompt ? ai_model : null,
-        components: is_composite ? components : null
+        ai_model,
+        components: components || null
       })
       .select()
       .single();
@@ -192,13 +188,11 @@ router.post('/:projectId', async (req: RequestWithUser, res: Response) => {
 router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response) => {
   try {
     const { projectId, documentId } = req.params;
-    const { 
-      title, 
-      content, 
-      group_id, 
-      document_type, 
-      is_composite, 
-      is_prompt,
+    const {
+      title,
+      content,
+      group_id,
+      document_type,
       ai_model,
       components,
       event_id
@@ -212,8 +206,8 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
       requestBody: req.body
     });
     
-    // If updating to composite or updating components, validate for cycles
-    if (is_composite && components) {
+    // If updating components, validate for cycles
+    if (components && Object.keys(components).length > 0) {
       const { valid, error: validationError } = await validateNoCyclicDependencies(
         documentId,
         components,
@@ -258,7 +252,7 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
         } else if (group_id !== undefined && group_id !== currentDoc.group_id) {
           changeType = 'move_group';
           changeDescription = `Moved to different group`;
-        } else if (is_composite !== undefined && JSON.stringify(components) !== JSON.stringify(currentDoc.components)) {
+        } else if (components !== undefined && JSON.stringify(components) !== JSON.stringify(currentDoc.components)) {
           changeType = 'update_components';
           changeDescription = 'Component structure updated';
         }
@@ -281,10 +275,8 @@ router.put('/:projectId/:documentId', async (req: RequestWithUser, res: Response
       content,
       group_id,
       document_type,
-      is_composite: is_composite || false,
-      is_prompt: is_prompt || false,
-      ai_model: is_prompt ? ai_model : null,
-      components: is_composite ? components : null,
+      ai_model,
+      components: components || null,
       event_id
     };
     
@@ -517,8 +509,8 @@ router.get('/:projectId/groups/:groupId/resolve', async (req: RequestWithUser, r
       selectedDoc = documents.find(doc => doc.id === groupId) || documents[0];
     }
     
-    // If selected document is composite, resolve it
-    if (selectedDoc.is_composite) {
+    // If selected document has components, resolve it
+    if (selectedDoc.components && Object.keys(selectedDoc.components).length > 0) {
       try {
         const { content: resolvedContent } = await resolveCompositeDocument(
           selectedDoc as Document,
@@ -680,7 +672,6 @@ router.get('/:projectId/:documentId/history', async (req: RequestWithUser, res: 
         content,
         document_type,
         group_id,
-        is_composite,
         components,
         event_id,
         change_type,
@@ -904,7 +895,7 @@ router.get('/:projectId/:documentId/history/:historyId', async (req: RequestWith
 
 /**
  * POST /api/documents/:projectId/:documentId/save-response
- * Save LLM response and metadata for a promptable document
+ * Save LLM response and metadata for any document
  */
 router.post('/:projectId/:documentId/save-response', async (req: RequestWithUser, res: Response) => {
   try {
@@ -928,22 +919,16 @@ router.post('/:projectId/:documentId/save-response', async (req: RequestWithUser
     // Create user-authenticated client for RLS
     const userSupabase = createUserSupabaseClient(userToken);
     
-    // Verify document exists, is prompt-enabled, and user has access
+    // Verify document exists and user has access
     const { data: document, error: docError } = await userSupabase
       .from('documents')
-      .select('id, title, is_prompt')
+      .select('id, title')
       .eq('id', documentId)
       .eq('project_id', projectId)
       .single();
-    
+
     if (docError || !document) {
       return res.status(404).json({ error: 'Document not found' });
-    }
-    
-    if (!document.is_prompt) {
-      return res.status(400).json({ 
-        error: 'Document is not configured for AI prompts' 
-      });
     }
     
     // Update document with LLM response data

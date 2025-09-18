@@ -7,7 +7,6 @@ export interface Document {
   group_id?: string;
   document_type?: string;
   content?: string;
-  is_composite: boolean;
   components?: Record<string, string>; // key -> document_id mapping
   created_at: string;
 }
@@ -108,7 +107,7 @@ async function hasCycle(
     // Get the document and check its components
     const { data: doc, error } = await userSupabase
       .from('documents')
-      .select('id, is_composite, components')
+      .select('id, components')
       .eq('id', currentDocId)
       .eq('project_id', projectId)
       .single();
@@ -119,8 +118,8 @@ async function hasCycle(
       return false;
     }
     
-    // If it's a composite document, check its components
-    if (doc.is_composite && doc.components) {
+    // If it has components, check them for cycles
+    if (doc.components && Object.keys(doc.components).length > 0) {
       for (const componentId of Object.values(doc.components as Record<string, string>)) {
         if (await hasCycle(componentId, targetDocId, visited, recursionStack, projectId, userToken)) {
           return true;
@@ -156,8 +155,8 @@ export async function resolveCompositeDocument(
       };
     }
     
-    // If not composite, return content as-is
-    if (!document.is_composite || !document.components) {
+    // If no components, return content as-is
+    if (!document.components || Object.keys(document.components).length === 0) {
       return { content: document.content || '' };
     }
     

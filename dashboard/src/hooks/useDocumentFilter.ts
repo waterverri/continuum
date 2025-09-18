@@ -66,9 +66,9 @@ export function useDocumentFilter(documents: Document[], events: Event[] = []) {
       const matchesType = !typeFilter || doc.document_type === typeFilter;
       
       // Format filter
-      const matchesFormat = !formatFilter || 
-        (formatFilter === 'composite' && doc.is_composite) ||
-        (formatFilter === 'static' && !doc.is_composite);
+      const matchesFormat = !formatFilter ||
+        (formatFilter === 'composite' && doc.components && Object.keys(doc.components).length > 0) ||
+        (formatFilter === 'static' && !(doc.components && Object.keys(doc.components).length > 0));
 
       // Legacy tag filter (for backward compatibility)
       const matchesTags = selectedTagIds.length === 0 || 

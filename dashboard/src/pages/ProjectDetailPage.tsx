@@ -8,7 +8,6 @@ import { useDocumentOperations } from '../hooks/useDocumentOperations';
 import { useDocumentFilter } from '../hooks/useDocumentFilter';
 import { DocumentForm } from '../components/DocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
-import { PromptDocumentViewer } from '../components/PromptDocumentViewer';
 import { DocumentGroupList } from '../components/DocumentGroupList';
 import { ProjectTagsFilter } from '../components/ProjectTagsFilter';
 import { DocumentFilters } from '../components/DocumentFilters';
@@ -132,9 +131,12 @@ export default function ProjectDetailPage() {
     setFilteredTags(state.tags);
   }, [state.tags]);
 
-  // Auto-resolve composite documents when selected
+  // Auto-resolve template documents when selected
   useEffect(() => {
-    if (state.selectedDocument && state.selectedDocument.is_composite && !state.resolvedContent) {
+    if (state.selectedDocument &&
+        state.selectedDocument.components &&
+        Object.keys(state.selectedDocument.components).length > 0 &&
+        !state.resolvedContent) {
       operations.handleResolveDocument(state.selectedDocument);
     }
   }, [state.selectedDocument, state.resolvedContent, operations]);
@@ -497,8 +499,6 @@ export default function ProjectDetailPage() {
           title: document.title,
           content: document.content || '',
           document_type: document.document_type || '',
-          is_composite: document.is_composite,
-          is_prompt: document.is_prompt,
           components: document.components || {},
           group_id: document.group_id,
           ai_model: document.ai_model,
@@ -545,8 +545,6 @@ export default function ProjectDetailPage() {
         title: newTitle.trim(),
         content: document.content || '',
         document_type: document.document_type || '',
-        is_composite: document.is_composite,
-        is_prompt: document.is_prompt,
         components: document.components || {},
         group_id: document.group_id,
         ai_model: document.ai_model
@@ -704,65 +702,43 @@ export default function ProjectDetailPage() {
             )}
             
             {!state.isCreating && !state.isEditing && state.selectedDocument && (
-              state.selectedDocument.is_prompt ? (
-                <PromptDocumentViewer
-                  document={state.selectedDocument}
-                  resolvedContent={state.resolvedContent}
-                  onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-                  aiProviders={aiProviders}
-                  accessToken={accessToken}
-                  projectId={projectId!}
-                  allDocuments={state.documents}
-                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType, groupId) => 
-                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
+              <DocumentViewer
+                document={state.selectedDocument}
+                allDocuments={state.documents}
+                resolvedContent={state.resolvedContent}
+                onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+                onCreateFromSelection={(selectedText, selectionInfo, title, documentType, groupId) =>
+                  state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
+                }
+                onDocumentSelect={(document) => {
+                  state.setSelectedDocument(document);
+                  state.setResolvedContent(null);
+                }}
+                onDocumentUpdate={operations.loadDocuments}
+                onEditDocument={(document) => {
+                  state.closeAllModals();
+                  state.startEdit(document);
+                }}
+                onTagUpdate={async () => {
+                  await operations.loadDocuments();
+                  // Force re-render by getting fresh document data
+                  if (state.selectedDocument) {
+                    // Since loadDocuments updates state.documents, we need to wait for the next render cycle
+                    setTimeout(() => {
+                      const updatedDoc = state.documents.find(d => d.id === state.selectedDocument!.id);
+                      if (updatedDoc) {
+                        state.setSelectedDocument(updatedDoc);
+                      }
+                    }, 0);
                   }
-                  onRefreshDocument={() => {
-                    if (state.selectedDocument) {
-                      operations.loadDocuments();
-                      loadAiProviders(); // Refresh credits after AI request
-                    }
-                  }}
-                  onEdit={() => state.selectedDocument && state.startEdit(state.selectedDocument)}
-                />
-              ) : (
-                <DocumentViewer
-                  document={state.selectedDocument}
-                  allDocuments={state.documents}
-                  resolvedContent={state.resolvedContent}
-                  onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
-                  onCreateFromSelection={(selectedText, selectionInfo, title, documentType, groupId) => 
-                    state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
-                  }
-                  onDocumentSelect={(document) => {
-                    state.setSelectedDocument(document);
-                    state.setResolvedContent(null);
-                  }}
-                  onDocumentUpdate={operations.loadDocuments}
-                  onEditDocument={(document) => {
-                    state.closeAllModals();
-                    state.startEdit(document);
-                  }}
-                  onTagUpdate={async () => {
-                    await operations.loadDocuments();
-                    // Force re-render by getting fresh document data
-                    if (state.selectedDocument) {
-                      // Since loadDocuments updates state.documents, we need to wait for the next render cycle
-                      setTimeout(() => {
-                        const updatedDoc = state.documents.find(d => d.id === state.selectedDocument!.id);
-                        if (updatedDoc) {
-                          state.setSelectedDocument(updatedDoc);
-                        }
-                      }, 0);
-                    }
-                  }}
-                  projectId={projectId || ''}
-                  loadDocumentHistory={operations.loadDocumentHistory}
-                  loadHistoryEntry={operations.loadHistoryEntry}
-                  onRollback={operations.handleRollbackDocument}
-                  aiProviders={aiProviders}
-                  accessToken={accessToken}
-                />
-              )
+                }}
+                projectId={projectId || ''}
+                loadDocumentHistory={operations.loadDocumentHistory}
+                loadHistoryEntry={operations.loadHistoryEntry}
+                onRollback={operations.handleRollbackDocument}
+                aiProviders={aiProviders}
+                accessToken={accessToken}
+              />
             )}
             
             {!state.isCreating && !state.isEditing && !state.selectedDocument && (

@@ -112,7 +112,7 @@ function DocumentListItem({
       <div className={variant === 'sidebar' ? 'document-item__header' : 'document-picker-header'}>
         <h4>{document.title}</h4>
         <span className={variant === 'sidebar' ? 'document-item__meta' : 'document-picker-meta'}>
-          {document.is_composite ? '🔗 Composite' : '📄 Static'}
+          {document.components && Object.keys(document.components).length > 0 ? '🔗 Composite' : '📄 Static'}
           {document.document_type && ` • ${document.document_type}`}
           {groupInfo && (
             <span 

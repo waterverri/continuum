@@ -292,7 +292,7 @@ export function useDocumentOperations({
   }, [projectId, documents, getAccessToken, setDocuments, setSelectedDocument, setError]);
 
   const handleResolveDocument = useCallback(async (doc: Document) => {
-    if (!projectId || !doc.is_composite) return;
+    if (!projectId || !(doc.components && Object.keys(doc.components).length > 0)) return;
     
     try {
       const token = await getAccessToken();
@@ -366,7 +366,6 @@ export function useDocumentOperations({
         title,
         content: '', // Start with empty content
         document_type: derivativeType,
-        is_composite: false,
         components: {},
         group_id: groupId
       }, token);
@@ -436,7 +435,6 @@ export function useDocumentOperations({
         content: selectedText,
         document_type: documentType,
         group_id: groupId, // Add to group if specified
-        is_composite: false,
         components: {}
       }, token);
 
@@ -455,7 +453,6 @@ export function useDocumentOperations({
       const updatedSourceDoc = await updateDocument(projectId, sourceDocument.id, {
         ...sourceDocument,
         content: updatedContent,
-        is_composite: true,
         components: updatedComponents
       }, token);
 

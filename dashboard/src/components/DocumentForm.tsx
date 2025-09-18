@@ -4,8 +4,6 @@ interface DocumentFormData {
   title: string;
   content: string;
   document_type: string;
-  is_composite: boolean;
-  is_prompt: boolean;
   components: Record<string, string>;
   group_id?: string;
   ai_model?: string;
@@ -39,10 +37,6 @@ export function DocumentForm({
   // @ts-ignore: Keep aiProviders for interface compatibility
   aiProviders = []
 }: DocumentFormProps) {
-  
-  const isPromptDocument = formData.is_prompt;
-  // Note: Model selection is now handled dynamically in PromptDocumentViewer
-  // DocumentForm only needs to set is_prompt flag
   
   const getDocumentTitle = (reference: string) => {
     if (reference.startsWith('group:')) {
@@ -140,65 +134,29 @@ export function DocumentForm({
           Assign this document to an existing group or create a new group by selecting a group head document with filtering capabilities.
         </small>
       </div>
-      
+
       <div className="form-group">
-        <label className="form-checkbox">
-          <input
-            type="checkbox"
-            checked={formData.is_prompt}
-            onChange={(e) => setFormData({ 
-              ...formData, 
-              is_prompt: e.target.checked,
-              ai_model: undefined // AI model selection is handled in PromptDocumentViewer
-            })}
+        <label className="form-label">
+          Content:
+          <textarea
+            className="form-textarea"
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            rows={Object.keys(formData.components).length > 0 ? 10 : 15}
+            placeholder={Object.keys(formData.components).length > 0 ?
+              "Enter your template with placeholders like {{key}}..." :
+              "Enter your document content..."
+            }
           />
-          <span>AI Prompt Document (enables AI model selection and response functionality)</span>
         </label>
+        {Object.keys(formData.components).length === 0 && (
+          <small className="form-help">
+            Tip: Use {`{{placeholders}}`} in your content to <button type="button" className="btn btn--link" onClick={addComponent}>add components</button>
+          </small>
+        )}
       </div>
-      
-      {isPromptDocument && (
-        <div className="form-group">
-          <div className="info-message">
-            <small>Model selection will be available after creating the prompt document.</small>
-          </div>
-        </div>
-      )}
-      
-      {!isPromptDocument && (
-        <div className="form-group">
-          <label className="form-checkbox">
-            <input
-              type="checkbox"
-              checked={formData.is_composite}
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                is_composite: e.target.checked,
-                components: e.target.checked ? formData.components : {}
-              })}
-            />
-            <span>Composite Document (assembles content from other documents)</span>
-          </label>
-        </div>
-      )}
-      
-      {isPromptDocument && (
-        <div className="form-group">
-          <label className="form-checkbox">
-            <input
-              type="checkbox"
-              checked={formData.is_composite}
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                is_composite: e.target.checked,
-                components: e.target.checked ? formData.components : {}
-              })}
-            />
-            <span>Composite Prompt (assembles prompt from other documents)</span>
-          </label>
-        </div>
-      )}
-      
-      {formData.is_composite && (
+
+      {Object.keys(formData.components).length > 0 && (
         <div className="components-section">
           <h4>Components</h4>
           <p className="components-description">
@@ -256,23 +214,7 @@ export function DocumentForm({
           </div>
         </div>
       )}
-      
-      <div className="form-group">
-        <label className="form-label">
-          Content:
-          <textarea
-            className="form-textarea"
-            value={formData.content}
-            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            rows={formData.is_composite ? 10 : 15}
-            placeholder={formData.is_composite ? 
-              "Enter your template with placeholders like {{key}}..." : 
-              "Enter your document content..."
-            }
-          />
-        </label>
-      </div>
-      
+
       <div className="form-actions">
         <button className="btn btn--primary" onClick={onSave}>
           {isCreating ? 'Create' : 'Save'}

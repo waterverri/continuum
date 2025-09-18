@@ -191,10 +191,10 @@ function HistoryDetailView({ entry, onClose }: HistoryDetailViewProps) {
           
           <div className="metadata-field">
             <label>Composite:</label>
-            <span>{entry.is_composite ? 'Yes' : 'No'}</span>
+            <span>{entry.components && Object.keys(entry.components).length > 0 ? 'Yes' : 'No'}</span>
           </div>
-          
-          {entry.is_composite && entry.components && (
+
+          {entry.components && Object.keys(entry.components).length > 0 && entry.components && (
             <div className="metadata-field components-field">
               <label>Components:</label>
               <div className="components-list">

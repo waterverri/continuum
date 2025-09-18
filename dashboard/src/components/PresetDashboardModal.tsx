@@ -107,7 +107,7 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
         });
 
         // If the referenced document is composite, recursively extract its components
-        if (referencedDoc.is_composite && referencedDoc.components) {
+        if (referencedDoc.components && Object.keys(referencedDoc.components).length > 0) {
           const nestedOverrides = extractComponentReferencesRecursively(
             referencedDocId,
             referencedDoc.content || '',
@@ -123,7 +123,7 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
     };
 
     // Start extraction from the base document
-    if (preset.document.is_composite && preset.document.components) {
+    if (preset.document.components && Object.keys(preset.document.components).length > 0) {
       const allOverrides = extractComponentReferencesRecursively(
         preset.document.id,
         preset.document.content || '',
@@ -324,7 +324,7 @@ export function PresetDashboardModal({ preset, documents, onSave, onCancel }: Pr
                                   .map(doc => (
                                     <option key={doc.id} value={doc.id}>
                                       📄 {doc.title} {doc.document_type && `(${doc.document_type})`}
-                                      {doc.is_composite && ' [Composite]'}
+                                      {doc.components && Object.keys(doc.components).length > 0 && ' [Composite]'}
                                     </option>
                                   ))}
                               </optgroup>

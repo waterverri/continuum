@@ -57,7 +57,7 @@ export const resolveDocumentWithOverrides = async (
       // Query for documents in the group
       const { data: groupDocs, error: groupError } = await supabase
         .from('documents')
-        .select('id, title, document_type, content, is_composite, components')
+        .select('id, title, document_type, content, components')
         .eq('project_id', projectId)
         .eq('group_id', groupId)
         .order('created_at', { ascending: true });
@@ -90,7 +90,7 @@ export const resolveDocumentWithOverrides = async (
     // Get the component document
     const { data: componentDoc, error: componentError } = await supabase
       .from('documents')
-      .select('id, content, is_composite, components')
+      .select('id, content, components')
       .eq('id', targetDocId)
       .eq('project_id', projectId)
       .single();
@@ -102,8 +102,8 @@ export const resolveDocumentWithOverrides = async (
     
     let componentContent = componentDoc.content || '';
     
-    // If the component is also composite, recursively resolve it
-    if (componentDoc.is_composite && componentDoc.components) {
+    // If the component has sub-components, recursively resolve it
+    if (componentDoc.components && Object.keys(componentDoc.components).length > 0) {
       const newVisited = new Set(visited);
       newVisited.add(targetDocId);
       componentContent = await resolveDocumentWithOverrides(
