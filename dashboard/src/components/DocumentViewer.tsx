@@ -80,7 +80,7 @@ export function DocumentViewer({
     : [document];
   
   // Get available document types in this group
-  const availableTypes = [...new Set(groupDocuments.map(doc => doc.document_type).filter((type): type is string => Boolean(type)))];
+  const availableTypes = [...new Set(groupDocuments.map(doc => doc.document_type || 'document').filter((type): type is string => Boolean(type)))];
   
   // Get current document based on active tab
   const currentDocument = groupDocuments.find(doc => doc.document_type === activeTab) || document;
@@ -231,7 +231,7 @@ export function DocumentViewer({
         </div>
 
         {/* Document Type Dropdown */}
-        {availableTypes.length > 1 && (
+        {groupDocuments.length > 1 && (
           <div className="document-viewer__type-selector">
             <div className="dropdown">
               <button 
@@ -243,20 +243,23 @@ export function DocumentViewer({
               </button>
               {showTypeDropdown && (
                 <div className="dropdown-menu">
-                  {availableTypes.map(type => (
+                  {groupDocuments.map(doc => (
                     <button
-                      key={type}
-                      className={`dropdown-item ${activeTab === type ? 'dropdown-item--active' : ''}`}
+                      key={doc.id}
+                      className={`dropdown-item ${document.id === doc.id ? 'dropdown-item--active' : ''}`}
+                      data-doc-id={doc.id}
                       onClick={() => {
-                        setActiveTab(type);
+                        setActiveTab(doc.document_type || 'document');
                         setShowTypeDropdown(false);
-                        const targetDoc = groupDocuments.find(doc => doc.document_type === type);
-                        if (targetDoc && onDocumentSelect) {
-                          onDocumentSelect(targetDoc);
+                        if (onDocumentSelect && doc.id !== document.id) {
+                          onDocumentSelect(doc);
                         }
                       }}
                     >
-                      {type}
+                      {availableTypes.length < groupDocuments.length
+                        ? `${doc.document_type || 'document'} - ${doc.title}`
+                        : doc.document_type || 'document'
+                      }
                     </button>
                   ))}
                 </div>
