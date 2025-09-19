@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Document } from '../api';
 import { useAutocomplete, type AutocompleteItem } from '../components/AutocompleteDropdown';
+import { getCaretCoordinates } from 'textarea-caret';
 
 interface HandlebarMatch {
   start: number;
@@ -86,92 +87,23 @@ export function useHandlebarAutocomplete({
     return textareaRef.current.selectionStart || 0;
   }, []);
 
-  // Function to get text caret position relative to textarea container
-  const getCaretCoordinates = useCallback((): { top: number; left: number } => {
+  // Function to get text caret position using textarea-caret library
+  const getCaretCoordinatesSimple = useCallback((): { top: number; left: number } => {
     if (!textareaRef.current) {
       return { top: 0, left: 0 };
     }
 
     const textarea = textareaRef.current;
     const cursorPos = getCursorPosition();
-    const text = textarea.value;
 
-    // Create a temporary element to measure the text before cursor
-    const mirror = document.createElement('div');
-    const style = window.getComputedStyle(textarea);
+    // Use textarea-caret library to get absolute screen coordinates
+    const coords = getCaretCoordinates(textarea, cursorPos);
 
-    // Copy relevant styles to mirror
-    mirror.style.font = style.font;
-    mirror.style.fontSize = style.fontSize;
-    mirror.style.fontFamily = style.fontFamily;
-    mirror.style.lineHeight = style.lineHeight;
-    mirror.style.padding = style.padding;
-    mirror.style.border = style.border;
-    mirror.style.width = style.width;
-    mirror.style.whiteSpace = 'pre-wrap';
-    mirror.style.wordWrap = 'break-word';
-    mirror.style.position = 'absolute';
-    mirror.style.visibility = 'hidden';
-    mirror.style.top = '-9999px';
-    mirror.style.left = '-9999px';
-    mirror.style.overflow = 'hidden';
-
-    // Get text up to cursor position
-    const textBeforeCursor = text.substring(0, cursorPos);
-    mirror.textContent = textBeforeCursor;
-
-    // Add a measuring span at the end
-    const measureSpan = document.createElement('span');
-    measureSpan.textContent = '|';
-    mirror.appendChild(measureSpan);
-
-    document.body.appendChild(mirror);
-
-    // Get the position of the measuring span relative to mirror
-    const spanRect = measureSpan.getBoundingClientRect();
-    const mirrorRect = mirror.getBoundingClientRect();
-
-    // Get textarea position for relative calculation
-    const textareaRect = textarea.getBoundingClientRect();
-    const containerRect = textarea.parentElement?.getBoundingClientRect();
-
-    document.body.removeChild(mirror);
-
-    if (!containerRect) {
-      return { top: 0, left: 0 };
-    }
-
-    // Calculate absolute cursor position
-    const absoluteLeft = textareaRect.left + (spanRect.left - mirrorRect.left) + parseInt(style.paddingLeft || '0');
-    const absoluteTop = textareaRect.top + (spanRect.top - mirrorRect.top) + parseInt(style.paddingTop || '0');
-
-    // Account for scroll offsets in all scrollable ancestors
-    let scrollOffsetX = 0;
-    let scrollOffsetY = 0;
-    let element = textarea.parentElement;
-
-    while (element && element !== document.body) {
-      const computedStyle = window.getComputedStyle(element);
-      const isScrollable = computedStyle.overflow === 'auto' ||
-                          computedStyle.overflow === 'scroll' ||
-                          computedStyle.overflowX === 'auto' ||
-                          computedStyle.overflowX === 'scroll' ||
-                          computedStyle.overflowY === 'auto' ||
-                          computedStyle.overflowY === 'scroll';
-
-      if (isScrollable || element.scrollTop > 0 || element.scrollLeft > 0) {
-        scrollOffsetX += element.scrollLeft;
-        scrollOffsetY += element.scrollTop;
-      }
-
-      element = element.parentElement;
-    }
-
-    // Convert to relative coordinates by subtracting container position and adding scroll offsets
-    const relativeLeft = absoluteLeft - containerRect.left - scrollOffsetX;
-    const relativeTop = absoluteTop - containerRect.top - scrollOffsetY + 22; // 22px below cursor
-
-    return { top: relativeTop, left: relativeLeft };
+    // Return absolute coordinates for fixed positioning
+    return {
+      top: coords.top + coords.height + 2, // 2px below cursor
+      left: coords.left
+    };
   }, [getCursorPosition]);
 
   // Handle text input and detect handlebars
@@ -181,7 +113,7 @@ export function useHandlebarAutocomplete({
 
     if (match && !match.isComplete && match.query.length >= 1) {
       // Show autocomplete
-      const coords = getCaretCoordinates();
+      const coords = getCaretCoordinatesSimple();
       autocomplete.show(match.query, coords);
       setCurrentMatch(match);
     } else {
@@ -189,7 +121,7 @@ export function useHandlebarAutocomplete({
       autocomplete.hide();
       setCurrentMatch(null);
     }
-  }, [findHandlebarAtCursor, getCursorPosition, getCaretCoordinates, autocomplete]);
+  }, [findHandlebarAtCursor, getCursorPosition, getCaretCoordinatesSimple, autocomplete]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {

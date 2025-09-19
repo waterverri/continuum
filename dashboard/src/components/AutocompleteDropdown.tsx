@@ -93,7 +93,7 @@ export function AutocompleteDropdown({
       ref={dropdownRef}
       className="autocomplete-dropdown"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: position.top,
         left: position.left,
         zIndex: 1000
