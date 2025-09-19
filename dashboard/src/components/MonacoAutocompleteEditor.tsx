@@ -157,6 +157,8 @@ export function MonacoAutocompleteEditor({
     monacoInstance.languages.registerCompletionItemProvider('markdown', {
       triggerCharacters: ['{'],
       provideCompletionItems: (model, position) => {
+        console.log('🔮 Completion provider called at position:', position);
+
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,
           startColumn: 1,
@@ -164,14 +166,21 @@ export function MonacoAutocompleteEditor({
           endColumn: position.column,
         });
 
+        console.log('📋 Provider text until position:', JSON.stringify(textUntilPosition));
+
         // Check if we're inside a {{ pattern
         const match = textUntilPosition.match(/\{\{([^}]*)$/);
+        console.log('🎯 Provider pattern match:', match);
+
         if (!match) {
+          console.log('🚫 Provider: No match, returning empty suggestions');
           return { suggestions: [] };
         }
 
         const query = match[1];
+        console.log('🔎 Provider query:', JSON.stringify(query));
         const searchResults = searchDocuments(query);
+        console.log('📊 Search results count:', searchResults.length);
 
         const range = {
           startLineNumber: position.lineNumber,
@@ -226,6 +235,37 @@ export function MonacoAutocompleteEditor({
         });
 
         return { suggestions };
+      }
+    });
+
+    // Add content change listener to trigger completion when typing inside {{
+    editor.onDidChangeModelContent(() => {
+      const position = editor.getPosition();
+      console.log('🔄 Content changed, position:', position);
+      if (!position) return;
+
+      const model = editor.getModel();
+      if (!model) return;
+
+      const textUntilPosition = model.getValueInRange({
+        startLineNumber: position.lineNumber,
+        startColumn: 1,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column,
+      });
+
+      console.log('📝 Text until position:', JSON.stringify(textUntilPosition));
+
+      // Check if we're inside a {{ pattern
+      const match = textUntilPosition.match(/\{\{([^}]*)$/);
+      console.log('🔍 Pattern match:', match);
+
+      if (match && match[1].length >= 1) {
+        console.log('✅ Triggering autocomplete for query:', JSON.stringify(match[1]));
+        // Manually trigger completion
+        editor.trigger('autocomplete', 'editor.action.triggerSuggest', {});
+      } else {
+        console.log('❌ No match or query too short');
       }
     });
 
