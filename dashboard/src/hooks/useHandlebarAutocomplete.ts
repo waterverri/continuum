@@ -262,7 +262,7 @@ export function useHandlebarAutocomplete({
     return key;
   }, []);
 
-  // Handle click outside to hide autocomplete
+  // Handle click outside to hide autocomplete and scroll repositioning
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (autocomplete.isVisible) {
@@ -275,9 +275,22 @@ export function useHandlebarAutocomplete({
       }
     };
 
+    const handleScroll = () => {
+      if (autocomplete.isVisible && currentMatch) {
+        // Reposition dropdown when scrolling
+        const coords = getCaretCoordinatesSimple();
+        autocomplete.show(currentMatch.query, coords);
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [autocomplete]);
+    document.addEventListener('scroll', handleScroll, true); // Use capture phase to catch all scroll events
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [autocomplete, currentMatch, getCaretCoordinatesSimple]);
 
   return {
     textareaRef,
