@@ -1,7 +1,5 @@
 import ReactTextareaAutocomplete from 'react-textarea-autocomplete';
-import type { Document } from '../api';
-import type { AutocompleteItem } from './AutocompleteDropdown';
-import { useAutocomplete } from './AutocompleteDropdown';
+import type { Document, Tag } from '../api';
 
 interface AutocompleteTextareaV2Props {
   value: string;
@@ -14,6 +12,17 @@ interface AutocompleteTextareaV2Props {
   className?: string;
 }
 
+interface AutocompleteItem {
+  id: string;
+  title: string;
+  alias?: string;
+  group_id?: string;
+  document_type?: string;
+  tags?: Tag[];
+  matchType: 'title' | 'alias' | 'tag';
+  isInComponents?: boolean;
+}
+
 export function AutocompleteTextareaV2({
   value,
   onChange,
@@ -24,8 +33,6 @@ export function AutocompleteTextareaV2({
   placeholder = '',
   className = ''
 }: AutocompleteTextareaV2Props) {
-
-  const autocomplete = useAutocomplete(documents, currentComponents);
 
   // Generate component key based on title
   const generateComponentKey = (title: string): string => {
@@ -65,9 +72,83 @@ export function AutocompleteTextareaV2({
       dataProvider: (token: string) => {
         if (token.length < 1) return [];
 
-        // Use the existing autocomplete logic
-        autocomplete.show(token, { top: 0, left: 0 }); // Position doesn't matter for this component
-        return autocomplete.items.map(item => ({
+        const query = token.toLowerCase();
+        const results: AutocompleteItem[] = [];
+        const componentValues = Object.values(currentComponents);
+
+        documents.forEach(doc => {
+          // Check if document is in components
+          const isInComponents = componentValues.some(value => {
+            if (value === doc.id) return true;
+            if (value.startsWith('group:')) {
+              const parts = value.split(':');
+              if (parts.length >= 3 && parts[2] === doc.id) return true;
+              if (parts.length >= 2 && doc.group_id === parts[1]) {
+                return parts.length === 2 || parts[2] === doc.document_type;
+              }
+            }
+            return false;
+          });
+
+          // Search by title
+          if (doc.title.toLowerCase().includes(query)) {
+            results.push({
+              id: doc.id,
+              title: doc.title,
+              alias: doc.alias,
+              group_id: doc.group_id,
+              document_type: doc.document_type,
+              tags: doc.tags,
+              matchType: 'title',
+              isInComponents
+            });
+          }
+          // Search by alias
+          else if (doc.alias && doc.alias.toLowerCase().split(',').some(alias =>
+            alias.trim().toLowerCase().includes(query)
+          )) {
+            results.push({
+              id: doc.id,
+              title: doc.title,
+              alias: doc.alias,
+              group_id: doc.group_id,
+              document_type: doc.document_type,
+              tags: doc.tags,
+              matchType: 'alias',
+              isInComponents
+            });
+          }
+          // Search by tag
+          else if (doc.tags && doc.tags.some(tag =>
+            tag.name.toLowerCase().includes(query)
+          )) {
+            results.push({
+              id: doc.id,
+              title: doc.title,
+              alias: doc.alias,
+              group_id: doc.group_id,
+              document_type: doc.document_type,
+              tags: doc.tags,
+              matchType: 'tag',
+              isInComponents
+            });
+          }
+        });
+
+        // Sort results: components first, then by relevance
+        const sortedResults = results.sort((a, b) => {
+          if (a.isInComponents && !b.isInComponents) return -1;
+          if (!a.isInComponents && b.isInComponents) return 1;
+
+          const aExactTitle = a.title.toLowerCase() === query;
+          const bExactTitle = b.title.toLowerCase() === query;
+          if (aExactTitle && !bExactTitle) return -1;
+          if (!aExactTitle && bExactTitle) return 1;
+
+          return a.title.localeCompare(b.title);
+        });
+
+        return sortedResults.map(item => ({
           ...item,
           name: item.title // react-textarea-autocomplete expects 'name' field
         }));
