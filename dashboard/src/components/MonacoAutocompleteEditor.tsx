@@ -4,8 +4,8 @@ import type { Document, Tag } from '../api';
 import * as monaco from 'monaco-editor';
 
 interface MonacoAutocompleteEditorProps {
-  value: string;
-  onChange: (value: string) => void;
+  initialValue: string;
+  onContentChange: (value: string) => void;
   documents: Document[];
   currentComponents: Record<string, string>;
   onComponentAdd: (key: string, documentId: string) => void;
@@ -26,8 +26,8 @@ interface AutocompleteItem {
 }
 
 export function MonacoAutocompleteEditor({
-  value,
-  onChange,
+  initialValue,
+  onContentChange,
   documents,
   currentComponents,
   onComponentAdd,
@@ -212,10 +212,9 @@ export function MonacoAutocompleteEditor({
             kind: monacoInstance.languages.CompletionItemKind.Reference,
             detail,
             documentation: description,
-            insertText: `${componentKey}}}`,
+            insertText: componentKey,
             range,
             sortText: `${item.isInComponents ? '0' : '1'}_${index.toString().padStart(3, '0')}`,
-            // Add the item data so we can process it when selected
             command: {
               id: 'addComponent',
               title: 'Add Component',
@@ -335,8 +334,8 @@ export function MonacoAutocompleteEditor({
       <Editor
         height={height}
         defaultLanguage="markdown"
-        value={value}
-        onChange={(newValue) => onChange(newValue || '')}
+        defaultValue={initialValue}
+        onChange={(newValue) => onContentChange(newValue || '')}
         onMount={handleEditorDidMount}
         options={{
           placeholder,

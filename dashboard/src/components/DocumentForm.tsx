@@ -173,8 +173,8 @@ export function DocumentForm({
         <label className="form-label">
           Content:
           <MonacoAutocompleteEditor
-            value={formData.content}
-            onChange={(value) => setFormData({ ...formData, content: value })}
+            initialValue={formData.content}
+            onContentChange={(value) => setFormData({ ...formData, content: value })}
             documents={documents}
             currentComponents={formData.components}
             onComponentAdd={handleAutocompleteComponentAdd}
