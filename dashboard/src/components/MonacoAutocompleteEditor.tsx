@@ -69,7 +69,7 @@ export function MonacoAutocompleteEditor({
     }
   };
 
-  // Search documents for autocomplete
+  // Search documents for autocomplete - only show group heads
   const searchDocuments = (query: string): AutocompleteItem[] => {
     if (query.length < 1) return [];
 
@@ -77,7 +77,12 @@ export function MonacoAutocompleteEditor({
     const results: AutocompleteItem[] = [];
     const componentValues = Object.values(currentComponents);
 
-    documents.forEach(doc => {
+    // Only show documents that are group heads (have group_id but id equals group_id)
+    const groupHeads = documents.filter(doc => doc.group_id && doc.id === doc.group_id);
+    console.log('🔍 Total documents:', documents.length, 'Group heads found:', groupHeads.length);
+    console.log('📊 Group heads:', groupHeads.map(d => ({ id: d.id, title: d.title, group_id: d.group_id })));
+
+    groupHeads.forEach(doc => {
       // Check if document is in components
       const isInComponents = componentValues.some(value => {
         if (value === doc.id) return true;
@@ -157,8 +162,6 @@ export function MonacoAutocompleteEditor({
     monacoInstance.languages.registerCompletionItemProvider('markdown', {
       triggerCharacters: ['{'],
       provideCompletionItems: (model, position) => {
-        console.log('🔮 Completion provider called at position:', position);
-
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,
           startColumn: 1,
@@ -166,26 +169,21 @@ export function MonacoAutocompleteEditor({
           endColumn: position.column,
         });
 
-        console.log('📋 Provider text until position:', JSON.stringify(textUntilPosition));
-
         // Check if we're inside a {{ pattern
         const match = textUntilPosition.match(/\{\{([^}]*)$/);
-        console.log('🎯 Provider pattern match:', match);
 
         if (!match) {
-          console.log('🚫 Provider: No match, returning empty suggestions');
           return { suggestions: [] };
         }
 
         const query = match[1];
-        console.log('🔎 Provider query:', JSON.stringify(query));
         const searchResults = searchDocuments(query);
-        console.log('📊 Search results count:', searchResults.length);
 
+        // Calculate range to replace the entire {{ pattern
         const range = {
           startLineNumber: position.lineNumber,
           endLineNumber: position.lineNumber,
-          startColumn: position.column - query.length,
+          startColumn: position.column - query.length - 2, // Include the {{
           endColumn: position.column,
         };
 
@@ -205,6 +203,7 @@ export function MonacoAutocompleteEditor({
             componentKey = generateComponentKey(item.title);
           }
 
+
           const label = item.title;
           const detail = item.matchType === 'alias' && item.alias ? `(${item.alias})` :
                         item.matchType === 'tag' ? 'via tag' :
@@ -217,14 +216,14 @@ export function MonacoAutocompleteEditor({
             kind: monacoInstance.languages.CompletionItemKind.Reference,
             detail,
             documentation: description,
-            insertText: `${componentKey}}}`,
+            insertText: '', // Don't insert text automatically
             range,
             sortText: `${item.isInComponents ? '0' : '1'}_${index.toString().padStart(3, '0')}`,
             // Add the item data so we can process it when selected
             command: {
               id: 'addComponent',
               title: 'Add Component',
-              arguments: [item, componentKey]
+              arguments: [item, componentKey, range]
             }
           };
         });
@@ -234,8 +233,29 @@ export function MonacoAutocompleteEditor({
     });
 
     // Register command to handle component addition when item is selected
-    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteItem, componentKey: string) => {
-      console.log('🎯 Component selected:', item.title, 'Key:', componentKey);
+    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteItem, componentKey: string, range: any) => {
+
+      // Get the current editor and model
+      const model = editor.getModel();
+      if (!model) return;
+
+      // Insert the completed handlebar text
+      const insertText = `{{${componentKey}}}`;
+      model.pushEditOperations(
+        [],
+        [{
+          range: range,
+          text: insertText
+        }],
+        () => null
+      );
+
+      // Position cursor after the completed handlebar
+      const newPosition = {
+        lineNumber: range.startLineNumber,
+        column: range.startColumn + insertText.length
+      };
+      editor.setPosition(newPosition);
 
       // Now add to components when actually selected
       let componentValue: string;
@@ -264,7 +284,6 @@ export function MonacoAutocompleteEditor({
     // Add content change listener to trigger completion when typing inside {{
     editor.onDidChangeModelContent(() => {
       const position = editor.getPosition();
-      console.log('🔄 Content changed, position:', position);
       if (!position) return;
 
       const model = editor.getModel();
@@ -277,18 +296,12 @@ export function MonacoAutocompleteEditor({
         endColumn: position.column,
       });
 
-      console.log('📝 Text until position:', JSON.stringify(textUntilPosition));
-
       // Check if we're inside a {{ pattern
       const match = textUntilPosition.match(/\{\{([^}]*)$/);
-      console.log('🔍 Pattern match:', match);
 
       if (match && match[1].length >= 1) {
-        console.log('✅ Triggering autocomplete for query:', JSON.stringify(match[1]));
         // Manually trigger completion
         editor.trigger('autocomplete', 'editor.action.triggerSuggest', {});
-      } else {
-        console.log('❌ No match or query too short');
       }
     });
 
