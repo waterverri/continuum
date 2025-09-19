@@ -25,5 +25,6 @@
 @import './components/ai-chat-modal.css';
 @import './components/transform-modal.css';
 @import './components/document-group-deletion-modal.css';
+@import './components/autocomplete.css';
 @import './layout.css';
 

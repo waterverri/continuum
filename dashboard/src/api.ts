@@ -7,6 +7,7 @@ export interface Document {
   id: string;
   project_id: string;
   title: string;
+  alias?: string;
   group_id?: string;
   document_type?: string;
   content?: string;
@@ -105,12 +106,13 @@ export interface DocumentHistory {
   document_id: string;
   project_id: string;
   title: string;
+  alias?: string;
   content?: string;
   document_type?: string;
   group_id?: string;
   components?: Record<string, string>;
   event_id?: string;
-  change_type: 'create' | 'update_content' | 'update_title' | 'update_type' | 'update_components' | 'move_group' | 'link_event' | 'unlink_event' | 'delete';
+  change_type: 'create' | 'update_content' | 'update_title' | 'update_type' | 'update_components' | 'move_group' | 'link_event' | 'unlink_event' | 'delete' | 'update_alias';
   change_description?: string;
   user_id: string;
   created_at: string;

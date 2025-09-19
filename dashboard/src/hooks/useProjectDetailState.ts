@@ -3,6 +3,7 @@ import type { Document, Preset, Tag, Event } from '../api';
 
 interface DocumentFormData {
   title: string;
+  alias: string;
   content: string;
   document_type: string;
   components: Record<string, string>;
@@ -33,6 +34,7 @@ export function useProjectDetailState() {
   // Form states
   const [formData, setFormData] = useState<DocumentFormData>({
     title: '',
+    alias: '',
     content: '',
     document_type: '',
     components: {},
@@ -77,6 +79,7 @@ export function useProjectDetailState() {
   const resetForm = useCallback(() => {
     setFormData({
       title: '',
+      alias: '',
       content: '',
       document_type: '',
       components: {},
@@ -121,6 +124,7 @@ export function useProjectDetailState() {
     setSelectedDocument(doc);
     setFormData({
       title: doc.title,
+      alias: doc.alias || '',
       content: doc.content || '',
       document_type: doc.document_type || '',
       components: doc.components || {},

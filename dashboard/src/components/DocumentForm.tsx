@@ -1,7 +1,9 @@
 import type { Document, AIProvider } from '../api';
+import { AutocompleteTextarea } from './AutocompleteTextarea';
 
 interface DocumentFormData {
   title: string;
+  alias: string;
   content: string;
   document_type: string;
   components: Record<string, string>;
@@ -23,12 +25,12 @@ interface DocumentFormProps {
   aiProviders?: AIProvider[];
 }
 
-export function DocumentForm({ 
-  formData, 
-  setFormData, 
-  onSave, 
-  onCancel, 
-  addComponent, 
+export function DocumentForm({
+  formData,
+  setFormData,
+  onSave,
+  onCancel,
+  addComponent,
   removeComponent,
   onOpenGroupSwitcher,
   onOpenGroupPicker,
@@ -37,24 +39,40 @@ export function DocumentForm({
   // @ts-ignore: Keep aiProviders for interface compatibility
   aiProviders = []
 }: DocumentFormProps) {
+
+  // Handle adding component from autocomplete
+  const handleAutocompleteComponentAdd = (key: string, documentId: string) => {
+    const updatedComponents = { ...formData.components, [key]: documentId };
+    setFormData({ ...formData, components: updatedComponents });
+  };
   
   const getDocumentTitle = (reference: string) => {
     if (reference.startsWith('group:')) {
       const parts = reference.split(':');
       const groupId = parts[1];
-      const preferredType = parts[2] || null;
-      
+      const preferredSpecifier = parts[2] || null; // Could be document type or specific document ID
+
       const groupDocs = documents.filter(d => d.group_id === groupId);
       if (groupDocs.length > 0) {
         let representative: Document;
-        if (preferredType) {
-          representative = groupDocs.find(d => d.document_type === preferredType) || groupDocs[0];
+        let specifierLabel = '';
+
+        if (preferredSpecifier) {
+          // First try to find by specific document ID
+          const specificDoc = groupDocs.find(d => d.id === preferredSpecifier);
+          if (specificDoc) {
+            representative = specificDoc;
+            specifierLabel = ` - ${specificDoc.title}`;
+          } else {
+            // Fall back to document type
+            representative = groupDocs.find(d => d.document_type === preferredSpecifier) || groupDocs[0];
+            specifierLabel = ` - ${preferredSpecifier}`;
+          }
         } else {
           representative = groupDocs.find(d => d.id === groupId) || groupDocs[0];
         }
-        
-        const typeLabel = preferredType ? ` - ${preferredType}` : '';
-        return `${representative.title} (Group${typeLabel} - ${groupDocs.length} docs)`;
+
+        return `${representative.title} (Group${specifierLabel} - ${groupDocs.length} docs)`;
       }
       return `Unknown Group (${groupId.substring(0, 8)}...)`;
     } else {
@@ -80,7 +98,23 @@ export function DocumentForm({
           />
         </label>
       </div>
-      
+
+      <div className="form-group">
+        <label className="form-label">
+          Alias (for autocomplete):
+          <input
+            type="text"
+            className="form-input"
+            value={formData.alias}
+            onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+            placeholder="e.g., char1,protagonist,john (comma-separated)"
+          />
+        </label>
+        <small className="form-help">
+          Add comma-separated aliases to make this document easier to find in autocomplete
+        </small>
+      </div>
+
       <div className="form-group">
         <label className="form-label">
           Document Type:
@@ -138,22 +172,26 @@ export function DocumentForm({
       <div className="form-group">
         <label className="form-label">
           Content:
-          <textarea
-            className="form-textarea"
+          <AutocompleteTextarea
             value={formData.content}
-            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            onChange={(value) => setFormData({ ...formData, content: value })}
+            documents={documents}
+            currentComponents={formData.components}
+            onComponentAdd={handleAutocompleteComponentAdd}
             rows={Object.keys(formData.components).length > 0 ? 10 : 15}
             placeholder={Object.keys(formData.components).length > 0 ?
-              "Enter your template with placeholders like {{key}}..." :
-              "Enter your document content..."
+              "Enter your template with placeholders like {{key}}... Start typing {{abc to see autocomplete suggestions!" :
+              "Enter your document content... Type {{abc to add component references with autocomplete!"
             }
+            className="form-textarea"
           />
         </label>
-        {Object.keys(formData.components).length === 0 && (
-          <small className="form-help">
-            Tip: Use {`{{placeholders}}`} in your content to <button type="button" className="btn btn--link" onClick={addComponent}>add components</button>
-          </small>
-        )}
+        <small className="form-help">
+          Tip: Type <code>{`{{`}</code> followed by a few characters to see autocomplete suggestions for documents, tags, or aliases.
+          {Object.keys(formData.components).length === 0 && (
+            <> You can also <button type="button" className="btn btn--link" onClick={addComponent}>manually add components</button>.</>
+          )}
+        </small>
       </div>
 
       {Object.keys(formData.components).length > 0 && (

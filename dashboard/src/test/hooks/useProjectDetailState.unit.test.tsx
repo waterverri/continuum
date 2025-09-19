@@ -38,6 +38,7 @@ describe('useProjectDetailState', () => {
     it('should initialize with empty form data', () => {
       expect(result.formData).toEqual({
         title: '',
+        alias: '',
         content: '',
         document_type: '',
         components: {},
@@ -193,6 +194,7 @@ describe('useProjectDetailState', () => {
       act(() => {
         result.current.setFormData({
           title: 'Title',
+          alias: 'test-alias',
           content: 'Content',
           document_type: 'prompt',
           components: { key: 'value' },
@@ -208,6 +210,7 @@ describe('useProjectDetailState', () => {
 
       expect(result.current.formData).toEqual({
         title: '',
+        alias: '',
         content: '',
         document_type: '',
         components: {},
@@ -295,6 +298,7 @@ describe('useProjectDetailState', () => {
       expect(result.current.isEditing).toBe(true);
       expect(result.current.formData).toEqual({
         title: 'Test Document',
+        alias: '',
         content: 'Test content',
         document_type: 'prompt',
         components: { key1: 'value1' },
@@ -318,6 +322,7 @@ describe('useProjectDetailState', () => {
 
       expect(result.current.formData).toEqual({
         title: 'Minimal Doc',
+        alias: '',
         content: '',
         document_type: '',
         components: {},
@@ -334,6 +339,7 @@ describe('useProjectDetailState', () => {
         result.current.setSelectedDocument(mockDocument);
         result.current.setFormData({
           title: 'Existing',
+          alias: 'existing-alias',
           content: 'Existing content',
           document_type: 'prompt',
           components: {},
@@ -352,6 +358,7 @@ describe('useProjectDetailState', () => {
       expect(result.current.resolvedContent).toBe(null);
       expect(result.current.formData).toEqual({
         title: '',
+        alias: '',
         content: '',
         document_type: '',
         components: {},
@@ -379,6 +386,7 @@ describe('useProjectDetailState', () => {
       expect(result.current.isCreating).toBe(false);
       expect(result.current.formData).toEqual({
         title: '',
+        alias: '',
         content: '',
         document_type: '',
         components: {},

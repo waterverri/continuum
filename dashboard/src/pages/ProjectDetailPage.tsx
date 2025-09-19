@@ -497,6 +497,7 @@ export default function ProjectDetailPage() {
         // Assign document to the new event
         const formData = {
           title: document.title,
+          alias: document.alias || '',
           content: document.content || '',
           document_type: document.document_type || '',
           components: document.components || {},
@@ -543,6 +544,7 @@ export default function ProjectDetailPage() {
     if (newTitle && newTitle.trim() && newTitle.trim() !== document.title) {
       const formData = {
         title: newTitle.trim(),
+        alias: document.alias || '',
         content: document.content || '',
         document_type: document.document_type || '',
         components: document.components || {},
