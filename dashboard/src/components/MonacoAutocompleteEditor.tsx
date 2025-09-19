@@ -96,6 +96,8 @@ export function MonacoAutocompleteEditor({
         return false;
       });
 
+      console.log(`🔍 Checking doc "${doc.title}" for query "${queryLower}":`, doc.title.toLowerCase().includes(queryLower));
+
       // Search by title
       if (doc.title.toLowerCase().includes(queryLower)) {
         results.push({
@@ -140,6 +142,8 @@ export function MonacoAutocompleteEditor({
         });
       }
     });
+
+    console.log(`📋 Found ${results.length} results for query "${queryLower}"`);
 
     // Sort results: components first, then by relevance
     return results.sort((a, b) => {
