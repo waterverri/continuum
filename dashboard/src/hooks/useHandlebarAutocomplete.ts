@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Document } from '../api';
 import { useAutocomplete, type AutocompleteItem } from '../components/AutocompleteDropdown';
-import { getCaretCoordinates } from 'textarea-caret';
+import getCaretCoordinates from 'textarea-caret';
 
 interface HandlebarMatch {
   start: number;

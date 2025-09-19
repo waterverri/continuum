@@ -5,8 +5,10 @@ declare module 'textarea-caret' {
     height: number;
   }
 
-  export function getCaretCoordinates(
+  function getCaretCoordinates(
     element: HTMLTextAreaElement | HTMLInputElement,
     position: number
   ): CaretCoordinates;
+
+  export = getCaretCoordinates;
 }
