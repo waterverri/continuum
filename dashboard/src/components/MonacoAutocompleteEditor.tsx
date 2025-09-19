@@ -79,9 +79,6 @@ export function MonacoAutocompleteEditor({
 
     // Only show documents that are group heads (have group_id but id equals group_id)
     const groupHeads = documents.filter(doc => doc.group_id && doc.id === doc.group_id);
-    console.log('🔍 Total documents:', documents.length, 'Group heads found:', groupHeads.length);
-    console.log('📊 Group heads:', groupHeads.map(d => ({ id: d.id, title: d.title, group_id: d.group_id })));
-
     groupHeads.forEach(doc => {
       // Check if document is in components
       const isInComponents = componentValues.some(value => {
@@ -95,8 +92,6 @@ export function MonacoAutocompleteEditor({
         }
         return false;
       });
-
-      console.log(`🔍 Checking doc "${doc.title}" for query "${queryLower}":`, doc.title.toLowerCase().includes(queryLower));
 
       // Search by title
       if (doc.title.toLowerCase().includes(queryLower)) {
@@ -143,8 +138,6 @@ export function MonacoAutocompleteEditor({
       }
     });
 
-    console.log(`📋 Found ${results.length} results for query "${queryLower}"`);
-
     // Sort results: components first, then by relevance
     return results.sort((a, b) => {
       if (a.isInComponents && !b.isInComponents) return -1;
@@ -183,11 +176,10 @@ export function MonacoAutocompleteEditor({
         const query = match[1];
         const searchResults = searchDocuments(query);
 
-        // Calculate range to replace the entire {{ pattern
         const range = {
           startLineNumber: position.lineNumber,
           endLineNumber: position.lineNumber,
-          startColumn: position.column - query.length - 2, // Include the {{
+          startColumn: position.column - query.length,
           endColumn: position.column,
         };
 
@@ -220,14 +212,14 @@ export function MonacoAutocompleteEditor({
             kind: monacoInstance.languages.CompletionItemKind.Reference,
             detail,
             documentation: description,
-            insertText: '', // Don't insert text automatically
+            insertText: `${componentKey}}}`,
             range,
             sortText: `${item.isInComponents ? '0' : '1'}_${index.toString().padStart(3, '0')}`,
             // Add the item data so we can process it when selected
             command: {
               id: 'addComponent',
               title: 'Add Component',
-              arguments: [item, componentKey, range]
+              arguments: [item, componentKey]
             }
           };
         });
@@ -237,31 +229,8 @@ export function MonacoAutocompleteEditor({
     });
 
     // Register command to handle component addition when item is selected
-    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteItem, componentKey: string, range: any) => {
-
-      // Get the current editor and model
-      const model = editor.getModel();
-      if (!model) return;
-
-      // Insert the completed handlebar text
-      const insertText = `{{${componentKey}}}`;
-      model.pushEditOperations(
-        [],
-        [{
-          range: range,
-          text: insertText
-        }],
-        () => null
-      );
-
-      // Position cursor after the completed handlebar
-      const newPosition = {
-        lineNumber: range.startLineNumber,
-        column: range.startColumn + insertText.length
-      };
-      editor.setPosition(newPosition);
-
-      // Now add to components when actually selected
+    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteItem, componentKey: string) => {
+      // Add to components when actually selected
       let componentValue: string;
 
       if (item.isInComponents) {
