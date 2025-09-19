@@ -1,5 +1,5 @@
 import type { Document, AIProvider } from '../api';
-import { AutocompleteTextarea } from './AutocompleteTextarea';
+import { AutocompleteTextareaV2 } from './AutocompleteTextareaV2';
 
 interface DocumentFormData {
   title: string;
@@ -172,7 +172,7 @@ export function DocumentForm({
       <div className="form-group">
         <label className="form-label">
           Content:
-          <AutocompleteTextarea
+          <AutocompleteTextareaV2
             value={formData.content}
             onChange={(value) => setFormData({ ...formData, content: value })}
             documents={documents}
