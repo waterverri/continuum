@@ -190,9 +190,8 @@ export function MonacoAutocompleteEditor({
         };
 
         const suggestions = searchResults.map((item, index) => {
-          // Generate component key and add to components when selected
+          // Generate component key (but don't add to components yet!)
           let componentKey: string;
-          let componentValue: string;
 
           if (item.isInComponents) {
             const existingKey = Object.keys(currentComponents).find(key => {
@@ -202,18 +201,8 @@ export function MonacoAutocompleteEditor({
                      (item.group_id && value.startsWith(`group:${item.group_id}`));
             });
             componentKey = existingKey || generateComponentKey(item.title);
-
-            if (existingKey) {
-              const existingValue = currentComponents[existingKey];
-              const newValue = generateGroupComponentValue(item);
-              if (existingValue !== newValue) {
-                onComponentAdd(componentKey, newValue);
-              }
-            }
           } else {
             componentKey = generateComponentKey(item.title);
-            componentValue = generateGroupComponentValue(item);
-            onComponentAdd(componentKey, componentValue);
           }
 
           const label = item.title;
@@ -230,11 +219,45 @@ export function MonacoAutocompleteEditor({
             documentation: description,
             insertText: `${componentKey}}}`,
             range,
-            sortText: `${item.isInComponents ? '0' : '1'}_${index.toString().padStart(3, '0')}`
+            sortText: `${item.isInComponents ? '0' : '1'}_${index.toString().padStart(3, '0')}`,
+            // Add the item data so we can process it when selected
+            command: {
+              id: 'addComponent',
+              title: 'Add Component',
+              arguments: [item, componentKey]
+            }
           };
         });
 
         return { suggestions };
+      }
+    });
+
+    // Register command to handle component addition when item is selected
+    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteItem, componentKey: string) => {
+      console.log('🎯 Component selected:', item.title, 'Key:', componentKey);
+
+      // Now add to components when actually selected
+      let componentValue: string;
+
+      if (item.isInComponents) {
+        const existingKey = Object.keys(currentComponents).find(key => {
+          const value = currentComponents[key];
+          return value === item.id ||
+                 value === `group:${item.group_id}:${item.id}` ||
+                 (item.group_id && value.startsWith(`group:${item.group_id}`));
+        });
+
+        if (existingKey) {
+          const existingValue = currentComponents[existingKey];
+          const newValue = generateGroupComponentValue(item);
+          if (existingValue !== newValue) {
+            onComponentAdd(componentKey, newValue);
+          }
+        }
+      } else {
+        componentValue = generateGroupComponentValue(item);
+        onComponentAdd(componentKey, componentValue);
       }
     });
 
@@ -281,7 +304,43 @@ export function MonacoAutocompleteEditor({
       scrollBeyondLastLine: false,
       fontSize: 14,
       fontFamily: 'inherit',
-      padding: { top: 12, bottom: 12 }
+      padding: { top: 12, bottom: 12 },
+      // Force autocomplete to always show dropdown, never auto-accept
+      suggest: {
+        showMethods: true,
+        showFunctions: true,
+        showConstructors: true,
+        showFields: true,
+        showVariables: true,
+        showClasses: true,
+        showStructs: true,
+        showInterfaces: true,
+        showModules: true,
+        showProperties: true,
+        showEvents: true,
+        showOperators: true,
+        showUnits: true,
+        showValues: true,
+        showConstants: true,
+        showEnums: true,
+        showEnumMembers: true,
+        showKeywords: true,
+        showWords: true,
+        showColors: true,
+        showFiles: true,
+        showReferences: true,
+        showFolders: true,
+        showTypeParameters: true,
+        showSnippets: true,
+        showUsers: true,
+        showIssues: true,
+        insertMode: 'replace',
+        filterGraceful: true,
+        localityBonus: true,
+        shareSuggestSelections: false,
+        snippetsPreventQuickSuggestions: false,
+        preview: false
+      }
     });
   };
 
