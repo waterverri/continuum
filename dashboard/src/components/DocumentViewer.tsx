@@ -74,6 +74,7 @@ export function DocumentViewer({
   const toggleComponents = () => setComponentsVisible(!componentsVisible);
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
+  const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get documents in the same group
   const groupDocuments = document.group_id 
@@ -107,21 +108,29 @@ export function DocumentViewer({
 
       const range = selection.getRangeAt(0);
       const selectedText = selection.toString().trim();
-      
+
+      // Check if selection is empty or collapsed
+      if (!selectedText || range.collapsed) {
+        setSelectedText('');
+        setSelectionRange(null);
+        setShowCreateButton(false);
+        return;
+      }
+
       // Only show button if text is selected and it's within our content divs
-      const isInRawContent = contentRef.current && range.commonAncestorContainer && 
-          (contentRef.current.contains(range.commonAncestorContainer) || 
+      const isInRawContent = contentRef.current && range.commonAncestorContainer &&
+          (contentRef.current.contains(range.commonAncestorContainer) ||
            contentRef.current === range.commonAncestorContainer);
-      const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer && 
-          (resolvedContentRef.current.contains(range.commonAncestorContainer) || 
+      const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer &&
+          (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
            resolvedContentRef.current === range.commonAncestorContainer);
-      
+
       if (selectedText && (isInRawContent || isInResolvedContent)) {
         if (isInRawContent) {
           // For raw content, try to find position in document content
           const fullText = document.content || '';
           const startIndex = fullText.indexOf(selectedText);
-          
+
           if (startIndex !== -1) {
             setSelectedText(selectedText);
             setSelectionRange({
@@ -155,6 +164,30 @@ export function DocumentViewer({
       setShowCreateButton(false);
     }
   }, [document.content]);
+
+  // Add global selection change listener for better text selection handling
+  useEffect(() => {
+    const handleGlobalSelectionChange = () => {
+      // Clear any existing timeout
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+
+      // Set a new timeout to handle the selection
+      selectionTimeoutRef.current = setTimeout(() => {
+        handleTextSelection();
+      }, 50);
+    };
+
+    window.document.addEventListener('selectionchange', handleGlobalSelectionChange);
+
+    return () => {
+      window.document.removeEventListener('selectionchange', handleGlobalSelectionChange);
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+    };
+  }, [handleTextSelection]);
 
   const handleShowExtractModal = useCallback(() => {
     setShowExtractModal(true);
@@ -420,7 +453,7 @@ export function DocumentViewer({
                 ref={contentRef}
                 className="document-reader document-reader--raw"
                 onMouseUp={handleTextSelection}
-                onKeyUp={handleTextSelection}
+                onTouchEnd={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(currentDocument.content || '*No content*')
@@ -436,7 +469,7 @@ export function DocumentViewer({
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
                 onMouseUp={handleTextSelection}
-                onKeyUp={handleTextSelection}
+                onTouchEnd={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(resolvedContent)
@@ -483,7 +516,7 @@ export function DocumentViewer({
                 ref={contentRef}
                 className="document-reader document-reader--raw"
                 onMouseUp={handleTextSelection}
-                onKeyUp={handleTextSelection}
+                onTouchEnd={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(currentDocument.content || '*No content*')
