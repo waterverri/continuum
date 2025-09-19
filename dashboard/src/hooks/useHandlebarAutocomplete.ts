@@ -96,13 +96,13 @@ export function useHandlebarAutocomplete({
     const textarea = textareaRef.current;
     const cursorPos = getCursorPosition();
 
-    // Use textarea-caret library to get absolute screen coordinates
+    // Use textarea-caret library to get coordinates
     const coords = getCaretCoordinates(textarea, cursorPos);
 
-    // Return absolute coordinates for fixed positioning
+    // Add scroll offsets to account for page scrolling
     return {
-      top: coords.top + coords.height + 2, // 2px below cursor
-      left: coords.left
+      top: coords.top + coords.height + 2 + window.scrollY, // 2px below cursor + scroll offset
+      left: coords.left + window.scrollX // Add horizontal scroll offset
     };
   }, [getCursorPosition]);
 

@@ -1,5 +1,5 @@
 import type { Document, AIProvider } from '../api';
-import { AutocompleteTextareaV2 } from './AutocompleteTextareaV2';
+import { MonacoAutocompleteEditor } from './MonacoAutocompleteEditor';
 
 interface DocumentFormData {
   title: string;
@@ -172,18 +172,18 @@ export function DocumentForm({
       <div className="form-group">
         <label className="form-label">
           Content:
-          <AutocompleteTextareaV2
+          <MonacoAutocompleteEditor
             value={formData.content}
             onChange={(value) => setFormData({ ...formData, content: value })}
             documents={documents}
             currentComponents={formData.components}
             onComponentAdd={handleAutocompleteComponentAdd}
-            rows={Object.keys(formData.components).length > 0 ? 10 : 15}
             placeholder={Object.keys(formData.components).length > 0 ?
               "Enter your template with placeholders like {{key}}... Start typing {{abc to see autocomplete suggestions!" :
               "Enter your document content... Type {{abc to add component references with autocomplete!"
             }
             className="form-textarea"
+            height="75vh"
           />
         </label>
         <small className="form-help">
