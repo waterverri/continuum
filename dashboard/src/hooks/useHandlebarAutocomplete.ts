@@ -145,9 +145,31 @@ export function useHandlebarAutocomplete({
     const absoluteLeft = textareaRect.left + (spanRect.left - mirrorRect.left) + parseInt(style.paddingLeft || '0');
     const absoluteTop = textareaRect.top + (spanRect.top - mirrorRect.top) + parseInt(style.paddingTop || '0');
 
-    // Convert to relative coordinates by subtracting container position
-    const relativeLeft = absoluteLeft - containerRect.left;
-    const relativeTop = absoluteTop - containerRect.top + 22; // 22px below cursor
+    // Account for scroll offsets in all scrollable ancestors
+    let scrollOffsetX = 0;
+    let scrollOffsetY = 0;
+    let element = textarea.parentElement;
+
+    while (element && element !== document.body) {
+      const computedStyle = window.getComputedStyle(element);
+      const isScrollable = computedStyle.overflow === 'auto' ||
+                          computedStyle.overflow === 'scroll' ||
+                          computedStyle.overflowX === 'auto' ||
+                          computedStyle.overflowX === 'scroll' ||
+                          computedStyle.overflowY === 'auto' ||
+                          computedStyle.overflowY === 'scroll';
+
+      if (isScrollable || element.scrollTop > 0 || element.scrollLeft > 0) {
+        scrollOffsetX += element.scrollLeft;
+        scrollOffsetY += element.scrollTop;
+      }
+
+      element = element.parentElement;
+    }
+
+    // Convert to relative coordinates by subtracting container position and adding scroll offsets
+    const relativeLeft = absoluteLeft - containerRect.left - scrollOffsetX;
+    const relativeTop = absoluteTop - containerRect.top - scrollOffsetY + 22; // 22px below cursor
 
     return { top: relativeTop, left: relativeLeft };
   }, [getCursorPosition]);
