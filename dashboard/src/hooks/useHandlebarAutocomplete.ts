@@ -86,14 +86,13 @@ export function useHandlebarAutocomplete({
     return textareaRef.current.selectionStart || 0;
   }, []);
 
-  // Function to get text caret position in pixels (simpler approach)
+  // Function to get text caret position relative to textarea container
   const getCaretCoordinates = useCallback((): { top: number; left: number } => {
     if (!textareaRef.current) {
       return { top: 0, left: 0 };
     }
 
     const textarea = textareaRef.current;
-    const rect = textarea.getBoundingClientRect();
     const cursorPos = getCursorPosition();
     const text = textarea.value;
 
@@ -128,17 +127,29 @@ export function useHandlebarAutocomplete({
 
     document.body.appendChild(mirror);
 
-    // Get the position of the measuring span
+    // Get the position of the measuring span relative to mirror
     const spanRect = measureSpan.getBoundingClientRect();
     const mirrorRect = mirror.getBoundingClientRect();
 
+    // Get textarea position for relative calculation
+    const textareaRect = textarea.getBoundingClientRect();
+    const containerRect = textarea.parentElement?.getBoundingClientRect();
+
     document.body.removeChild(mirror);
 
-    // Calculate position relative to viewport
-    const left = rect.left + (spanRect.left - mirrorRect.left) + parseInt(style.paddingLeft || '0');
-    const top = rect.top + (spanRect.top - mirrorRect.top) + parseInt(style.paddingTop || '0') + 20; // 20px below cursor
+    if (!containerRect) {
+      return { top: 0, left: 0 };
+    }
 
-    return { top, left };
+    // Calculate absolute cursor position
+    const absoluteLeft = textareaRect.left + (spanRect.left - mirrorRect.left) + parseInt(style.paddingLeft || '0');
+    const absoluteTop = textareaRect.top + (spanRect.top - mirrorRect.top) + parseInt(style.paddingTop || '0');
+
+    // Convert to relative coordinates by subtracting container position
+    const relativeLeft = absoluteLeft - containerRect.left;
+    const relativeTop = absoluteTop - containerRect.top + 22; // 22px below cursor
+
+    return { top: relativeTop, left: relativeLeft };
   }, [getCursorPosition]);
 
   // Handle text input and detect handlebars
