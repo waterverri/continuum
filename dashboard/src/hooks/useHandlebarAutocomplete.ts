@@ -86,62 +86,59 @@ export function useHandlebarAutocomplete({
     return textareaRef.current.selectionStart || 0;
   }, []);
 
-  // Function to get text caret position in pixels
+  // Function to get text caret position in pixels (simpler approach)
   const getCaretCoordinates = useCallback((): { top: number; left: number } => {
     if (!textareaRef.current) {
       return { top: 0, left: 0 };
     }
 
     const textarea = textareaRef.current;
-    const text = textarea.value;
+    const rect = textarea.getBoundingClientRect();
     const cursorPos = getCursorPosition();
+    const text = textarea.value;
 
-    // Create a temporary div to measure text
-    const div = document.createElement('div');
+    // Create a temporary element to measure the text before cursor
+    const mirror = document.createElement('div');
     const style = window.getComputedStyle(textarea);
 
-    // Copy textarea styles to div
-    div.style.font = style.font;
-    div.style.fontFamily = style.fontFamily;
-    div.style.fontSize = style.fontSize;
-    div.style.fontWeight = style.fontWeight;
-    div.style.lineHeight = style.lineHeight;
-    div.style.letterSpacing = style.letterSpacing;
-    div.style.padding = style.padding;
-    div.style.border = style.border;
-    div.style.boxSizing = style.boxSizing;
-    div.style.width = style.width;
-    div.style.whiteSpace = 'pre-wrap';
-    div.style.wordWrap = 'break-word';
-    div.style.position = 'absolute';
-    div.style.visibility = 'hidden';
-    div.style.top = '-9999px';
-    div.style.left = '-9999px';
+    // Copy relevant styles to mirror
+    mirror.style.font = style.font;
+    mirror.style.fontSize = style.fontSize;
+    mirror.style.fontFamily = style.fontFamily;
+    mirror.style.lineHeight = style.lineHeight;
+    mirror.style.padding = style.padding;
+    mirror.style.border = style.border;
+    mirror.style.width = style.width;
+    mirror.style.whiteSpace = 'pre-wrap';
+    mirror.style.wordWrap = 'break-word';
+    mirror.style.position = 'absolute';
+    mirror.style.visibility = 'hidden';
+    mirror.style.top = '-9999px';
+    mirror.style.left = '-9999px';
+    mirror.style.overflow = 'hidden';
 
-    // Split text at cursor position
+    // Get text up to cursor position
     const textBeforeCursor = text.substring(0, cursorPos);
-    const textAfterCursor = text.substring(cursorPos);
+    mirror.textContent = textBeforeCursor;
 
-    // Create content with a span at cursor position
-    div.innerHTML =
-      textBeforeCursor.replace(/\n/g, '<br>') +
-      '<span id="caret" style="position: relative;"></span>' +
-      textAfterCursor.replace(/\n/g, '<br>');
+    // Add a measuring span at the end
+    const measureSpan = document.createElement('span');
+    measureSpan.textContent = '|';
+    mirror.appendChild(measureSpan);
 
-    document.body.appendChild(div);
+    document.body.appendChild(mirror);
 
-    const span = div.querySelector('#caret') as HTMLSpanElement;
-    const spanRect = span.getBoundingClientRect();
-    const textareaRect = textarea.getBoundingClientRect();
-    const divRect = div.getBoundingClientRect();
+    // Get the position of the measuring span
+    const spanRect = measureSpan.getBoundingClientRect();
+    const mirrorRect = mirror.getBoundingClientRect();
 
-    document.body.removeChild(div);
+    document.body.removeChild(mirror);
 
-    // Calculate position relative to textarea
-    const top = spanRect.top - divRect.top + textareaRect.top - textarea.scrollTop;
-    const left = spanRect.left - divRect.left + textareaRect.left - textarea.scrollLeft;
+    // Calculate position relative to viewport
+    const left = rect.left + (spanRect.left - mirrorRect.left) + parseInt(style.paddingLeft || '0');
+    const top = rect.top + (spanRect.top - mirrorRect.top) + parseInt(style.paddingTop || '0') + 20; // 20px below cursor
 
-    return { top: top + 20, left }; // Add 20px offset for dropdown
+    return { top, left };
   }, [getCursorPosition]);
 
   // Handle text input and detect handlebars
