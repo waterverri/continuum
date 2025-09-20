@@ -51,11 +51,21 @@ export function ExtractButton({
   }, [contentRefs]);
 
   const handleExtract = useCallback(() => {
+    console.log('ExtractButton: handleExtract called');
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    if (!selection || selection.rangeCount === 0) {
+      console.log('ExtractButton: No selection found');
+      return;
+    }
 
     const selectedText = selection.toString().trim();
-    if (!selectedText) return;
+    if (!selectedText) {
+      console.log('ExtractButton: No selected text');
+      return;
+    }
+
+    console.log('ExtractButton: Selected text:', selectedText);
+    console.log('ExtractButton: Source document:', sourceDocument);
 
     // Calculate position in source text
     const fullText = sourceDocument.content || '';
@@ -68,11 +78,8 @@ export function ExtractButton({
     extractedTextRef.current = selectedText;
     extractedRangeRef.current = selectionRange;
 
-    // Clear the visual selection
-    selection.removeAllRanges();
-    setHasSelection(false);
-
-    // Open modal
+    console.log('ExtractButton: Opening modal with text:', selectedText);
+    // Open modal - keep selection visible
     setShowModal(true);
   }, [sourceDocument.content]);
 
@@ -107,13 +114,16 @@ export function ExtractButton({
       </button>
 
       {showModal && (
-        <ExtractTextModal
-          sourceDocument={sourceDocument}
-          selectedText={extractedTextRef.current}
-          allDocuments={allDocuments}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-        />
+        <>
+          {console.log('ExtractButton: Rendering modal, showModal:', showModal, 'selectedText:', extractedTextRef.current)}
+          <ExtractTextModal
+            sourceDocument={sourceDocument}
+            selectedText={extractedTextRef.current}
+            allDocuments={allDocuments}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        </>
       )}
     </>
   );
