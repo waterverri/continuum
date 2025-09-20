@@ -52,8 +52,8 @@ export function DocumentViewer({
   aiProviders = [],
   accessToken = ''
 }: DocumentViewerProps) {
-  const [selectedText, setSelectedText] = useState('');
-  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
+  const selectedTextRef = useRef('');
+  const selectionRangeRef = useRef<{ start: number; end: number } | null>(null);
   const [showCreateButton, setShowCreateButton] = useState(false);
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -81,6 +81,7 @@ export function DocumentViewer({
   
   // Get current document based on active tab
   const currentDocument = groupDocuments.find(doc => doc.document_type === activeTab) || document;
+
   
   // Update active tab when document changes
   useEffect(() => {
@@ -98,8 +99,8 @@ export function DocumentViewer({
       try {
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) {
-          setSelectedText('');
-          setSelectionRange(null);
+          selectedTextRef.current = '';
+          selectionRangeRef.current = null;
           setShowCreateButton(false);
           return;
         }
@@ -108,8 +109,8 @@ export function DocumentViewer({
         const selectedText = selection.toString().trim();
 
         if (!selectedText || range.collapsed) {
-          setSelectedText('');
-          setSelectionRange(null);
+          selectedTextRef.current = '';
+          selectionRangeRef.current = null;
           setShowCreateButton(false);
           return;
         }
@@ -127,30 +128,30 @@ export function DocumentViewer({
             const startIndex = fullText.indexOf(selectedText);
 
             if (startIndex !== -1) {
-              setSelectedText(selectedText);
-              setSelectionRange({
+              selectedTextRef.current = selectedText;
+              selectionRangeRef.current = {
                 start: startIndex,
                 end: startIndex + selectedText.length
-              });
+              };
               setShowCreateButton(true);
             } else {
-              setSelectedText(selectedText);
-              setSelectionRange({ start: 0, end: selectedText.length });
+              selectedTextRef.current = selectedText;
+              selectionRangeRef.current = { start: 0, end: selectedText.length };
               setShowCreateButton(true);
             }
           } else {
-            setSelectedText(selectedText);
-            setSelectionRange({ start: 0, end: selectedText.length });
+            selectedTextRef.current = selectedText;
+            selectionRangeRef.current = { start: 0, end: selectedText.length };
             setShowCreateButton(true);
           }
         } else {
-          setSelectedText('');
-          setSelectionRange(null);
+          selectedTextRef.current = '';
+          selectionRangeRef.current = null;
           setShowCreateButton(false);
         }
       } catch (error) {
-        setSelectedText('');
-        setSelectionRange(null);
+        selectedTextRef.current = '';
+        selectionRangeRef.current = null;
         setShowCreateButton(false);
       }
     }, 0);
@@ -165,10 +166,10 @@ export function DocumentViewer({
 
   const handleExtractConfirm = useCallback((title: string, documentType: string, groupId?: string) => {
     try {
-      if (selectedText && selectionRange && onCreateFromSelection) {
-        onCreateFromSelection(selectedText, selectionRange, title, documentType, groupId);
-        setSelectedText('');
-        setSelectionRange(null);
+      if (selectedTextRef.current && selectionRangeRef.current && onCreateFromSelection) {
+        onCreateFromSelection(selectedTextRef.current, selectionRangeRef.current, title, documentType, groupId);
+        selectedTextRef.current = '';
+        selectionRangeRef.current = null;
         setShowCreateButton(false);
         setShowExtractModal(false);
         window.getSelection()?.removeAllRanges();
@@ -176,12 +177,12 @@ export function DocumentViewer({
     } catch (error) {
       console.error('Error creating document from selection:', error);
       // Reset state on error
-      setSelectedText('');
-      setSelectionRange(null);
+      selectedTextRef.current = '';
+      selectionRangeRef.current = null;
       setShowCreateButton(false);
       setShowExtractModal(false);
     }
-  }, [selectedText, selectionRange, onCreateFromSelection]);
+  }, [onCreateFromSelection]);
 
   const handleExtractCancel = useCallback(() => {
     setShowExtractModal(false);
@@ -308,9 +309,9 @@ export function DocumentViewer({
           >
             ⚡ Transform
           </button>
-          {showCreateButton && selectedText && (
+          {showCreateButton && selectedTextRef.current && (
             <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
-              📄 Extract "{selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}"
+              📄 Extract "{selectedTextRef.current.length > 20 ? selectedTextRef.current.substring(0, 20) + '...' : selectedTextRef.current}"
             </button>
           )}
           <button
@@ -497,7 +498,7 @@ export function DocumentViewer({
       {showExtractModal && (
         <ExtractTextModal
           sourceDocument={currentDocument}
-          selectedText={selectedText}
+          selectedText={selectedTextRef.current}
           allDocuments={allDocuments}
           onConfirm={handleExtractConfirm}
           onCancel={handleExtractCancel}
