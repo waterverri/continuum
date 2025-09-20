@@ -161,12 +161,39 @@ export function DocumentViewer({
 
           if (startIndex !== -1) {
             console.log('📍 Found exact position in raw content:', startIndex);
+            console.log('🔧 Setting state: selectedText, selectionRange, showCreateButton');
+
+            // Store the current selection before state updates
+            const currentRange = range.cloneRange();
+
             setSelectedText(selectedText);
             setSelectionRange({
               start: startIndex,
               end: startIndex + selectedText.length
             });
             setShowCreateButton(true);
+
+            // Restore selection after React re-render
+            setTimeout(() => {
+              const currentSelection = window.getSelection();
+              console.log('🔍 Selection after state update:', {
+                rangeCount: currentSelection?.rangeCount,
+                toString: currentSelection?.toString(),
+                isCollapsed: currentSelection?.isCollapsed
+              });
+
+              // If selection was cleared, restore it
+              if (!currentSelection || currentSelection.rangeCount === 0 || currentSelection.isCollapsed) {
+                console.log('🔄 Restoring cleared selection');
+                try {
+                  currentSelection?.removeAllRanges();
+                  currentSelection?.addRange(currentRange);
+                  console.log('✅ Selection restored');
+                } catch (error) {
+                  console.warn('❌ Failed to restore selection:', error);
+                }
+              }
+            }, 50);
           } else {
             console.log('🔍 Could not find exact position, using fallback');
             setSelectedText(selectedText);
@@ -192,6 +219,15 @@ export function DocumentViewer({
       setShowCreateButton(false);
     }
   }, [document.content]);
+
+  // Debug state changes that might affect selection
+  useEffect(() => {
+    console.log('🔄 State changed:', {
+      selectedText: selectedText.slice(0, 20) + (selectedText.length > 20 ? '...' : ''),
+      showCreateButton,
+      selectionRange: selectionRange ? `${selectionRange.start}-${selectionRange.end}` : null
+    });
+  }, [selectedText, showCreateButton, selectionRange]);
 
   // Remove the problematic global selection change listener that interferes with selection
   // We'll rely only on the direct mouse/touch events which work better with markdown rendering
