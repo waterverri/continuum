@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { marked } from 'marked';
 import type { Document, DocumentHistoryResponse, DocumentHistory, AIProvider } from '../api';
 import { clearChatMessages } from '../api';
-import { ExtractTextModal } from './ExtractTextModal';
+import { ExtractButton } from './ExtractButton';
 import { InlineTagManager } from './InlineTagManager';
 import DocumentHistoryModal from './DocumentHistoryModal';
 import { AIChatModal } from './AIChatModal';
@@ -53,9 +53,8 @@ export function DocumentViewer({
   aiProviders = [],
   accessToken = ''
 }: DocumentViewerProps) {
-  const selectedTextRef = useRef('');
-  const selectionRangeRef = useRef<{ start: number; end: number } | null>(null);
-  const [showExtractModal, setShowExtractModal] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showTransformModal, setShowTransformModal] = useState(false);
@@ -93,87 +92,62 @@ export function DocumentViewer({
   }, [document.id, document.document_type, document.components]);
 
   const handleTextSelection = useCallback(() => {
-    // Use setTimeout to defer state updates so React doesn't immediately re-render
-    // and destroy the selection during the mouseup event
-    setTimeout(() => {
-      try {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) {
-          selectedTextRef.current = '';
-          selectionRangeRef.current = null;
-          return;
-        }
+    try {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setSelectedText('');
+        setSelectionRange(null);
+        return;
+      }
 
-        const range = selection.getRangeAt(0);
-        const selectedText = selection.toString().trim();
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
 
-        if (!selectedText || range.collapsed) {
-          selectedTextRef.current = '';
-          selectionRangeRef.current = null;
-          return;
-        }
+      if (!selectedText || range.collapsed) {
+        setSelectedText('');
+        setSelectionRange(null);
+        return;
+      }
 
-        const isInRawContent = contentRef.current && range.commonAncestorContainer &&
-            (contentRef.current.contains(range.commonAncestorContainer) ||
-             contentRef.current === range.commonAncestorContainer);
-        const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer &&
-            (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
-             resolvedContentRef.current === range.commonAncestorContainer);
+      const isInRawContent = contentRef.current && range.commonAncestorContainer &&
+          (contentRef.current.contains(range.commonAncestorContainer) ||
+           contentRef.current === range.commonAncestorContainer);
+      const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer &&
+          (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
+           resolvedContentRef.current === range.commonAncestorContainer);
 
-        if (selectedText && (isInRawContent || isInResolvedContent)) {
-          if (isInRawContent) {
-            const fullText = document.content || '';
-            const startIndex = fullText.indexOf(selectedText);
+      if (selectedText && (isInRawContent || isInResolvedContent)) {
+        if (isInRawContent) {
+          const fullText = document.content || '';
+          const startIndex = fullText.indexOf(selectedText);
 
-            if (startIndex !== -1) {
-              selectedTextRef.current = selectedText;
-              selectionRangeRef.current = {
-                start: startIndex,
-                end: startIndex + selectedText.length
-              };
-            } else {
-              selectedTextRef.current = selectedText;
-              selectionRangeRef.current = { start: 0, end: selectedText.length };
-            }
+          if (startIndex !== -1) {
+            setSelectedText(selectedText);
+            setSelectionRange({
+              start: startIndex,
+              end: startIndex + selectedText.length
+            });
           } else {
-            selectedTextRef.current = selectedText;
-            selectionRangeRef.current = { start: 0, end: selectedText.length };
+            setSelectedText(selectedText);
+            setSelectionRange({ start: 0, end: selectedText.length });
           }
         } else {
-          selectedTextRef.current = '';
-          selectionRangeRef.current = null;
+          setSelectedText(selectedText);
+          setSelectionRange({ start: 0, end: selectedText.length });
         }
-      } catch (error) {
-        selectedTextRef.current = '';
-        selectionRangeRef.current = null;
-      }
-    }, 0);
-  }, [document.content]);
-
-  // Remove the problematic global selection change listener that interferes with selection
-  // We'll rely only on the direct mouse/touch events which work better with markdown rendering
-
-
-  const handleExtractConfirm = useCallback((title: string, documentType: string, groupId?: string) => {
-    try {
-      if (selectedTextRef.current && selectionRangeRef.current && onCreateFromSelection) {
-        onCreateFromSelection(selectedTextRef.current, selectionRangeRef.current, title, documentType, groupId);
-        selectedTextRef.current = '';
-        selectionRangeRef.current = null;
-        setShowExtractModal(false);
-        window.getSelection()?.removeAllRanges();
+      } else {
+        setSelectedText('');
+        setSelectionRange(null);
       }
     } catch (error) {
-      console.error('Error creating document from selection:', error);
-      // Reset state on error
-      selectedTextRef.current = '';
-      selectionRangeRef.current = null;
-      setShowExtractModal(false);
+      setSelectedText('');
+      setSelectionRange(null);
     }
-  }, [onCreateFromSelection]);
+  }, [document.content]);
 
-  const handleExtractCancel = useCallback(() => {
-    setShowExtractModal(false);
+  const handleExtractClear = useCallback(() => {
+    setSelectedText('');
+    setSelectionRange(null);
   }, []);
 
   const handleRollback = useCallback(async (historyId: string) => {
@@ -407,11 +381,6 @@ export function DocumentViewer({
                 ref={contentRef}
                 className="document-reader document-reader--raw"
                 onMouseUp={handleTextSelection}
-                onDoubleClick={() => {
-                  if (selectedTextRef.current) {
-                    setShowExtractModal(true);
-                  }
-                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(currentDocument.content || '*No content*') as string
@@ -427,11 +396,6 @@ export function DocumentViewer({
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
                 onMouseUp={handleTextSelection}
-                onDoubleClick={() => {
-                  if (selectedTextRef.current) {
-                    setShowExtractModal(true);
-                  }
-                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(resolvedContent) as string
@@ -478,11 +442,6 @@ export function DocumentViewer({
                 ref={contentRef}
                 className="document-reader document-reader--raw"
                 onMouseUp={handleTextSelection}
-                onDoubleClick={() => {
-                  if (selectedTextRef.current) {
-                    setShowExtractModal(true);
-                  }
-                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(currentDocument.content || '*No content*') as string
@@ -493,15 +452,17 @@ export function DocumentViewer({
         </>
       )}
 
-      {showExtractModal && (
-        <ExtractTextModal
+      {/* Extract Button - positioned as floating button */}
+      <div className="extract-button-container">
+        <ExtractButton
           sourceDocument={currentDocument}
-          selectedText={selectedTextRef.current}
           allDocuments={allDocuments}
-          onConfirm={handleExtractConfirm}
-          onCancel={handleExtractCancel}
+          selectedText={selectedText}
+          selectionRange={selectionRange}
+          onCreateFromSelection={onCreateFromSelection}
+          onExtract={handleExtractClear}
         />
-      )}
+      </div>
       
       {showHistoryModal && loadDocumentHistory && loadHistoryEntry && (
         <DocumentHistoryModal

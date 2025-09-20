@@ -637,6 +637,30 @@
   margin: var(--spacing-md) 0;
 }
 
+/* Extract Button Container */
+.extract-button-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.extract-btn {
+  box-shadow: var(--shadow-lg);
+  animation: slideInUp 0.2s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Document Section Toggles */
 .document-section-toggles {
   display: flex;
