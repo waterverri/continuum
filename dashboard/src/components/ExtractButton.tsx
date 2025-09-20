@@ -1,46 +1,80 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Document } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
 interface ExtractButtonProps {
   sourceDocument: Document;
   allDocuments: Document[];
-  selectedText: string;
-  selectionRange: { start: number; end: number } | null;
   onCreateFromSelection?: (selectedText: string, selectionInfo: { start: number; end: number }, title: string, documentType: string, groupId?: string) => void;
-  onExtract?: () => void; // Called when extraction is initiated to clear selection
+  contentRefs: React.RefObject<HTMLDivElement | null>[];
 }
 
 export function ExtractButton({
   sourceDocument,
   allDocuments,
-  selectedText,
-  selectionRange,
   onCreateFromSelection,
-  onExtract
+  contentRefs
 }: ExtractButtonProps) {
   const [showModal, setShowModal] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
   const extractedTextRef = useRef('');
   const extractedRangeRef = useRef<{ start: number; end: number } | null>(null);
 
+  // Listen for text selection changes
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setHasSelection(false);
+        return;
+      }
+
+      const selectedText = selection.toString().trim();
+      if (!selectedText || selection.getRangeAt(0).collapsed) {
+        setHasSelection(false);
+        return;
+      }
+
+      // Check if selection is within markdown content areas
+      const range = selection.getRangeAt(0);
+      const isInMarkdownContent = contentRefs.some(ref => {
+        if (!ref.current || !range.commonAncestorContainer) return false;
+        return ref.current.contains(range.commonAncestorContainer) ||
+               ref.current === range.commonAncestorContainer;
+      });
+
+      setHasSelection(isInMarkdownContent);
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [contentRefs]);
+
   const handleExtract = useCallback(() => {
-    if (!selectedText || !selectionRange) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
+
+    // Calculate position in source text
+    const fullText = sourceDocument.content || '';
+    const startIndex = fullText.indexOf(selectedText);
+    const selectionRange = startIndex !== -1
+      ? { start: startIndex, end: startIndex + selectedText.length }
+      : { start: 0, end: selectedText.length };
 
     // Capture the selection data before any state changes
     extractedTextRef.current = selectedText;
     extractedRangeRef.current = selectionRange;
 
     // Clear the visual selection
-    window.getSelection()?.removeAllRanges();
+    selection.removeAllRanges();
+    setHasSelection(false);
 
-    // Notify parent to clear its selection tracking
-    if (onExtract) {
-      onExtract();
-    }
-
-    // Open modal - this won't affect the markdown content since it's in a separate component
+    // Open modal
     setShowModal(true);
-  }, [selectedText, selectionRange, onExtract]);
+  }, [sourceDocument.content]);
 
   const handleConfirm = useCallback((title: string, documentType: string, groupId?: string) => {
     if (extractedTextRef.current && extractedRangeRef.current && onCreateFromSelection) {
@@ -58,7 +92,7 @@ export function ExtractButton({
   }, []);
 
   // Don't render if no text is selected
-  if (!selectedText || !selectionRange) {
+  if (!hasSelection) {
     return null;
   }
 

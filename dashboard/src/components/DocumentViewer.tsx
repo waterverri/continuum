@@ -53,8 +53,6 @@ export function DocumentViewer({
   aiProviders = [],
   accessToken = ''
 }: DocumentViewerProps) {
-  const [selectedText, setSelectedText] = useState('');
-  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showTransformModal, setShowTransformModal] = useState(false);
@@ -91,64 +89,6 @@ export function DocumentViewer({
     setComponentsVisible(!hasComponents);
   }, [document.id, document.document_type, document.components]);
 
-  const handleTextSelection = useCallback(() => {
-    try {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        setSelectedText('');
-        setSelectionRange(null);
-        return;
-      }
-
-      const range = selection.getRangeAt(0);
-      const selectedText = selection.toString().trim();
-
-      if (!selectedText || range.collapsed) {
-        setSelectedText('');
-        setSelectionRange(null);
-        return;
-      }
-
-      const isInRawContent = contentRef.current && range.commonAncestorContainer &&
-          (contentRef.current.contains(range.commonAncestorContainer) ||
-           contentRef.current === range.commonAncestorContainer);
-      const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer &&
-          (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
-           resolvedContentRef.current === range.commonAncestorContainer);
-
-      if (selectedText && (isInRawContent || isInResolvedContent)) {
-        if (isInRawContent) {
-          const fullText = document.content || '';
-          const startIndex = fullText.indexOf(selectedText);
-
-          if (startIndex !== -1) {
-            setSelectedText(selectedText);
-            setSelectionRange({
-              start: startIndex,
-              end: startIndex + selectedText.length
-            });
-          } else {
-            setSelectedText(selectedText);
-            setSelectionRange({ start: 0, end: selectedText.length });
-          }
-        } else {
-          setSelectedText(selectedText);
-          setSelectionRange({ start: 0, end: selectedText.length });
-        }
-      } else {
-        setSelectedText('');
-        setSelectionRange(null);
-      }
-    } catch (error) {
-      setSelectedText('');
-      setSelectionRange(null);
-    }
-  }, [document.content]);
-
-  const handleExtractClear = useCallback(() => {
-    setSelectedText('');
-    setSelectionRange(null);
-  }, []);
 
   const handleRollback = useCallback(async (historyId: string) => {
     if (!onRollback) return;
@@ -380,7 +320,6 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
-                onMouseUp={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(currentDocument.content || '*No content*') as string
@@ -395,7 +334,6 @@ export function DocumentViewer({
               <div
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
-                onMouseUp={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(resolvedContent) as string
@@ -441,7 +379,6 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
-                onMouseUp={handleTextSelection}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(currentDocument.content || '*No content*') as string
@@ -457,10 +394,8 @@ export function DocumentViewer({
         <ExtractButton
           sourceDocument={currentDocument}
           allDocuments={allDocuments}
-          selectedText={selectedText}
-          selectionRange={selectionRange}
           onCreateFromSelection={onCreateFromSelection}
-          onExtract={handleExtractClear}
+          contentRefs={[contentRef, resolvedContentRef]}
         />
       </div>
       
