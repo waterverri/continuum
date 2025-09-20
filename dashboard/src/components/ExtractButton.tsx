@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Document } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
@@ -108,10 +109,13 @@ export function ExtractButton({
   }, []);
 
   // Don't render if no text is selected
+  console.log('ExtractButton: Render check - hasSelection:', hasSelection);
   if (!hasSelection) {
+    console.log('ExtractButton: Not rendering - no selection');
     return null;
   }
 
+  console.log('ExtractButton: Rendering button');
   return (
     <>
       <button
@@ -122,19 +126,18 @@ export function ExtractButton({
         💡 Extract
       </button>
 
-      {showModal && (
+      {showModal && createPortal(
         <>
-          {console.log('ExtractButton: Rendering modal, showModal:', showModal, 'selectedText:', extractedTextRef.current)}
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3000 }}>
-            <ExtractTextModal
-              sourceDocument={sourceDocument}
-              selectedText={extractedTextRef.current}
-              allDocuments={allDocuments}
-              onConfirm={handleConfirm}
-              onCancel={handleCancel}
-            />
-          </div>
-        </>
+          {console.log('ExtractButton: Rendering modal via portal, showModal:', showModal, 'selectedText:', extractedTextRef.current)}
+          <ExtractTextModal
+            sourceDocument={sourceDocument}
+            selectedText={extractedTextRef.current}
+            allDocuments={allDocuments}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        </>,
+        document.body
       )}
     </>
   );
