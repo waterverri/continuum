@@ -486,11 +486,11 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
-                onMouseUp={(e) => {
+                onMouseUp={() => {
                   console.log('🖱️ MouseUp event fired');
                   handleTextSelection();
                 }}
-                onTouchEnd={(e) => {
+                onTouchEnd={() => {
                   console.log('👆 TouchEnd event fired');
                   handleTextSelection();
                 }}
@@ -508,11 +508,11 @@ export function DocumentViewer({
               <div
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
-                onMouseUp={(e) => {
+                onMouseUp={() => {
                   console.log('🖱️ MouseUp event fired');
                   handleTextSelection();
                 }}
-                onTouchEnd={(e) => {
+                onTouchEnd={() => {
                   console.log('👆 TouchEnd event fired');
                   handleTextSelection();
                 }}
@@ -561,11 +561,11 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
-                onMouseUp={(e) => {
+                onMouseUp={() => {
                   console.log('🖱️ MouseUp event fired');
                   handleTextSelection();
                 }}
-                onTouchEnd={(e) => {
+                onTouchEnd={() => {
                   console.log('👆 TouchEnd event fired');
                   handleTextSelection();
                 }}
