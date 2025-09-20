@@ -74,7 +74,7 @@ export function DocumentViewer({
   const toggleComponents = () => setComponentsVisible(!componentsVisible);
   const contentRef = useRef<HTMLDivElement>(null);
   const resolvedContentRef = useRef<HTMLDivElement>(null);
-  const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSelectingRef = useRef(false);
 
   // Get documents in the same group
   const groupDocuments = document.group_id 
@@ -193,35 +193,8 @@ export function DocumentViewer({
     }
   }, [document.content]);
 
-  // Add global selection change listener for better text selection handling
-  useEffect(() => {
-    const handleGlobalSelectionChange = () => {
-      console.log('🌐 Global selectionchange event fired');
-      // Clear any existing timeout
-      if (selectionTimeoutRef.current) {
-        console.log('⏰ Clearing existing timeout');
-        clearTimeout(selectionTimeoutRef.current);
-      }
-
-      // Set a new timeout to handle the selection
-      console.log('⏰ Setting new timeout (50ms delay)');
-      selectionTimeoutRef.current = setTimeout(() => {
-        console.log('⏰ Timeout executed, calling handleTextSelection');
-        handleTextSelection();
-      }, 50);
-    };
-
-    console.log('🎧 Adding global selectionchange listener');
-    window.document.addEventListener('selectionchange', handleGlobalSelectionChange);
-
-    return () => {
-      console.log('🧹 Cleaning up global selectionchange listener');
-      window.document.removeEventListener('selectionchange', handleGlobalSelectionChange);
-      if (selectionTimeoutRef.current) {
-        clearTimeout(selectionTimeoutRef.current);
-      }
-    };
-  }, [handleTextSelection]);
+  // Remove the problematic global selection change listener that interferes with selection
+  // We'll rely only on the direct mouse/touch events which work better with markdown rendering
 
   const handleShowExtractModal = useCallback(() => {
     setShowExtractModal(true);
@@ -486,13 +459,29 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
+                onMouseDown={() => {
+                  console.log('🖱️ MouseDown - starting selection');
+                  isSelectingRef.current = true;
+                }}
                 onMouseUp={() => {
                   console.log('🖱️ MouseUp event fired');
-                  handleTextSelection();
+                  // Small delay to ensure selection is complete
+                  setTimeout(() => {
+                    handleTextSelection();
+                    isSelectingRef.current = false;
+                  }, 10);
+                }}
+                onTouchStart={() => {
+                  console.log('👆 TouchStart - starting selection');
+                  isSelectingRef.current = true;
                 }}
                 onTouchEnd={() => {
                   console.log('👆 TouchEnd event fired');
-                  handleTextSelection();
+                  // Small delay to ensure selection is complete
+                  setTimeout(() => {
+                    handleTextSelection();
+                    isSelectingRef.current = false;
+                  }, 10);
                 }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
@@ -508,13 +497,29 @@ export function DocumentViewer({
               <div
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
+                onMouseDown={() => {
+                  console.log('🖱️ MouseDown - starting selection');
+                  isSelectingRef.current = true;
+                }}
                 onMouseUp={() => {
                   console.log('🖱️ MouseUp event fired');
-                  handleTextSelection();
+                  // Small delay to ensure selection is complete
+                  setTimeout(() => {
+                    handleTextSelection();
+                    isSelectingRef.current = false;
+                  }, 10);
+                }}
+                onTouchStart={() => {
+                  console.log('👆 TouchStart - starting selection');
+                  isSelectingRef.current = true;
                 }}
                 onTouchEnd={() => {
                   console.log('👆 TouchEnd event fired');
-                  handleTextSelection();
+                  // Small delay to ensure selection is complete
+                  setTimeout(() => {
+                    handleTextSelection();
+                    isSelectingRef.current = false;
+                  }, 10);
                 }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
@@ -561,13 +566,29 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
+                onMouseDown={() => {
+                  console.log('🖱️ MouseDown - starting selection');
+                  isSelectingRef.current = true;
+                }}
                 onMouseUp={() => {
                   console.log('🖱️ MouseUp event fired');
-                  handleTextSelection();
+                  // Small delay to ensure selection is complete
+                  setTimeout(() => {
+                    handleTextSelection();
+                    isSelectingRef.current = false;
+                  }, 10);
+                }}
+                onTouchStart={() => {
+                  console.log('👆 TouchStart - starting selection');
+                  isSelectingRef.current = true;
                 }}
                 onTouchEnd={() => {
                   console.log('👆 TouchEnd event fired');
-                  handleTextSelection();
+                  // Small delay to ensure selection is complete
+                  setTimeout(() => {
+                    handleTextSelection();
+                    isSelectingRef.current = false;
+                  }, 10);
                 }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
