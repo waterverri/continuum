@@ -14,6 +14,7 @@ marked.setOptions({
   gfm: true,
 });
 
+
 interface DocumentViewerProps {
   document: Document;
   allDocuments: Document[];
@@ -54,7 +55,6 @@ export function DocumentViewer({
 }: DocumentViewerProps) {
   const selectedTextRef = useRef('');
   const selectionRangeRef = useRef<{ start: number; end: number } | null>(null);
-  const [showCreateButton, setShowCreateButton] = useState(false);
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -101,7 +101,6 @@ export function DocumentViewer({
         if (!selection || selection.rangeCount === 0) {
           selectedTextRef.current = '';
           selectionRangeRef.current = null;
-          setShowCreateButton(false);
           return;
         }
 
@@ -111,7 +110,6 @@ export function DocumentViewer({
         if (!selectedText || range.collapsed) {
           selectedTextRef.current = '';
           selectionRangeRef.current = null;
-          setShowCreateButton(false);
           return;
         }
 
@@ -133,26 +131,21 @@ export function DocumentViewer({
                 start: startIndex,
                 end: startIndex + selectedText.length
               };
-              setShowCreateButton(true);
             } else {
               selectedTextRef.current = selectedText;
               selectionRangeRef.current = { start: 0, end: selectedText.length };
-              setShowCreateButton(true);
             }
           } else {
             selectedTextRef.current = selectedText;
             selectionRangeRef.current = { start: 0, end: selectedText.length };
-            setShowCreateButton(true);
           }
         } else {
           selectedTextRef.current = '';
           selectionRangeRef.current = null;
-          setShowCreateButton(false);
         }
       } catch (error) {
         selectedTextRef.current = '';
         selectionRangeRef.current = null;
-        setShowCreateButton(false);
       }
     }, 0);
   }, [document.content]);
@@ -160,9 +153,6 @@ export function DocumentViewer({
   // Remove the problematic global selection change listener that interferes with selection
   // We'll rely only on the direct mouse/touch events which work better with markdown rendering
 
-  const handleShowExtractModal = useCallback(() => {
-    setShowExtractModal(true);
-  }, []);
 
   const handleExtractConfirm = useCallback((title: string, documentType: string, groupId?: string) => {
     try {
@@ -170,7 +160,6 @@ export function DocumentViewer({
         onCreateFromSelection(selectedTextRef.current, selectionRangeRef.current, title, documentType, groupId);
         selectedTextRef.current = '';
         selectionRangeRef.current = null;
-        setShowCreateButton(false);
         setShowExtractModal(false);
         window.getSelection()?.removeAllRanges();
       }
@@ -179,7 +168,6 @@ export function DocumentViewer({
       // Reset state on error
       selectedTextRef.current = '';
       selectionRangeRef.current = null;
-      setShowCreateButton(false);
       setShowExtractModal(false);
     }
   }, [onCreateFromSelection]);
@@ -309,11 +297,6 @@ export function DocumentViewer({
           >
             ⚡ Transform
           </button>
-          {showCreateButton && selectedTextRef.current && (
-            <button className="btn btn--primary" onClick={handleShowExtractModal} style={{ marginLeft: '0.5rem' }}>
-              📄 Extract "{selectedTextRef.current.length > 20 ? selectedTextRef.current.substring(0, 20) + '...' : selectedTextRef.current}"
-            </button>
-          )}
           <button
             className="document-viewer__hide-btn"
             onClick={toggleHeader}
@@ -424,6 +407,11 @@ export function DocumentViewer({
                 ref={contentRef}
                 className="document-reader document-reader--raw"
                 onMouseUp={handleTextSelection}
+                onDoubleClick={() => {
+                  if (selectedTextRef.current) {
+                    setShowExtractModal(true);
+                  }
+                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(currentDocument.content || '*No content*') as string
@@ -439,6 +427,11 @@ export function DocumentViewer({
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
                 onMouseUp={handleTextSelection}
+                onDoubleClick={() => {
+                  if (selectedTextRef.current) {
+                    setShowExtractModal(true);
+                  }
+                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(resolvedContent) as string
@@ -485,6 +478,11 @@ export function DocumentViewer({
                 ref={contentRef}
                 className="document-reader document-reader--raw"
                 onMouseUp={handleTextSelection}
+                onDoubleClick={() => {
+                  if (selectedTextRef.current) {
+                    setShowExtractModal(true);
+                  }
+                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: marked(currentDocument.content || '*No content*') as string
