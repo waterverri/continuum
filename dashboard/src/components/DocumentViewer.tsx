@@ -97,9 +97,18 @@ export function DocumentViewer({
   }, [document.id, document.document_type, document.components]);
 
   const handleTextSelection = useCallback(() => {
+    console.log('🔍 handleTextSelection called');
     try {
       const selection = window.getSelection();
+      console.log('📋 Selection object:', {
+        selection: selection,
+        rangeCount: selection?.rangeCount,
+        toString: selection?.toString(),
+        isCollapsed: selection?.isCollapsed
+      });
+
       if (!selection || selection.rangeCount === 0) {
+        console.log('❌ No selection or no ranges - clearing state');
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
@@ -108,9 +117,18 @@ export function DocumentViewer({
 
       const range = selection.getRangeAt(0);
       const selectedText = selection.toString().trim();
+      console.log('📝 Selection details:', {
+        selectedText: selectedText,
+        textLength: selectedText.length,
+        rangeCollapsed: range.collapsed,
+        commonAncestorContainer: range.commonAncestorContainer,
+        startContainer: range.startContainer,
+        endContainer: range.endContainer
+      });
 
       // Check if selection is empty or collapsed
       if (!selectedText || range.collapsed) {
+        console.log('❌ Empty or collapsed selection - clearing state');
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
@@ -125,13 +143,24 @@ export function DocumentViewer({
           (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
            resolvedContentRef.current === range.commonAncestorContainer);
 
+      console.log('🎯 Container check:', {
+        contentRefCurrent: !!contentRef.current,
+        resolvedContentRefCurrent: !!resolvedContentRef.current,
+        isInRawContent: isInRawContent,
+        isInResolvedContent: isInResolvedContent,
+        commonAncestorType: range.commonAncestorContainer?.nodeType,
+        commonAncestorName: range.commonAncestorContainer?.nodeName
+      });
+
       if (selectedText && (isInRawContent || isInResolvedContent)) {
+        console.log('✅ Valid selection found, setting state');
         if (isInRawContent) {
           // For raw content, try to find position in document content
           const fullText = document.content || '';
           const startIndex = fullText.indexOf(selectedText);
 
           if (startIndex !== -1) {
+            console.log('📍 Found exact position in raw content:', startIndex);
             setSelectedText(selectedText);
             setSelectionRange({
               start: startIndex,
@@ -139,26 +168,25 @@ export function DocumentViewer({
             });
             setShowCreateButton(true);
           } else {
-            // Even if we can't find exact position, still allow extraction
+            console.log('🔍 Could not find exact position, using fallback');
             setSelectedText(selectedText);
             setSelectionRange({ start: 0, end: selectedText.length });
             setShowCreateButton(true);
           }
         } else {
-          // For resolved content, we can't determine exact position in raw content
-          // but we can still extract the selected text
+          console.log('📄 Selection in resolved content');
           setSelectedText(selectedText);
           setSelectionRange({ start: 0, end: selectedText.length });
           setShowCreateButton(true);
         }
       } else {
+        console.log('❌ Selection not in valid container - clearing state');
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
       }
     } catch (error) {
-      // Silently handle any selection-related errors
-      console.warn('Text selection error:', error);
+      console.error('💥 Text selection error:', error);
       setSelectedText('');
       setSelectionRange(null);
       setShowCreateButton(false);
@@ -168,20 +196,26 @@ export function DocumentViewer({
   // Add global selection change listener for better text selection handling
   useEffect(() => {
     const handleGlobalSelectionChange = () => {
+      console.log('🌐 Global selectionchange event fired');
       // Clear any existing timeout
       if (selectionTimeoutRef.current) {
+        console.log('⏰ Clearing existing timeout');
         clearTimeout(selectionTimeoutRef.current);
       }
 
       // Set a new timeout to handle the selection
+      console.log('⏰ Setting new timeout (50ms delay)');
       selectionTimeoutRef.current = setTimeout(() => {
+        console.log('⏰ Timeout executed, calling handleTextSelection');
         handleTextSelection();
       }, 50);
     };
 
+    console.log('🎧 Adding global selectionchange listener');
     window.document.addEventListener('selectionchange', handleGlobalSelectionChange);
 
     return () => {
+      console.log('🧹 Cleaning up global selectionchange listener');
       window.document.removeEventListener('selectionchange', handleGlobalSelectionChange);
       if (selectionTimeoutRef.current) {
         clearTimeout(selectionTimeoutRef.current);
@@ -452,8 +486,14 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
-                onMouseUp={handleTextSelection}
-                onTouchEnd={handleTextSelection}
+                onMouseUp={(e) => {
+                  console.log('🖱️ MouseUp event fired');
+                  handleTextSelection();
+                }}
+                onTouchEnd={(e) => {
+                  console.log('👆 TouchEnd event fired');
+                  handleTextSelection();
+                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(currentDocument.content || '*No content*')
@@ -468,8 +508,14 @@ export function DocumentViewer({
               <div
                 ref={resolvedContentRef}
                 className="document-reader document-reader--resolved"
-                onMouseUp={handleTextSelection}
-                onTouchEnd={handleTextSelection}
+                onMouseUp={(e) => {
+                  console.log('🖱️ MouseUp event fired');
+                  handleTextSelection();
+                }}
+                onTouchEnd={(e) => {
+                  console.log('👆 TouchEnd event fired');
+                  handleTextSelection();
+                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(resolvedContent)
@@ -515,8 +561,14 @@ export function DocumentViewer({
               <div
                 ref={contentRef}
                 className="document-reader document-reader--raw"
-                onMouseUp={handleTextSelection}
-                onTouchEnd={handleTextSelection}
+                onMouseUp={(e) => {
+                  console.log('🖱️ MouseUp event fired');
+                  handleTextSelection();
+                }}
+                onTouchEnd={(e) => {
+                  console.log('👆 TouchEnd event fired');
+                  handleTextSelection();
+                }}
                 style={{ userSelect: 'text', cursor: 'text' }}
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(currentDocument.content || '*No content*')
