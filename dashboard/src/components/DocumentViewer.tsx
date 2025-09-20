@@ -92,64 +92,68 @@ export function DocumentViewer({
   }, [document.id, document.document_type, document.components]);
 
   const handleTextSelection = useCallback(() => {
-    try {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        setSelectedText('');
-        setSelectionRange(null);
-        setShowCreateButton(false);
-        return;
-      }
+    // Use setTimeout to defer state updates so React doesn't immediately re-render
+    // and destroy the selection during the mouseup event
+    setTimeout(() => {
+      try {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+          setSelectedText('');
+          setSelectionRange(null);
+          setShowCreateButton(false);
+          return;
+        }
 
-      const range = selection.getRangeAt(0);
-      const selectedText = selection.toString().trim();
+        const range = selection.getRangeAt(0);
+        const selectedText = selection.toString().trim();
 
-      if (!selectedText || range.collapsed) {
-        setSelectedText('');
-        setSelectionRange(null);
-        setShowCreateButton(false);
-        return;
-      }
+        if (!selectedText || range.collapsed) {
+          setSelectedText('');
+          setSelectionRange(null);
+          setShowCreateButton(false);
+          return;
+        }
 
-      const isInRawContent = contentRef.current && range.commonAncestorContainer &&
-          (contentRef.current.contains(range.commonAncestorContainer) ||
-           contentRef.current === range.commonAncestorContainer);
-      const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer &&
-          (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
-           resolvedContentRef.current === range.commonAncestorContainer);
+        const isInRawContent = contentRef.current && range.commonAncestorContainer &&
+            (contentRef.current.contains(range.commonAncestorContainer) ||
+             contentRef.current === range.commonAncestorContainer);
+        const isInResolvedContent = resolvedContentRef.current && range.commonAncestorContainer &&
+            (resolvedContentRef.current.contains(range.commonAncestorContainer) ||
+             resolvedContentRef.current === range.commonAncestorContainer);
 
-      if (selectedText && (isInRawContent || isInResolvedContent)) {
-        if (isInRawContent) {
-          const fullText = document.content || '';
-          const startIndex = fullText.indexOf(selectedText);
+        if (selectedText && (isInRawContent || isInResolvedContent)) {
+          if (isInRawContent) {
+            const fullText = document.content || '';
+            const startIndex = fullText.indexOf(selectedText);
 
-          if (startIndex !== -1) {
-            setSelectedText(selectedText);
-            setSelectionRange({
-              start: startIndex,
-              end: startIndex + selectedText.length
-            });
-            setShowCreateButton(true);
+            if (startIndex !== -1) {
+              setSelectedText(selectedText);
+              setSelectionRange({
+                start: startIndex,
+                end: startIndex + selectedText.length
+              });
+              setShowCreateButton(true);
+            } else {
+              setSelectedText(selectedText);
+              setSelectionRange({ start: 0, end: selectedText.length });
+              setShowCreateButton(true);
+            }
           } else {
             setSelectedText(selectedText);
             setSelectionRange({ start: 0, end: selectedText.length });
             setShowCreateButton(true);
           }
         } else {
-          setSelectedText(selectedText);
-          setSelectionRange({ start: 0, end: selectedText.length });
-          setShowCreateButton(true);
+          setSelectedText('');
+          setSelectionRange(null);
+          setShowCreateButton(false);
         }
-      } else {
+      } catch (error) {
         setSelectedText('');
         setSelectionRange(null);
         setShowCreateButton(false);
       }
-    } catch (error) {
-      setSelectedText('');
-      setSelectionRange(null);
-      setShowCreateButton(false);
-    }
+    }, 0);
   }, [document.content]);
 
   // Remove the problematic global selection change listener that interferes with selection
