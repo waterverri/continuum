@@ -1,5 +1,5 @@
 import type { Document, AIProvider } from '../api';
-import { MonacoAutocompleteEditor } from './MonacoAutocompleteEditor';
+import { EnhancedDocumentEditor } from './EnhancedDocumentEditor';
 
 interface DocumentFormData {
   title: string;
@@ -172,7 +172,7 @@ export function DocumentForm({
       <div className="form-group">
         <label className="form-label">
           Content:
-          <MonacoAutocompleteEditor
+          <EnhancedDocumentEditor
             initialValue={formData.content}
             onContentChange={(value) => setFormData({ ...formData, content: value })}
             documents={documents}

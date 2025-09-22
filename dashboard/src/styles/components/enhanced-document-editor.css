@@ -1,0 +1,112 @@
+/* Enhanced Document Editor Styles */
+.enhanced-document-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.editor-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  margin-bottom: 0.5rem;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toggle-buttons .btn {
+  transition: all 0.2s ease;
+  font-weight: 500;
+  border: 2px solid transparent;
+}
+
+.toggle-buttons .btn--primary {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.toggle-buttons .btn--secondary {
+  background-color: var(--color-bg-light);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.toggle-buttons .btn--secondary:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.mode-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.mode-indicator small {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.editor-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* React Quill specific styling */
+.react-quill-editor .ql-container {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+.react-quill-editor .ql-editor {
+  min-height: calc(75vh - 120px);
+  max-height: calc(75vh - 60px);
+  overflow-y: auto;
+}
+
+.react-quill-editor .ql-toolbar {
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: none;
+  background-color: var(--color-bg-light);
+}
+
+.react-quill-editor .ql-container {
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-top: none;
+}
+
+.react-quill-editor .ql-editor.ql-blank::before {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .editor-mode-toggle {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .toggle-buttons {
+    justify-content: center;
+  }
+
+  .mode-indicator {
+    text-align: center;
+  }
+}
