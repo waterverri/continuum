@@ -108,10 +108,10 @@ export function ExtractButton({
     extractedRangeRef.current = null;
   }, []);
 
-  // Don't render if no text is selected
-  console.log('ExtractButton: Render check - hasSelection:', hasSelection);
-  if (!hasSelection) {
-    console.log('ExtractButton: Not rendering - no selection');
+  // Don't render if no text is selected, UNLESS modal is open
+  console.log('ExtractButton: Render check - hasSelection:', hasSelection, 'showModal:', showModal);
+  if (!hasSelection && !showModal) {
+    console.log('ExtractButton: Not rendering - no selection and no modal');
     return null;
   }
 
@@ -126,6 +126,7 @@ export function ExtractButton({
         💡 Extract
       </button>
 
+      {/* Render modal outside of hasSelection conditional - always available when showModal is true */}
       {showModal && createPortal(
         <>
           {console.log('ExtractButton: Rendering modal via portal, showModal:', showModal, 'selectedText:', extractedTextRef.current)}
