@@ -1,8 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import TurndownService from 'turndown';
-import { marked } from 'marked';
 
 interface ReactQuillEditorProps {
   initialValue: string;
@@ -19,42 +17,18 @@ export function ReactQuillEditor({
   className = "",
   height = "75vh"
 }: ReactQuillEditorProps) {
-  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [htmlContent, setHtmlContent] = useState<string>(initialValue);
   const quillRef = useRef<ReactQuill>(null);
-  const turndownService = useRef(new TurndownService({
-    headingStyle: 'atx',
-    bulletListMarker: '-',
-    codeBlockStyle: 'fenced'
-  }));
 
-  // Convert markdown to HTML for initial display
+  // Update content when initialValue changes (from parent)
   useEffect(() => {
-    const convertMarkdownToHtml = async () => {
-      try {
-        const html = await marked(initialValue || '');
-        setHtmlContent(html);
-      } catch (error) {
-        console.error('Error converting markdown to HTML:', error);
-        setHtmlContent(initialValue || '');
-      }
-    };
-    convertMarkdownToHtml();
+    setHtmlContent(initialValue || '');
   }, [initialValue]);
-
-  const convertHtmlToMarkdown = useCallback((html: string) => {
-    try {
-      return turndownService.current.turndown(html);
-    } catch (error) {
-      console.error('Error converting HTML to markdown:', error);
-      return html;
-    }
-  }, []);
 
   const handleChange = useCallback((content: string) => {
     setHtmlContent(content);
-    const markdown = convertHtmlToMarkdown(content);
-    onContentChange(markdown);
-  }, [onContentChange, convertHtmlToMarkdown]);
+    onContentChange(content);
+  }, [onContentChange]);
 
   // Custom toolbar with rich text formatting options
   const modules = {

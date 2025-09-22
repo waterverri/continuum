@@ -59,6 +59,28 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.editor-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: opacity 0.2s ease;
+}
+
+.editor-visible {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.editor-hidden {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* React Quill specific styling */
