@@ -219,7 +219,13 @@ app.get('/preset/:projectId/:presetName', async (req: Request, res: Response) =>
 
 
 // --- Local Development Server ---
-if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+// The functions-framework will handle starting the server when using npm run dev
+// Only start our own server for direct node execution (not through functions-framework)
+// We can detect functions-framework by checking if the module was required vs executed directly
+
+const isDirectExecution = require.main === module;
+
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test' && isDirectExecution) {
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
       console.log(`API server listening on port ${port}`);

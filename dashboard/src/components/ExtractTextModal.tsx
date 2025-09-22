@@ -12,8 +12,11 @@ interface ExtractTextModalProps {
 export function ExtractTextModal({ sourceDocument, selectedText, allDocuments = [], onConfirm, onCancel }: ExtractTextModalProps) {
   const [title, setTitle] = useState('');
   const [documentType, setDocumentType] = useState(sourceDocument?.document_type || '');
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [groupFilter, setGroupFilter] = useState('');
+  const [groupSelectionMode, setGroupSelectionMode] = useState<'same' | 'new' | 'other' | 'none'>(() => {
+    // Default: same group if source has one, otherwise create new group
+    return sourceDocument?.group_id ? 'same' : 'new';
+  });
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(sourceDocument?.group_id || null);
 
   // Get available groups based on source document type
   const availableGroups = useMemo(() => {
@@ -65,24 +68,25 @@ export function ExtractTextModal({ sourceDocument, selectedText, allDocuments = 
     }
   }, [sourceDocument, allDocuments]);
 
-  // Filter groups by search term
-  const filteredGroups = useMemo(() => {
-    if (!groupFilter.trim()) return availableGroups;
-    
-    const filter = groupFilter.toLowerCase();
-    return availableGroups.filter(group => 
-      group.representativeDoc.title.toLowerCase().includes(filter) ||
-      group.groupId.toLowerCase().includes(filter) ||
-      group.documents.some(doc => 
-        doc.document_type?.toLowerCase().includes(filter) ||
-        doc.title.toLowerCase().includes(filter)
-      )
-    );
-  }, [availableGroups, groupFilter]);
+
+  const getEffectiveGroupId = () => {
+    switch (groupSelectionMode) {
+      case 'same':
+        return sourceDocument?.group_id || undefined;
+      case 'new':
+        return 'CREATE_NEW_GROUP';
+      case 'other':
+        return selectedGroupId || undefined;
+      case 'none':
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
 
   const handleConfirm = () => {
     if (title.trim() && documentType.trim()) {
-      onConfirm(title.trim(), documentType.trim(), selectedGroupId || undefined);
+      onConfirm(title.trim(), documentType.trim(), getEffectiveGroupId());
     }
   };
 
@@ -91,6 +95,19 @@ export function ExtractTextModal({ sourceDocument, selectedText, allDocuments = 
       handleConfirm();
     } else if (e.key === 'Escape') {
       onCancel();
+    }
+  };
+
+  const handleGroupSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === 'same' || value === 'new' || value === 'none') {
+      setGroupSelectionMode(value);
+    } else if (value === 'other') {
+      setGroupSelectionMode('other');
+    } else {
+      // Specific group selected
+      setGroupSelectionMode('other');
+      setSelectedGroupId(value);
     }
   };
 
@@ -136,58 +153,42 @@ export function ExtractTextModal({ sourceDocument, selectedText, allDocuments = 
               />
             </label>
 
-            {availableGroups.length > 0 && (
-              <div className="group-selection-section">
-                <label className="form-label">
-                  Add to Group (Optional):
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={groupFilter}
-                    onChange={(e) => setGroupFilter(e.target.value)}
-                    placeholder="Search groups..."
-                  />
-                </label>
-
-                <div className="group-options">
-                  <div 
-                    className={`group-option ${selectedGroupId === null ? 'group-option--selected' : ''}`}
-                    onClick={() => setSelectedGroupId(null)}
-                  >
-                    <strong>No Group</strong>
-                    <small>Create as standalone document</small>
-                  </div>
-                  
-                  {filteredGroups.map(group => (
-                    <div 
-                      key={group.groupId}
-                      className={`group-option ${selectedGroupId === group.groupId ? 'group-option--selected' : ''}`}
-                      onClick={() => setSelectedGroupId(group.groupId)}
-                    >
-                      <div className="group-option-header">
-                        <strong>{group.representativeDoc.title}</strong>
-                        <small>({group.documents.length} documents)</small>
-                      </div>
-                      <div className="group-option-details">
-                        Types: {[...new Set(group.documents.map(d => d.document_type || 'untitled').filter(Boolean))].join(', ')}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {filteredGroups.length === 0 && groupFilter && (
-                    <div className="group-option group-option--empty">
-                      No groups found matching "{groupFilter}"
-                    </div>
+            <div className="group-selection-section">
+              <label className="form-label">
+                Group:
+                <select
+                  className="form-input"
+                  value={groupSelectionMode === 'other' && selectedGroupId ? selectedGroupId : groupSelectionMode}
+                  onChange={handleGroupSelectionChange}
+                >
+                  {sourceDocument?.group_id && (
+                    <option value="same">
+                      Same group ({allDocuments.find(d => d.id === sourceDocument.group_id)?.title || 'Unknown'})
+                    </option>
                   )}
-                </div>
+                  <option value="new">Create new group</option>
+                  <option value="none">No group</option>
 
-                {sourceDocument?.components && Object.keys(sourceDocument.components || {}).length > 0 && (
-                  <small className="group-selection-hint">
-                    ℹ️ Showing only groups from this composite document's components
-                  </small>
-                )}
-              </div>
-            )}
+                  {availableGroups.length > 0 && (
+                    <>
+                      <optgroup label="Existing Groups">
+                        {availableGroups.map(group => (
+                          <option key={group.groupId} value={group.groupId}>
+                            {group.representativeDoc.title} ({group.documents.length} documents)
+                          </option>
+                        ))}
+                      </optgroup>
+                    </>
+                  )}
+                </select>
+              </label>
+
+              {sourceDocument?.components && Object.keys(sourceDocument.components || {}).length > 0 && (
+                <small className="group-selection-hint">
+                  ℹ️ Showing only groups from this composite document's components
+                </small>
+              )}
+            </div>
           </div>
         </div>
 

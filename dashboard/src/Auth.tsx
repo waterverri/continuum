@@ -7,27 +7,80 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAuth = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      alert(error.message);
+    try {
+      if (isSignUp) {
+        // Check if we're in local development
+        const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        console.log('Attempting sign-up with:', { email, passwordLength: password.length });
+
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin
+          }
+        });
+
+        console.log('Sign-up response:', { data, error });
+
+        if (error) {
+          console.error('Sign-up error:', error);
+          alert(`Sign-up failed: ${error.message}`);
+        } else {
+          if (isLocalDev) {
+            // In local development, Supabase often auto-confirms users or doesn't send real emails
+            if (data.user && data.user.email_confirmed_at) {
+              alert('Account created successfully! You can now sign in.');
+              setIsSignUp(false); // Switch to sign-in mode
+            } else {
+              alert('Account created! In local development, check your Supabase dashboard Auth logs or the account may be auto-confirmed. Try signing in now.');
+              setIsSignUp(false); // Switch to sign-in mode
+            }
+          } else {
+            alert('Check your email for the confirmation link!');
+          }
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          alert(error.message);
+        }
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      alert('An unexpected error occurred');
     }
+
     setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+
+    // For local development, use email/password instead of OAuth
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (isLocalDev) {
+      // Show a message for local development
+      alert('For local development, please use email/password login instead of Google OAuth');
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
       },
     });
-     if (error) {
+    if (error) {
       alert(error.message);
     }
     setLoading(false);
@@ -84,7 +137,7 @@ export default function Auth() {
             ) : (
               <div className="auth-form-container">
                 <div className="auth-form">
-                  <h3>Sign In to Continuum</h3>
+                  <h3>{isSignUp ? 'Create Your Account' : 'Sign In to Continuum'}</h3>
                   
                   <button 
                     onClick={handleGoogleLogin} 
@@ -104,7 +157,7 @@ export default function Auth() {
                     <span>or</span>
                   </div>
 
-                  <form className="auth-email-form" onSubmit={handleLogin}>
+                  <form className="auth-email-form" onSubmit={handleAuth}>
                     <div className="form-group">
                       <label htmlFor="email">Email Address</label>
                       <input
@@ -130,9 +183,22 @@ export default function Auth() {
                     </div>
 
                     <button type="submit" className="btn btn--primary btn--large" disabled={loading}>
-                      {loading ? 'Signing In...' : 'Sign In'}
+                      {loading ? (isSignUp ? 'Creating Account...' : 'Signing In...') : (isSignUp ? 'Create Account' : 'Sign In')}
                     </button>
                   </form>
+
+                  <div className="auth-toggle">
+                    <p>
+                      {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                      <button
+                        type="button"
+                        className="auth-toggle__link"
+                        onClick={() => setIsSignUp(!isSignUp)}
+                      >
+                        {isSignUp ? 'Sign In' : 'Create Account'}
+                      </button>
+                    </p>
+                  </div>
 
                   <button 
                     className="btn btn--ghost btn--sm auth-back-btn"

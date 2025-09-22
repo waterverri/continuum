@@ -417,24 +417,33 @@ export function useDocumentOperations({
   }, [projectId, documents, getAccessToken, setDocuments, setError]);
 
   const handleCreateFromSelection = useCallback(async (
-    sourceDocument: Document, 
-    selectedText: string, 
+    sourceDocument: Document,
+    selectedText: string,
     selectionInfo: { start: number; end: number },
     title: string,
     documentType: string,
     groupId?: string
   ) => {
     if (!projectId) return;
-    
+
     try {
       const token = await getAccessToken();
-      
+
+      // Handle special "CREATE_NEW_GROUP" case
+      let effectiveGroupId = groupId;
+      let shouldUpdateSourceGroup = false;
+
+      if (groupId === 'CREATE_NEW_GROUP') {
+        effectiveGroupId = sourceDocument.id;
+        shouldUpdateSourceGroup = !sourceDocument.group_id; // Only update if source isn't already in a group
+      }
+
       // Create new document with selected text
       const extractedDoc = await createDocument(projectId, {
         title,
         content: selectedText,
         document_type: documentType,
-        group_id: groupId, // Add to group if specified
+        group_id: effectiveGroupId, // Add to group if specified
         components: {}
       }, token);
 
@@ -453,7 +462,8 @@ export function useDocumentOperations({
       const updatedSourceDoc = await updateDocument(projectId, sourceDocument.id, {
         ...sourceDocument,
         content: updatedContent,
-        components: updatedComponents
+        components: updatedComponents,
+        group_id: shouldUpdateSourceGroup ? sourceDocument.id : sourceDocument.group_id
       }, token);
 
       // Copy tags from source document to extracted document

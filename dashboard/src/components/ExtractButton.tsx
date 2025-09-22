@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import TurndownService from 'turndown';
 import type { Document } from '../api';
 import { ExtractTextModal } from './ExtractTextModal';
 
@@ -68,27 +69,42 @@ export function ExtractButton({
       return;
     }
 
+    const range = selection.getRangeAt(0);
     const selectedText = selection.toString().trim();
     if (!selectedText) {
       console.log('ExtractButton: No selected text');
       return;
     }
 
-    console.log('ExtractButton: Selected text:', selectedText);
+    // Get HTML content (like Ctrl+C would capture)
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(range.cloneContents());
+    const htmlContent = tempDiv.innerHTML;
+
+    // Convert HTML to markdown
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      bulletListMarker: '-',
+      codeBlockStyle: 'fenced'
+    });
+    const markdownContent = turndownService.turndown(htmlContent);
+
+    console.log('ExtractButton: Selected HTML:', htmlContent);
+    console.log('ExtractButton: Converted markdown:', markdownContent);
     console.log('ExtractButton: Source document:', sourceDocument);
 
-    // Calculate position in source text
+    // Calculate position in source text using plain text for positioning
     const fullText = sourceDocument.content || '';
     const startIndex = fullText.indexOf(selectedText);
     const selectionRange = startIndex !== -1
       ? { start: startIndex, end: startIndex + selectedText.length }
       : { start: 0, end: selectedText.length };
 
-    // Capture the selection data before any state changes
-    extractedTextRef.current = selectedText;
+    // Capture the markdown content instead of plain text
+    extractedTextRef.current = markdownContent;
     extractedRangeRef.current = selectionRange;
 
-    console.log('ExtractButton: Opening modal with text:', selectedText);
+    console.log('ExtractButton: Opening modal with markdown:', markdownContent);
     // Open modal - keep selection visible
     setShowModal(true);
   }, [sourceDocument.content]);

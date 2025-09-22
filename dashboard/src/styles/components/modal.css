@@ -650,6 +650,99 @@
   font-size: var(--font-size-sm);
 }
 
+/* Group Selection Dropdown */
+.group-selection-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.group-selection-controls {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: stretch;
+}
+
+.group-dropdown-container {
+  position: relative;
+  flex: 1;
+}
+
+.group-dropdown-button {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s ease;
+  font-size: var(--font-size-md);
+}
+
+.group-dropdown-button:hover {
+  border-color: var(--color-primary);
+}
+
+.dropdown-arrow {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  transition: transform 0.2s ease;
+}
+
+.group-dropdown-menu {
+  position: fixed;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
+  min-width: 200px;
+}
+
+.group-dropdown-option {
+  padding: var(--spacing-md);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border-lighter);
+  transition: background-color 0.2s ease;
+  color: var(--color-text-primary);
+}
+
+.group-dropdown-option:last-child {
+  border-bottom: none;
+}
+
+.group-dropdown-option:hover {
+  background-color: var(--color-background-light);
+}
+
+.group-dropdown-option.selected {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary-dark);
+}
+
+.group-dropdown-option strong {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: var(--font-weight-medium);
+}
+
+.group-dropdown-option small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.group-selection-other {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border-lighter);
+}
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .modal-overlay {
