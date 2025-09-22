@@ -1,0 +1,38 @@
+/* Enhanced Document Form Styles */
+
+.document-form--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: var(--background-color);
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.editor-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.editor-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-mode-controls .btn {
+  min-width: 80px;
+}
+
+.editor-mode-controls .btn:last-child {
+  width: 40px;
+  padding: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

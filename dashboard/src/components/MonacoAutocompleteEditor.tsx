@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import type { Document, Tag } from '../api';
+import type { Document } from '../api';
 import * as monaco from 'monaco-editor';
+import { getAutocompleteMatches, generateComponentKey, type AutocompleteMatch } from '../utils/autocompleteLogic';
 
 interface MonacoAutocompleteEditorProps {
   initialValue: string;
@@ -12,18 +13,9 @@ interface MonacoAutocompleteEditorProps {
   placeholder?: string;
   className?: string;
   height?: string;
+  currentDocumentId?: string;
 }
 
-interface AutocompleteItem {
-  id: string;
-  title: string;
-  alias?: string;
-  group_id?: string;
-  document_type?: string;
-  tags?: Tag[];
-  matchType: 'title' | 'alias' | 'tag';
-  isInComponents?: boolean;
-}
 
 export function MonacoAutocompleteEditor({
   initialValue,
@@ -33,130 +25,37 @@ export function MonacoAutocompleteEditor({
   onComponentAdd,
   placeholder = '',
   className = '',
-  height = '75vh'
+  height = '75vh',
+  currentDocumentId
 }: MonacoAutocompleteEditorProps) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const disposablesRef = useRef<monaco.IDisposable[]>([]);
 
-  // Generate component key based on title
-  const generateComponentKey = (title: string): string => {
-    let baseKey = title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .replace(/_+/g, '_');
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      disposablesRef.current.forEach(disposable => disposable.dispose());
+      disposablesRef.current = [];
+    };
+  }, []);
 
-    if (!/^[a-z]/.test(baseKey)) {
-      baseKey = 'doc_' + baseKey;
-    }
 
-    let key = baseKey;
-    let counter = 1;
-    while (Object.keys(currentComponents).includes(key)) {
-      key = `${baseKey}_${counter}`;
-      counter++;
-    }
-
-    return key;
-  };
-
-  // Generate group component value
-  const generateGroupComponentValue = (item: AutocompleteItem): string => {
-    if (item.group_id) {
-      return `group:${item.group_id}:${item.id}`;
-    } else {
-      return `group:${item.id}:${item.id}`;
-    }
-  };
-
-  // Search documents for autocomplete - only show group heads
-  const searchDocuments = (query: string): AutocompleteItem[] => {
-    if (query.length < 1) return [];
-
-    const queryLower = query.toLowerCase();
-    const results: AutocompleteItem[] = [];
-    const componentValues = Object.values(currentComponents);
-
-    // Only show documents that are group heads (have group_id but id equals group_id)
-    const groupHeads = documents.filter(doc => doc.group_id && doc.id === doc.group_id);
-    groupHeads.forEach(doc => {
-      // Check if document is in components
-      const isInComponents = componentValues.some(value => {
-        if (value === doc.id) return true;
-        if (value.startsWith('group:')) {
-          const parts = value.split(':');
-          if (parts.length >= 3 && parts[2] === doc.id) return true;
-          if (parts.length >= 2 && doc.group_id === parts[1]) {
-            return parts.length === 2 || parts[2] === doc.document_type;
-          }
-        }
-        return false;
-      });
-
-      // Search by title
-      if (doc.title.toLowerCase().includes(queryLower)) {
-        results.push({
-          id: doc.id,
-          title: doc.title,
-          alias: doc.alias,
-          group_id: doc.group_id,
-          document_type: doc.document_type,
-          tags: doc.tags,
-          matchType: 'title',
-          isInComponents
-        });
-      }
-      // Search by alias
-      else if (doc.alias && doc.alias.toLowerCase().split(',').some(alias =>
-        alias.trim().toLowerCase().includes(queryLower)
-      )) {
-        results.push({
-          id: doc.id,
-          title: doc.title,
-          alias: doc.alias,
-          group_id: doc.group_id,
-          document_type: doc.document_type,
-          tags: doc.tags,
-          matchType: 'alias',
-          isInComponents
-        });
-      }
-      // Search by tag
-      else if (doc.tags && doc.tags.some(tag =>
-        tag.name.toLowerCase().includes(queryLower)
-      )) {
-        results.push({
-          id: doc.id,
-          title: doc.title,
-          alias: doc.alias,
-          group_id: doc.group_id,
-          document_type: doc.document_type,
-          tags: doc.tags,
-          matchType: 'tag',
-          isInComponents
-        });
-      }
-    });
-
-    // Sort results: components first, then by relevance
-    return results.sort((a, b) => {
-      if (a.isInComponents && !b.isInComponents) return -1;
-      if (!a.isInComponents && b.isInComponents) return 1;
-
-      const aExactTitle = a.title.toLowerCase() === queryLower;
-      const bExactTitle = b.title.toLowerCase() === queryLower;
-      if (aExactTitle && !bExactTitle) return -1;
-      if (!aExactTitle && bExactTitle) return 1;
-
-      return a.title.localeCompare(b.title);
-    });
-  };
 
   const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor, monacoInstance: typeof monaco) => {
     editorRef.current = editor;
 
+    // Dispose any existing providers to prevent duplicates
+    disposablesRef.current.forEach(disposable => disposable.dispose());
+    disposablesRef.current = [];
+
+    // Disable default autocomplete
+    monacoInstance.languages.typescript.typescriptDefaults.setCompilerOptions({
+      ...monacoInstance.languages.typescript.typescriptDefaults.getCompilerOptions(),
+      allowNonTsExtensions: true
+    });
+
     // Register completion provider for {{ pattern
-    monacoInstance.languages.registerCompletionItemProvider('markdown', {
+    const completionProvider = monacoInstance.languages.registerCompletionItemProvider('markdown', {
       triggerCharacters: ['{'],
       provideCompletionItems: (model, position) => {
         const textUntilPosition = model.getValueInRange({
@@ -174,7 +73,7 @@ export function MonacoAutocompleteEditor({
         }
 
         const query = match[1];
-        const searchResults = searchDocuments(query);
+        const searchResults = getAutocompleteMatches(query, documents, currentComponents, currentDocumentId);
 
         const range = {
           startLineNumber: position.lineNumber,
@@ -184,37 +83,22 @@ export function MonacoAutocompleteEditor({
         };
 
         const suggestions = searchResults.map((item, index) => {
-          // Generate component key (but don't add to components yet!)
-          let componentKey: string;
-
-          if (item.isInComponents) {
-            const existingKey = Object.keys(currentComponents).find(key => {
-              const value = currentComponents[key];
-              return value === item.id ||
-                     value === `group:${item.group_id}:${item.id}` ||
-                     (item.group_id && value.startsWith(`group:${item.group_id}`));
-            });
-            componentKey = existingKey || generateComponentKey(item.title);
-          } else {
-            componentKey = generateComponentKey(item.title);
-          }
-
+          // Generate component key
+          const existingKeys = Object.keys(currentComponents);
+          const componentKey = generateComponentKey(item, existingKeys);
 
           const label = item.title;
-          const detail = item.matchType === 'alias' && item.alias ? `(${item.alias})` :
-                        item.matchType === 'tag' ? 'via tag' :
-                        item.document_type || '';
-
-          const description = item.isInComponents ? 'Already used' : '';
+          const detail = item.type === 'imported' ? '⭐ Already imported' :
+                        item.document_type ? `Grouphead • ${item.document_type}` : 'Grouphead';
 
           return {
             label,
             kind: monacoInstance.languages.CompletionItemKind.Reference,
             detail,
-            documentation: description,
+            documentation: item.alias ? `Alias: ${item.alias}` : '',
             insertText: componentKey,
             range,
-            sortText: `${item.isInComponents ? '0' : '1'}_${index.toString().padStart(3, '0')}`,
+            sortText: `${item.priority.toString().padStart(3, '0')}_${index.toString().padStart(3, '0')}`,
             command: {
               id: 'addComponent',
               title: 'Add Component',
@@ -226,31 +110,12 @@ export function MonacoAutocompleteEditor({
         return { suggestions };
       }
     });
+    disposablesRef.current.push(completionProvider);
 
     // Register command to handle component addition when item is selected
-    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteItem, componentKey: string) => {
+    monacoInstance.editor.registerCommand('addComponent', (_accessor, item: AutocompleteMatch, componentKey: string) => {
       // Add to components when actually selected
-      let componentValue: string;
-
-      if (item.isInComponents) {
-        const existingKey = Object.keys(currentComponents).find(key => {
-          const value = currentComponents[key];
-          return value === item.id ||
-                 value === `group:${item.group_id}:${item.id}` ||
-                 (item.group_id && value.startsWith(`group:${item.group_id}`));
-        });
-
-        if (existingKey) {
-          const existingValue = currentComponents[existingKey];
-          const newValue = generateGroupComponentValue(item);
-          if (existingValue !== newValue) {
-            onComponentAdd(componentKey, newValue);
-          }
-        }
-      } else {
-        componentValue = generateGroupComponentValue(item);
-        onComponentAdd(componentKey, componentValue);
-      }
+      onComponentAdd(componentKey, item.id);
     });
 
     // Add content change listener to trigger completion when typing inside {{

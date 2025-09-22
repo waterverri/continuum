@@ -26,5 +26,8 @@
 @import './components/transform-modal.css';
 @import './components/document-group-deletion-modal.css';
 @import './components/autocomplete.css';
+@import './components/lexical-editor.css';
+@import './components/lexical-autocomplete.css';
+@import './components/enhanced-document-form.css';
 @import './layout.css';
 

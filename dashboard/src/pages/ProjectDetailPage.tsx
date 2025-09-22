@@ -6,7 +6,7 @@ import { useProjectActions } from '../App';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
 import { useDocumentFilter } from '../hooks/useDocumentFilter';
-import { DocumentForm } from '../components/DocumentForm';
+import { EnhancedDocumentForm } from '../components/EnhancedDocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { DocumentGroupList } from '../components/DocumentGroupList';
 import { ProjectTagsFilter } from '../components/ProjectTagsFilter';
@@ -688,7 +688,7 @@ export default function ProjectDetailPage() {
         <div className="main-content__body">
           <div className="main-content__inner">
             {(state.isCreating || state.isEditing) && (
-              <DocumentForm
+              <EnhancedDocumentForm
                 formData={state.formData}
                 setFormData={state.setFormData}
                 onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
@@ -700,6 +700,7 @@ export default function ProjectDetailPage() {
                 isCreating={state.isCreating}
                 documents={state.documents}
                 aiProviders={aiProviders}
+                currentDocumentId={state.selectedDocument?.id}
               />
             )}
             
