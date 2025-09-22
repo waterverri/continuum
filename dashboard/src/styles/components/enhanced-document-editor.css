@@ -5,6 +5,18 @@
   gap: 1rem;
 }
 
+.enhanced-document-editor--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background-color: var(--color-bg);
+  padding: 1rem;
+  gap: 1rem;
+}
+
 .editor-mode-toggle {
   display: flex;
   align-items: center;
@@ -84,15 +96,28 @@
 }
 
 /* React Quill specific styling */
+.react-quill-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.react-quill-editor .quill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .react-quill-editor .ql-container {
   font-family: var(--font-family-body);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .react-quill-editor .ql-editor {
-  min-height: calc(75vh - 120px);
-  max-height: calc(75vh - 60px);
+  flex: 1;
   overflow-y: auto;
 }
 

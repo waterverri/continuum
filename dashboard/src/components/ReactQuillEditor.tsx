@@ -57,7 +57,7 @@ export function ReactQuillEditor({
   ];
 
   return (
-    <div className={`react-quill-editor ${className}`}>
+    <div className={`react-quill-editor ${className}`} style={{ height: height === '100%' ? '100%' : height }}>
       <ReactQuill
         ref={quillRef}
         theme="snow"
@@ -66,7 +66,7 @@ export function ReactQuillEditor({
         modules={modules}
         formats={formats}
         placeholder={placeholder}
-        style={{ height }}
+        style={{ height: height === '100%' ? '100%' : height }}
       />
 
       {/* Help text for component references */}

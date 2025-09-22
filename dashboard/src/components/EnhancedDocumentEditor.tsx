@@ -29,6 +29,7 @@ export function EnhancedDocumentEditor({
   const [editorMode, setEditorMode] = useState<'markdown' | 'wysiwyg'>('markdown');
   const [markdownContent, setMarkdownContent] = useState(initialValue);
   const [htmlContent, setHtmlContent] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const turndownService = useRef(new TurndownService({
     headingStyle: 'atx',
@@ -86,7 +87,7 @@ export function EnhancedDocumentEditor({
   }, [convertHtmlToMarkdown, onContentChange]);
 
   return (
-    <div className="enhanced-document-editor">
+    <div className={`enhanced-document-editor ${isFullscreen ? 'enhanced-document-editor--fullscreen' : ''}`}>
       {/* Editor Mode Toggle */}
       <div className="editor-mode-toggle">
         <div className="toggle-buttons">
@@ -104,6 +105,14 @@ export function EnhancedDocumentEditor({
           >
             📄 WYSIWYG
           </button>
+          <button
+            type="button"
+            className="btn btn--sm btn--secondary"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          >
+            {isFullscreen ? '🗗' : '🗖'}
+          </button>
         </div>
         <div className="mode-indicator">
           <small>
@@ -111,12 +120,13 @@ export function EnhancedDocumentEditor({
               ? 'Markdown mode with autocomplete'
               : 'WYSIWYG rich text editor'
             }
+            {isFullscreen && ' • Fullscreen mode'}
           </small>
         </div>
       </div>
 
       {/* Editor Content - Both editors mounted, show/hide based on mode */}
-      <div className="editor-content">
+      <div className="editor-content" style={{ height: isFullscreen ? 'calc(100vh - 120px)' : height }}>
         <div
           className={`editor-wrapper ${editorMode === 'markdown' ? 'editor-visible' : 'editor-hidden'}`}
         >
@@ -132,7 +142,7 @@ export function EnhancedDocumentEditor({
                 : "Enter your document content... Type {{abc to add component references with autocomplete!"
             }
             className={className}
-            height={height}
+            height="100%"
           />
         </div>
 
@@ -144,7 +154,7 @@ export function EnhancedDocumentEditor({
             onContentChange={handleHtmlChange}
             placeholder={placeholder || "Enter your content with rich text formatting..."}
             className={className}
-            height={height}
+            height="100%"
           />
         </div>
       </div>
