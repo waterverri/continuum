@@ -7,9 +7,14 @@ import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS } from '@lexical/markdown';
+import { TRANSFORMERS, $convertFromMarkdownString, $convertToMarkdownString } from '@lexical/markdown';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { $convertFromMarkdownString, $convertToMarkdownString } from '@lexical/markdown';
+import { CUSTOM_TRANSFORMERS } from './LexicalCustomTransformers';
+import { HorizontalRuleNode } from './HorizontalRuleNode';
+import { ChecklistItemNode } from './ChecklistItemNode';
+import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -19,6 +24,12 @@ import { AutoLinkNode, LinkNode } from '@lexical/link';
 
 import type { Document } from '../api';
 import { LexicalAutocompletePlugin } from './LexicalAutocompletePlugin';
+import { ComponentBlockNode } from './ComponentBlockNode';
+import { COMPONENT_BLOCK_TRANSFORMER } from './ComponentBlockTransformer';
+
+// Put custom transformers FIRST so they take priority (matching SimpleLexicalEditor)
+// Add component transformer LAST to avoid conflicts
+const ENHANCED_TRANSFORMERS = [...CUSTOM_TRANSFORMERS, ...TRANSFORMERS, COMPONENT_BLOCK_TRANSFORMER];
 
 interface LexicalWYSIWYGEditorProps {
   initialValue: string;
@@ -46,7 +57,7 @@ function MarkdownPlugin({
   useEffect(() => {
     if (initialValue && !isInitialized) {
       editor.update(() => {
-        $convertFromMarkdownString(initialValue, TRANSFORMERS);
+        $convertFromMarkdownString(initialValue, ENHANCED_TRANSFORMERS);
       });
       setIsInitialized(true);
     }
@@ -62,7 +73,7 @@ function MarkdownPlugin({
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           editorState.read(() => {
-            const markdown = $convertToMarkdownString(TRANSFORMERS);
+            const markdown = $convertToMarkdownString(ENHANCED_TRANSFORMERS);
             onContentChange(markdown);
           });
         }, 300);
@@ -214,6 +225,12 @@ export function LexicalWYSIWYGEditor({
       CodeHighlightNode,
       AutoLinkNode,
       LinkNode,
+      TableNode,
+      TableCellNode,
+      TableRowNode,
+      HorizontalRuleNode,
+      ChecklistItemNode,
+      ComponentBlockNode,
     ],
   };
 
@@ -246,7 +263,9 @@ export function LexicalWYSIWYGEditor({
           <AutoFocusPlugin />
           <LinkPlugin />
           <ListPlugin />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <TablePlugin />
+          <CheckListPlugin />
+          <MarkdownShortcutPlugin transformers={ENHANCED_TRANSFORMERS} />
           <MarkdownPlugin
             initialValue={initialValue}
             onContentChange={onContentChange}
