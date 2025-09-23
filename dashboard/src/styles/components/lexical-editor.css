@@ -14,6 +14,35 @@
   padding: 0.75rem;
   border-bottom: 1px solid var(--border-color);
   background: var(--background-secondary);
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+  margin: 0 0.25rem;
+}
+
+.toolbar-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--background-color);
+  color: var(--text-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.toolbar-select:hover {
+  background: var(--background-hover);
+  border-color: var(--border-color-hover);
 }
 
 .toolbar-button {
@@ -50,11 +79,18 @@
 .lexical-content-editable,
 .lexical-editor .lexical-content-editable,
 .lexical-inner .lexical-content-editable,
+.enhanced-document-form .lexical-content-editable,
+.form-group .lexical-content-editable,
+.main-content__body .lexical-content-editable,
 div[contenteditable="true"][data-lexical-editor="true"],
-div[contenteditable="true"] {
+div[contenteditable="true"].lexical-content-editable,
+body .lexical-content-editable,
+html .lexical-content-editable {
   outline: none !important;
   padding: 1rem !important;
   min-height: 300px !important;
+  max-height: 75vh !important;
+  overflow-y: auto !important;
   line-height: 1.6 !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   font-size: 14px !important;
@@ -66,6 +102,88 @@ div[contenteditable="true"] {
   border-radius: 4px !important;
   visibility: visible !important;
   display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Additional override for any potential conflicting styles */
+div[contenteditable="true"][class*="lexical"] {
+  background: #fff !important;
+  background-color: #fff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: #000 !important;
+}
+
+/* Force override any form styles */
+.form-group div[contenteditable="true"],
+.form-textarea[contenteditable="true"] {
+  background: #fff !important;
+  background-color: #fff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: #000 !important;
+}
+
+/* Override all form input/textarea styles for Lexical editor */
+.lexical-editor,
+.lexical-editor .lexical-inner,
+.form-group .lexical-editor,
+.form-group .lexical-inner,
+.main-content__body .lexical-editor,
+.main-content__body .lexical-inner {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure the ContentEditable div specifically overrides form styles */
+.form-group .lexical-content-editable,
+.main-content__body .lexical-content-editable,
+body .form-group .lexical-content-editable,
+html body .form-group .lexical-content-editable {
+  background: #fff !important;
+  background-color: #fff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: #000 !important;
+  border: 1px solid #ccc !important;
+  padding: 1rem !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+
+/* Nuclear option - override everything with maximum specificity */
+html body .main-content__body .form-group .lexical-editor .lexical-inner .lexical-content-editable,
+html body .main-content__body .form-group div[contenteditable="true"].lexical-content-editable,
+html body div[contenteditable="true"][class*="lexical"],
+html body [data-lexical-editor="true"],
+div[contenteditable="true"][role="textbox"] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: #000000 !important;
+  display: block !important;
+  position: relative !important;
+}
+
+/* Force override with style attribute specificity simulation */
+.lexical-content-editable[style*="background"] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+.lexical-content-editable[style*="opacity"] {
+  opacity: 1 !important;
+}
+
+.lexical-content-editable[style*="visibility"] {
+  visibility: visible !important;
 }
 
 .lexical-placeholder {
@@ -150,11 +268,22 @@ div[contenteditable="true"] {
 
 /* Quotes */
 .lexical-quote {
-  margin: 1rem 0;
-  padding: 1rem;
-  border-left: 4px solid var(--primary-color);
-  background: var(--background-secondary);
-  font-style: italic;
+  margin: 16px 0 !important;
+  padding: 16px 20px !important;
+  border-left: 4px solid #0969da !important;
+  background: #f6f8fa !important;
+  font-style: italic !important;
+  color: #656d76 !important;
+  border-radius: 0 6px 6px 0 !important;
+}
+
+/* Dark mode quotes */
+@media (prefers-color-scheme: dark) {
+  .lexical-quote {
+    background: #161b22 !important;
+    border-left-color: #1f6feb !important;
+    color: #8b949e !important;
+  }
 }
 
 /* Lists */
@@ -190,15 +319,31 @@ div[contenteditable="true"] {
 
 /* Code blocks */
 .lexical-code {
-  background-color: var(--background-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 1rem;
-  margin: 1rem 0;
-  font-family: var(--font-family-mono);
-  font-size: 0.9em;
-  overflow-x: auto;
-  white-space: pre;
+  background-color: #f6f8fa !important;
+  border: 1px solid #d1d9e0 !important;
+  border-radius: 6px !important;
+  padding: 16px !important;
+  margin: 16px 0 !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  overflow-x: auto !important;
+  white-space: pre-wrap !important;
+  color: #24292f !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  clear: both !important;
+  box-sizing: border-box !important;
+}
+
+/* Dark mode code blocks */
+@media (prefers-color-scheme: dark) {
+  .lexical-code {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+  }
 }
 
 /* Code highlighting tokens */
@@ -232,6 +377,110 @@ div[contenteditable="true"] {
 
 .lexical-token-function {
   color: #6f42c1;
+}
+
+/* Tables */
+.lexical-table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 16px 0 !important;
+  border: 2px solid #d1d9e0 !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+}
+
+.lexical-tableCell {
+  border: 1px solid #d1d9e0 !important;
+  padding: 12px 16px !important;
+  min-width: 100px !important;
+  vertical-align: top !important;
+  text-align: left !important;
+  background-color: #ffffff !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.lexical-tableCell:hover {
+  background-color: #f6f8fa !important;
+}
+
+.lexical-tableCellHeader {
+  background-color: #f6f8fa !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+  border-bottom: 2px solid #d1d9e0 !important;
+  color: #24292f !important;
+}
+
+.lexical-tableRow {
+  border-bottom: 1px solid #d1d9e0 !important;
+}
+
+/* Dark mode tables */
+@media (prefers-color-scheme: dark) {
+  .lexical-table {
+    border-color: #30363d !important;
+  }
+
+  .lexical-tableCell {
+    background-color: #0d1117 !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+  }
+
+  .lexical-tableCell:hover {
+    background-color: #161b22 !important;
+  }
+
+  .lexical-tableCellHeader {
+    background-color: #161b22 !important;
+    border-bottom-color: #30363d !important;
+    color: #e6edf3 !important;
+  }
+
+  .lexical-tableRow {
+    border-bottom-color: #30363d !important;
+  }
+}
+
+/* Horizontal Rules */
+.lexical-hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1rem 0;
+  height: 1px;
+}
+
+.lexical-hr-container {
+  margin: 1rem 0;
+}
+
+/* Checklists */
+.lexical-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  margin: 0.25rem 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.checklist-item-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.checklist-checkbox {
+  margin: 0.25rem 0 0 0;
+  cursor: pointer;
+}
+
+.checklist-content {
+  flex: 1;
+  min-height: 1.5rem;
 }
 
 /* Dark mode support */

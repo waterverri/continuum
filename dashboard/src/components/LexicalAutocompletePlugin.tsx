@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   $getSelection,
@@ -90,8 +91,43 @@ export function LexicalAutocompletePlugin({
             setSelectedIndex(0);
             setIsVisible(true);
 
-            // Calculate position (simplified - in a real implementation you'd want precise positioning)
-            setPosition({ x: 100, y: 100 });
+            // Calculate absolute position relative to viewport
+            const calculatePosition = () => {
+              const domSelection = window.getSelection();
+              if (domSelection && domSelection.rangeCount > 0) {
+                const range = domSelection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+
+                // Position dropdown below the cursor
+                const x = rect.left + window.scrollX;
+                const y = rect.bottom + window.scrollY + 4; // 4px gap
+
+                setPosition({ x, y });
+              } else {
+                // Fallback position
+                setPosition({ x: 100, y: 100 });
+              }
+            };
+
+            // Calculate position immediately
+            calculatePosition();
+
+            // Also recalculate on scroll/resize
+            const handlePositionUpdate = () => {
+              if (isVisible) calculatePosition();
+            };
+
+            window.addEventListener('scroll', handlePositionUpdate, true);
+            window.addEventListener('resize', handlePositionUpdate);
+
+            // Cleanup listeners when autocomplete closes
+            const cleanup = () => {
+              window.removeEventListener('scroll', handlePositionUpdate, true);
+              window.removeEventListener('resize', handlePositionUpdate);
+            };
+
+            // Store cleanup function for later use
+            (window as any)._lexicalAutocompleteCleanup = cleanup;
           } else {
             setIsVisible(false);
             setSuggestions([]);
@@ -150,6 +186,11 @@ export function LexicalAutocompletePlugin({
         if (isVisible) {
           setIsVisible(false);
           setSuggestions([]);
+          // Cleanup scroll listeners
+          if ((window as any)._lexicalAutocompleteCleanup) {
+            (window as any)._lexicalAutocompleteCleanup();
+            (window as any)._lexicalAutocompleteCleanup = null;
+          }
           return true;
         }
         return false;
@@ -207,21 +248,28 @@ export function LexicalAutocompletePlugin({
 
     setIsVisible(false);
     setSuggestions([]);
+
+    // Cleanup scroll listeners
+    if ((window as any)._lexicalAutocompleteCleanup) {
+      (window as any)._lexicalAutocompleteCleanup();
+      (window as any)._lexicalAutocompleteCleanup = null;
+    }
   };
 
   if (!isVisible || suggestions.length === 0) {
     return null;
   }
 
-  return (
+  // Render dropdown in a portal at document root to avoid positioning issues
+  return createPortal(
     <div
       ref={autocompleteRef}
       className="lexical-autocomplete-dropdown"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         left: position.x,
         top: position.y,
-        zIndex: 1000
+        zIndex: 10000
       }}
     >
       {suggestions.map((suggestion, index) => (
@@ -237,6 +285,7 @@ export function LexicalAutocompletePlugin({
           </div>
         </div>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }

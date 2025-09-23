@@ -1,45 +1,52 @@
 /* Lexical Autocomplete Dropdown Styles */
 
 .lexical-autocomplete-dropdown {
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-height: 200px;
-  overflow-y: auto;
-  min-width: 250px;
-  max-width: 400px;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  min-width: 250px !important;
+  max-width: 400px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .autocomplete-item {
-  padding: 0.75rem;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-color-light);
-  transition: background-color 0.2s ease;
+  padding: 0.75rem !important;
+  cursor: pointer !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  transition: background-color 0.2s ease !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
 }
 
 .autocomplete-item:last-child {
-  border-bottom: none;
+  border-bottom: none !important;
 }
 
 .autocomplete-item:hover,
 .autocomplete-item.selected {
-  background: var(--background-hover);
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
 }
 
 .autocomplete-item.selected {
-  background: var(--primary-color-light);
+  background: #e0f2fe !important;
+  background-color: #e0f2fe !important;
 }
 
 .autocomplete-title {
-  font-weight: 500;
-  color: var(--text-color);
-  margin-bottom: 0.25rem;
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+  margin-bottom: 0.25rem !important;
 }
 
 .autocomplete-meta {
-  font-size: 0.875rem;
-  color: var(--text-color-muted);
+  font-size: 0.875rem !important;
+  color: #6b7280 !important;
 }
 
 /* Dark mode adjustments */

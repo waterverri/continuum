@@ -25,35 +25,27 @@ export function ExtractButton({
   // Listen for text selection changes
   useEffect(() => {
     const handleSelectionChange = () => {
-      console.log('ExtractButton: Selection change detected');
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) {
-        console.log('ExtractButton: No selection');
         setHasSelection(false);
         return;
       }
 
       const selectedText = selection.toString().trim();
-      console.log('ExtractButton: Selected text:', selectedText);
       if (!selectedText || selection.getRangeAt(0).collapsed) {
-        console.log('ExtractButton: Empty or collapsed selection');
         setHasSelection(false);
         return;
       }
 
       // Check if selection is within markdown content areas
       const range = selection.getRangeAt(0);
-      console.log('ExtractButton: Checking contentRefs:', contentRefs.length);
       const isInMarkdownContent = contentRefs.some(ref => {
-        console.log('ExtractButton: Checking ref:', ref.current);
         if (!ref.current || !range.commonAncestorContainer) return false;
         const contains = ref.current.contains(range.commonAncestorContainer) ||
                ref.current === range.commonAncestorContainer;
-        console.log('ExtractButton: Ref contains selection:', contains);
         return contains;
       });
 
-      console.log('ExtractButton: Is in markdown content:', isInMarkdownContent);
       setHasSelection(isInMarkdownContent);
     };
 
@@ -62,17 +54,14 @@ export function ExtractButton({
   }, [contentRefs]);
 
   const handleExtract = useCallback(() => {
-    console.log('ExtractButton: handleExtract called');
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
-      console.log('ExtractButton: No selection found');
       return;
     }
 
     const range = selection.getRangeAt(0);
     const selectedText = selection.toString().trim();
     if (!selectedText) {
-      console.log('ExtractButton: No selected text');
       return;
     }
 
@@ -89,9 +78,6 @@ export function ExtractButton({
     });
     const markdownContent = turndownService.turndown(htmlContent);
 
-    console.log('ExtractButton: Selected HTML:', htmlContent);
-    console.log('ExtractButton: Converted markdown:', markdownContent);
-    console.log('ExtractButton: Source document:', sourceDocument);
 
     // Calculate position in source text using plain text for positioning
     const fullText = sourceDocument.content || '';
@@ -104,7 +90,6 @@ export function ExtractButton({
     extractedTextRef.current = markdownContent;
     extractedRangeRef.current = selectionRange;
 
-    console.log('ExtractButton: Opening modal with markdown:', markdownContent);
     // Open modal - keep selection visible
     setShowModal(true);
   }, [sourceDocument.content]);
@@ -125,13 +110,10 @@ export function ExtractButton({
   }, []);
 
   // Don't render if no text is selected, UNLESS modal is open
-  console.log('ExtractButton: Render check - hasSelection:', hasSelection, 'showModal:', showModal);
   if (!hasSelection && !showModal) {
-    console.log('ExtractButton: Not rendering - no selection and no modal');
     return null;
   }
 
-  console.log('ExtractButton: Rendering button');
   return (
     <>
       <button
@@ -145,7 +127,6 @@ export function ExtractButton({
       {/* Render modal outside of hasSelection conditional - always available when showModal is true */}
       {showModal && createPortal(
         <>
-          {console.log('ExtractButton: Rendering modal via portal, showModal:', showModal, 'selectedText:', extractedTextRef.current)}
           <ExtractTextModal
             sourceDocument={sourceDocument}
             selectedText={extractedTextRef.current}

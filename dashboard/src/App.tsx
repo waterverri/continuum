@@ -113,9 +113,6 @@ const AppHeader = ({ session, onToggleHeader }: { session: Session | null; onTog
   // Extract project ID from URL as fallback
   const projectIdFromUrl = isProjectDetailPage ? location.pathname.split('/projects/')[1] : null;
   
-  // Debug logging
-  console.log('AppHeader: currentProject:', currentProject);
-  console.log('AppHeader: projectIdFromUrl:', projectIdFromUrl);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
