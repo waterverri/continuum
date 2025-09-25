@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Resolution Test</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; }
+        .instructions {
+            background: #f0f0f0;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Component Resolution Test</h1>
+
+    <div class="instructions">
+        <h2>Test Instructions:</h2>
+        <ol>
+            <li>Open the application at <a href="http://localhost:5175" target="_blank">http://localhost:5175</a></li>
+            <li>Navigate to a document or create a new one</li>
+            <li>Switch the editor to "WYSIWYG" mode</li>
+            <li>Type some text with a component placeholder like: <code>{{test}}</code></li>
+            <li>Check the browser console for debug messages</li>
+            <li>Verify that the <code>{{test}}</code> transforms into a visual component block</li>
+            <li>Test expanding/collapsing the component block</li>
+            <li>Test export to markdown (should preserve <code>{{test}}</code> format)</li>
+        </ol>
+    </div>
+
+    <div class="result">
+        <h2>Expected Behavior:</h2>
+        <ul>
+            <li>Debug messages should appear in console showing:
+                <ul>
+                    <li>🚀 LexicalWYSIWYGEditor: ENHANCED_TRANSFORMERS loaded</li>
+                    <li>🎯 ComponentBlockTransformer REPLACE called (when typing {{key}})</li>
+                    <li>🏗️ Created ComponentBlockNode</li>
+                    <li>🎨 ComponentBlockNode constructor called</li>
+                    <li>🖼️ ComponentBlockNode decorate called</li>
+                    <li>🎭 ComponentBlockComponent rendered</li>
+                </ul>
+            </li>
+            <li>Visual component blocks should:
+                <ul>
+                    <li>Show as blue {{key}} pills when collapsed</li>
+                    <li>Expand to show content when clicked</li>
+                    <li>Have a header with two-level picker: "Component: [Group ▼] → [Document ▼] [Collapse]"</li>
+                    <li>Display resolved document content as rendered markdown in expanded state</li>
+                    <li>Show "Component content not resolved" message if no mapping exists</li>
+                    <li>Export back to {{key}} format in markdown</li>
+                    <li>Allow changing component key and document mapping via header dropdowns</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <script>
+        // Auto-open the application
+        window.onload = function() {
+            console.log('Test page loaded. Open http://localhost:5175 to test component resolution.');
+        };
+    </script>
+</body>
+</html>

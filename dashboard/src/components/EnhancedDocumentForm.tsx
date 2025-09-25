@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Document, AIProvider } from '../api';
 import { MonacoAutocompleteEditor } from './MonacoAutocompleteEditor';
-import { SimpleLexicalEditor } from './SimpleLexicalEditor';
+import { LexicalWYSIWYGEditor } from './LexicalWYSIWYGEditor';
 
 interface DocumentFormData {
   title: string;
@@ -205,7 +205,7 @@ export function EnhancedDocumentForm({
         </div>
 
         {isWYSIWYG ? (
-          <SimpleLexicalEditor
+          <LexicalWYSIWYGEditor
             initialValue={formData.content}
             onContentChange={(value) => setFormData({ ...formData, content: value })}
             documents={documents}
@@ -217,7 +217,6 @@ export function EnhancedDocumentForm({
             }
             className="form-textarea"
             height={editorHeight}
-            currentDocumentId={currentDocumentId}
           />
         ) : (
           <MonacoAutocompleteEditor

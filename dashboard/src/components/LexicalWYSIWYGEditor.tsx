@@ -24,12 +24,19 @@ import { AutoLinkNode, LinkNode } from '@lexical/link';
 
 import type { Document } from '../api';
 import { LexicalAutocompletePlugin } from './LexicalAutocompletePlugin';
-import { ComponentBlockNode } from './ComponentBlockNode';
+import { ComponentBlockNode, ComponentDataProvider } from './ComponentBlockNode';
 import { COMPONENT_BLOCK_TRANSFORMER } from './ComponentBlockTransformer';
 
 // Put custom transformers FIRST so they take priority (matching SimpleLexicalEditor)
 // Add component transformer LAST to avoid conflicts
 const ENHANCED_TRANSFORMERS = [...CUSTOM_TRANSFORMERS, ...TRANSFORMERS, COMPONENT_BLOCK_TRANSFORMER];
+
+console.log('🚀 LexicalWYSIWYGEditor: ENHANCED_TRANSFORMERS loaded:', {
+  totalTransformers: ENHANCED_TRANSFORMERS.length,
+  customTransformers: CUSTOM_TRANSFORMERS.length,
+  builtinTransformers: TRANSFORMERS.length,
+  hasComponentTransformer: !!COMPONENT_BLOCK_TRANSFORMER
+});
 
 interface LexicalWYSIWYGEditorProps {
   initialValue: string;
@@ -56,6 +63,11 @@ function MarkdownPlugin({
 
   useEffect(() => {
     if (initialValue && !isInitialized) {
+      console.log('🔄 Converting initial markdown to Lexical:', {
+        initialValue: initialValue.substring(0, 100) + '...',
+        transformersCount: ENHANCED_TRANSFORMERS.length
+      });
+
       editor.update(() => {
         $convertFromMarkdownString(initialValue, ENHANCED_TRANSFORMERS);
       });
@@ -74,6 +86,10 @@ function MarkdownPlugin({
         timeoutId = setTimeout(() => {
           editorState.read(() => {
             const markdown = $convertToMarkdownString(ENHANCED_TRANSFORMERS);
+            console.log('📝 Converting Lexical to markdown:', {
+              markdownLength: markdown.length,
+              markdown: markdown.substring(0, 100) + '...'
+            });
             onContentChange(markdown);
           });
         }, 300);
@@ -164,6 +180,10 @@ const theme = {
     code: 'lexical-text-code',
   },
   code: 'lexical-code',
+  table: 'lexical-table',
+  tableCell: 'lexical-tableCell',
+  tableCellHeader: 'lexical-tableCellHeader',
+  tableRow: 'lexical-tableRow',
   codeHighlight: {
     atrule: 'lexical-token-attr',
     attr: 'lexical-token-attr',
@@ -236,47 +256,49 @@ export function LexicalWYSIWYGEditor({
 
   return (
     <div className={`lexical-editor ${className}`} style={{ height }}>
-      <LexicalComposer initialConfig={initialConfig}>
-        <ToolbarPlugin />
-        <div className="lexical-inner">
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable
-                className="lexical-content-editable"
-                style={{
-                  minHeight: height,
-                  outline: 'none',
-                  padding: '15px',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px'
-                }}
-              />
-            }
-            placeholder={
-              <div className="lexical-placeholder">
-                {placeholder}
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <HistoryPlugin />
-          <AutoFocusPlugin />
-          <LinkPlugin />
-          <ListPlugin />
-          <TablePlugin />
-          <CheckListPlugin />
-          <MarkdownShortcutPlugin transformers={ENHANCED_TRANSFORMERS} />
-          <MarkdownPlugin
-            initialValue={initialValue}
-            onContentChange={onContentChange}
-          />
-          <LexicalAutocompletePlugin
-            documents={documents}
-            currentComponents={currentComponents}
-            onComponentAdd={onComponentAdd}
-          />
-        </div>
-      </LexicalComposer>
+      <ComponentDataProvider value={{ documents, currentComponents, onComponentAdd }}>
+        <LexicalComposer initialConfig={initialConfig}>
+          <ToolbarPlugin />
+          <div className="lexical-inner">
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable
+                  className="lexical-content-editable"
+                  style={{
+                    minHeight: height,
+                    outline: 'none',
+                    padding: '15px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px'
+                  }}
+                />
+              }
+              placeholder={
+                <div className="lexical-placeholder">
+                  {placeholder}
+                </div>
+              }
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+            <HistoryPlugin />
+            <AutoFocusPlugin />
+            <LinkPlugin />
+            <ListPlugin />
+            <TablePlugin />
+            <CheckListPlugin />
+            <MarkdownShortcutPlugin transformers={ENHANCED_TRANSFORMERS} />
+            <MarkdownPlugin
+              initialValue={initialValue}
+              onContentChange={onContentChange}
+            />
+            <LexicalAutocompletePlugin
+              documents={documents}
+              currentComponents={currentComponents}
+              onComponentAdd={onComponentAdd}
+            />
+          </div>
+        </LexicalComposer>
+      </ComponentDataProvider>
     </div>
   );
 }

@@ -29,4 +29,74 @@ body {
   align-items: center;
   padding: 2rem;
   box-sizing: border-box;
-}/* Dummy comment to trigger deployment */
+}
+
+/* Component Block Styles */
+.lexical-component-block {
+  margin: 0;
+  padding: 0;
+}
+
+.component-block-collapsed {
+  display: inline-block;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: 0 2px;
+  font-size: 0.9em;
+  font-family: monospace;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.component-block-collapsed:hover {
+  background-color: #bbdefb;
+  transform: translateY(-1px);
+}
+
+.component-block-expanded {
+  border: 2px solid #2196f3;
+  border-radius: 6px;
+  margin: 8px 0;
+  background-color: #f8f9fa;
+  overflow: hidden;
+}
+
+.component-block-expanded .component-header {
+  background-color: #2196f3;
+  color: white;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.component-block-expanded .component-content {
+  padding: 12px;
+  background-color: white;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.component-block-expanded .component-content h1,
+.component-block-expanded .component-content h2,
+.component-block-expanded .component-content h3,
+.component-block-expanded .component-content h4,
+.component-block-expanded .component-content h5,
+.component-block-expanded .component-content h6 {
+  margin-top: 0;
+}
+
+.component-block-expanded .component-content p:first-child {
+  margin-top: 0;
+}
+
+.component-block-expanded .component-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Dummy comment to trigger deployment */
