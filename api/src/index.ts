@@ -18,7 +18,7 @@ export const validateSupabaseJwt = async (req: RequestWithUser, res: Response, n
       console.error('Supabase URL or Anon Key is not configured on the server.');
       return res.status(500).json({ error: 'Authentication service is not configured.' });
     }
-    
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Missing or invalid Authorization header. A Bearer token is required.' });
@@ -38,7 +38,7 @@ export const validateSupabaseJwt = async (req: RequestWithUser, res: Response, n
     if (!response.ok) {
       return res.status(response.status).json({ message: userData.msg || 'Invalid or expired token.', detail: userData });
     }
-    
+
     // Attach both the user data AND the original token to the request
     req.user = userData;
     req.token = jwt;
@@ -53,9 +53,23 @@ export const validateSupabaseJwt = async (req: RequestWithUser, res: Response, n
 
 // --- App Setup ---
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 86400 // Cache preflight for 24 hours
+}));
 
+// Import batch import router early to mount before body parsing
+import batchImportRouter from './routes/batchImport';
+
+// Raw body middleware ONLY for batch import routes to preserve multipart streams
+app.use('/api/batch-import', express.raw({ type: 'multipart/form-data', limit: '50mb' }), validateSupabaseJwt, batchImportRouter);
+
+// Body parsing middleware (applied AFTER batch import routes to avoid consuming multipart streams)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Import the existing supabaseAdmin client
 import { supabaseAdmin } from './db/supabaseClient';
@@ -122,8 +136,6 @@ app.get('/api/public/invitations/:invitationId', async (req: Request, res: Respo
 // --- API Routes ---
 // This router is protected by JWT validation and ready for future platformized features.
 const apiRouter = express.Router();
-apiRouter.use(validateSupabaseJwt);
-
 // Import route handlers
 import documentRouter from './routes/documents';
 import presetRouter from './routes/presets';
@@ -132,7 +144,10 @@ import eventRouter from './routes/events';
 import aiRouter from './routes/ai';
 import { projectManagementRouter } from './routes/projectManagement';
 
-// Mount route handlers
+// Apply JWT middleware to all other API routes
+apiRouter.use(validateSupabaseJwt);
+
+// Mount other route handlers
 apiRouter.use('/documents', documentRouter);
 apiRouter.use('/presets', presetRouter);
 apiRouter.use('/tags', tagRouter);
