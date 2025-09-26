@@ -1,0 +1,299 @@
+/* Batch Import Modal Styles */
+
+.batch-import-modal {
+  max-width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.batch-import-modal .modal-body {
+  padding: 1.5rem;
+}
+
+/* Instructions Section */
+.batch-import-instructions {
+  background: var(--background-secondary);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.batch-import-instructions h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.batch-import-instructions ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.batch-import-instructions li {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.batch-import-instructions ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1rem;
+}
+
+.batch-import-instructions ul li {
+  margin-bottom: 0.25rem;
+}
+
+.batch-import-instructions code {
+  background: var(--background-primary);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+}
+
+/* File Upload Section */
+.file-upload-section {
+  margin-bottom: 1.5rem;
+}
+
+.file-upload-label {
+  display: block;
+  cursor: pointer;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  background: var(--background-secondary);
+}
+
+.file-upload-label:hover {
+  border-color: var(--primary-color);
+  background: var(--background-primary);
+}
+
+.file-upload-input {
+  display: none;
+}
+
+.file-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.upload-icon {
+  font-size: 2rem;
+}
+
+.file-selected {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.file-icon {
+  font-size: 1.5rem;
+}
+
+.file-size {
+  color: var(--text-secondary);
+  font-weight: normal;
+  font-size: 0.9rem;
+}
+
+/* Validation Results */
+.step-validate,
+.step-result {
+  min-height: 200px;
+}
+
+.validation-success,
+.import-success {
+  padding: 1rem;
+  background: var(--success-background, #f0f9f0);
+  border: 1px solid var(--success-border, #4ade80);
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+
+.validation-failed,
+.import-failed {
+  padding: 1rem;
+  background: var(--error-background, #fef2f2);
+  border: 1px solid var(--error-border, #f87171);
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+
+.success-message {
+  font-weight: 600;
+  color: var(--success-color, #16a34a);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-message {
+  font-weight: 600;
+  color: var(--error-color, #dc2626);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Error Display */
+.batch-import-errors {
+  margin-top: 1rem;
+}
+
+.batch-import-errors h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.error-item {
+  background: var(--background-primary);
+  border: 1px solid var(--error-border, #f87171);
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.error-header {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.error-type {
+  background: var(--error-color, #dc2626);
+  color: white;
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.error-row {
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+}
+
+.error-filename {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.error-message {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Warning Display */
+.batch-import-warnings {
+  margin-top: 1rem;
+}
+
+.batch-import-warnings h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.warning-item {
+  background: var(--warning-background, #fefce8);
+  border: 1px solid var(--warning-border, #eab308);
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--warning-color, #a16207);
+  font-size: 0.9rem;
+}
+
+/* Import Stats */
+.import-stats {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--background-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.import-stats h5 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.import-stats ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.import-stats li {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.auto-close-notice {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--background-secondary);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Modal Footer */
+.batch-import-modal .modal-footer {
+  padding: 1rem 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border-color);
+  background: var(--background-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .batch-import-modal {
+    max-width: 95vw;
+    margin: 1rem;
+  }
+
+  .file-upload-label {
+    padding: 1.5rem 1rem;
+  }
+
+  .batch-import-instructions {
+    padding: 0.75rem;
+  }
+
+  .error-header {
+    flex-wrap: wrap;
+  }
+}

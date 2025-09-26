@@ -510,7 +510,7 @@ function ComponentBlockComponent({
               color: '#333'
             }}
             dangerouslySetInnerHTML={{
-              __html: marked(getResolvedContent()) as string
+              __html: marked(getResolvedContent() || '') as string
             }}
           />
         ) : (

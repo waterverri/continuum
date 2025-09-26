@@ -28,6 +28,7 @@
 @import './components/autocomplete.css';
 @import './components/lexical-editor.css';
 @import './components/lexical-autocomplete.css';
+@import './components/BatchImportModal.css';
 @import './components/enhanced-document-form.css';
 @import './layout.css';
 

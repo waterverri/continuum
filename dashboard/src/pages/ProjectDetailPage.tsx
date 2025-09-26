@@ -30,6 +30,7 @@ import { EventFilter } from '../components/EventFilter';
 import { DocumentEvolution } from '../components/DocumentEvolution';
 import { ProjectSettingsModal } from '../components/ProjectSettingsModal';
 import { DocumentGroupDeletionModal } from '../components/DocumentGroupDeletionModal';
+import { BatchImportModal } from '../components/BatchImportModal';
 import { ensureBidirectionalGroupAssignment } from '../utils/groupAssignment';
 import '../styles/ProjectDetailPage.css';
 
@@ -77,6 +78,9 @@ export default function ProjectDetailPage() {
   // Project settings modal
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [currentProject, setCurrentProject] = useState<any>(null);
+
+  // Batch import modal
+  const [showBatchImport, setShowBatchImport] = useState(false);
 
   // Load project data
   const loadProject = async () => {
@@ -291,6 +295,14 @@ export default function ProjectDetailPage() {
       state.closeModal('showKeyInput');
       state.openModal('showComponentTypeSelector');
     }
+  };
+
+  const handleBatchImportSuccess = () => {
+    setShowBatchImport(false);
+    // Reload all data
+    operations.loadDocuments();
+    operations.loadTags();
+    loadEvents();
   };
 
   const selectComponentType = (type: 'document' | 'group') => {
@@ -611,9 +623,9 @@ export default function ProjectDetailPage() {
           </div>
         </div>
         
-        {/* Create Document Button */}
+        {/* Create Document Section */}
         <div className="left-sidebar__create-section">
-          <button 
+          <button
             className="btn btn--primary btn--full-width"
             onClick={() => {
               state.startCreate();
@@ -623,6 +635,18 @@ export default function ProjectDetailPage() {
             title="Create new document"
           >
             + Create Document
+          </button>
+          <button
+            className="btn btn--secondary btn--full-width"
+            onClick={() => {
+              setShowBatchImport(true);
+              state.setSidebarOpen(false);
+              setRightSidebarMobileOpen(false);
+            }}
+            title="Batch import documents from ZIP file"
+            style={{ marginTop: '0.5rem' }}
+          >
+            📦 Batch Import
           </button>
         </div>
         
@@ -1218,6 +1242,15 @@ export default function ProjectDetailPage() {
           project={currentProject}
           onClose={() => setShowProjectSettings(false)}
           onProjectUpdate={loadProject}
+        />
+      )}
+
+      {/* Batch Import Modal */}
+      {showBatchImport && projectId && (
+        <BatchImportModal
+          projectId={projectId}
+          onSuccess={handleBatchImportSuccess}
+          onCancel={() => setShowBatchImport(false)}
         />
       )}
     </div>
