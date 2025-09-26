@@ -1,0 +1,190 @@
+/* Drag and Drop Styles */
+
+/* Draggable items */
+.drag-enabled {
+  cursor: grab;
+  user-select: none;
+}
+
+.drag-enabled:hover {
+  opacity: 0.9;
+}
+
+.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.drag-disabled {
+  cursor: default;
+}
+
+/* Drop zones */
+.drop-zone-active {
+  background-color: var(--color-primary-50);
+  border: 2px dashed var(--color-primary-400);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.drop-enabled {
+  transition: all 0.2s ease;
+}
+
+.drop-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Drag previews */
+.drag-preview {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transform: rotate(5deg);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.tag-preview {
+  background-color: var(--color-tag-bg);
+  border-left: 4px solid currentColor;
+}
+
+.event-preview {
+  background-color: var(--color-event-bg, #3b82f6);
+  border-left: 4px solid var(--color-event-border, #1d4ed8);
+}
+
+.document-preview {
+  background-color: var(--color-document-bg, #6b7280);
+  border-left: 4px solid var(--color-document-border, #374151);
+}
+
+/* Recycle bin */
+.recycle-bin {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.3s ease;
+}
+
+.recycle-bin-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--color-error-500);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.recycle-bin:hover .recycle-bin-content,
+.drop-zone-active .recycle-bin-content {
+  background: var(--color-error-600);
+  transform: scale(1.05);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+}
+
+.recycle-bin-icon {
+  font-size: 20px;
+}
+
+/* Drop zone highlights for specific types */
+.document-drop-zone.drop-zone-active {
+  background-color: var(--color-blue-50);
+  border-color: var(--color-blue-400);
+}
+
+.event-drop-zone.drop-zone-active {
+  background-color: var(--color-green-50);
+  border-color: var(--color-green-400);
+}
+
+.tag-drop-zone.drop-zone-active {
+  background-color: var(--color-purple-50);
+  border-color: var(--color-purple-400);
+}
+
+/* Invalid drop zones */
+.drop-zone-invalid {
+  background-color: var(--color-red-50);
+  border-color: var(--color-red-400);
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.drag-preview {
+  animation: pulse 2s infinite;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .recycle-bin {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .recycle-bin-content {
+    padding: 12px 16px;
+    font-size: 12px;
+    min-width: 120px;
+  }
+
+  .recycle-bin-icon {
+    font-size: 16px;
+  }
+}
+
+/* Accessibility */
+.drag-enabled:focus {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.drop-zone-active:focus {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .drop-zone-active {
+    border-width: 3px;
+    border-style: solid;
+  }
+
+  .drag-preview {
+    border: 2px solid white;
+  }
+}

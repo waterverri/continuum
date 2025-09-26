@@ -6,6 +6,16 @@ import { useProjectActions } from '../App';
 import { useProjectDetailState } from '../hooks/useProjectDetailState';
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
 import { useDocumentFilter } from '../hooks/useDocumentFilter';
+// New global state imports (TODO: Uncomment when migration is complete)
+// import { useDocuments, useDocumentActions, useFilteredDocuments, useAvailableDocumentTypes } from '../hooks/store/useDocuments';
+// import { useTags, useTagActions } from '../hooks/store/useTags';
+// import { useEvents, useEventActions } from '../hooks/store/useEvents';
+// import { usePresets, usePresetActions } from '../hooks/store/usePresets';
+// import { useFilters, useFilterActions, useHasActiveFilters } from '../hooks/store/useFilters';
+// import { useUI, useModalActions, useDocumentManagement } from '../hooks/store/useUI';
+// import { useApiActions } from '../hooks/store/useApiActions';
+import { DragDropProvider } from '../components/dnd/DragDropProvider';
+import { RecycleBin } from '../components/dnd/RecycleBin';
 import { EnhancedDocumentForm } from '../components/EnhancedDocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { DocumentGroupList } from '../components/DocumentGroupList';
@@ -33,6 +43,7 @@ import { DocumentGroupDeletionModal } from '../components/DocumentGroupDeletionM
 import { BatchImportModal } from '../components/BatchImportModal';
 import { ensureBidirectionalGroupAssignment } from '../utils/groupAssignment';
 import '../styles/ProjectDetailPage.css';
+import '../styles/components/drag-and-drop.css';
 
 
 export default function ProjectDetailPage() {
@@ -61,6 +72,25 @@ export default function ProjectDetailPage() {
     setDocumentToDelete: state.setDocumentToDelete,
     openModal: state.openModal,
   });
+
+  // New global state hooks (TODO: These will replace the old hooks once migration is complete)
+  // const documents = useDocuments();
+  // const documentActions = useDocumentActions();
+  // const tags = useTags();
+  // const tagActions = useTagActions();
+  // const events = useEvents();
+  // const eventActions = useEventActions();
+  // const presets = usePresets();
+  // const presetActions = usePresetActions();
+  // const filters = useFilters();
+  // const filterActions = useFilterActions();
+  // const ui = useUI();
+  // const modalActions = useModalActions();
+  // const documentManagement = useDocumentManagement();
+  // const apiActions = useApiActions();
+  // const filteredDocuments = useFilteredDocuments();
+  // const availableDocumentTypes = useAvailableDocumentTypes();
+  // const hasActiveFilters = useHasActiveFilters();
   
   // Get events from state hook instead
 
@@ -281,6 +311,15 @@ export default function ProjectDetailPage() {
     } catch {
       // Error handled in operations hook
     }
+  };
+
+  const handleBatchImportSuccess = () => {
+    setShowBatchImport(false);
+    // Reload all data
+    operations.loadDocuments();
+    operations.loadTags();
+    loadEvents();
+    // Show success notification if you have a notification system
   };
 
   // Component handlers
@@ -590,11 +629,12 @@ export default function ProjectDetailPage() {
   if (state.loading) return <div className="loading">Loading documents...</div>;
 
   return (
-    <div className="project-detail-page">
-      
-      {/* Mobile overlays */}
-      {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
-      {rightSidebarMobileOpen && <div className="sidebar-overlay" onClick={() => setRightSidebarMobileOpen(false)} />}
+    <DragDropProvider>
+      <div className="project-detail-page">
+
+        {/* Mobile overlays */}
+        {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
+        {rightSidebarMobileOpen && <div className="sidebar-overlay" onClick={() => setRightSidebarMobileOpen(false)} />}
       
       {/* Left Sidebar - Documents Only */}
       <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${leftSidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
@@ -1253,7 +1293,10 @@ export default function ProjectDetailPage() {
           onCancel={() => setShowBatchImport(false)}
         />
       )}
-    </div>
+        {/* Drag and Drop Recycle Bin */}
+        <RecycleBin />
+      </div>
+    </DragDropProvider>
   );
 }
 
