@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { getTags, createTag, updateTag, deleteTag } from '../api';
 import type { Tag } from '../api';
+import { DraggableItem } from './dnd/DraggableItem';
 
 interface TagManagerProps {
   projectId: string;
@@ -224,31 +225,38 @@ export function TagManager({ projectId, onClose }: TagManagerProps) {
             ) : (
               <div className="tags-list">
                 {tags.map(tag => (
-                  <div key={tag.id} className="tag-item">
-                    <span 
-                      className="tag-badge"
-                      style={{ backgroundColor: tag.color, color: 'white' }}
-                    >
-                      {tag.name}
-                    </span>
-                    
-                    <div className="tag-actions">
-                      <button 
-                        className="btn btn--sm"
-                        onClick={() => startEdit(tag)}
-                        disabled={isCreating || !!editingTag}
+                  <DraggableItem
+                    key={tag.id}
+                    id={`tag-${tag.id}`}
+                    type="tag"
+                    item={tag}
+                  >
+                    <div className="tag-item">
+                      <span
+                        className="tag-badge"
+                        style={{ backgroundColor: tag.color, color: 'white' }}
                       >
-                        Edit
-                      </button>
-                      <button 
-                        className="btn btn--sm btn--danger"
-                        onClick={() => handleDeleteTag(tag)}
-                        disabled={isCreating || !!editingTag}
-                      >
-                        Delete
-                      </button>
+                        {tag.name}
+                      </span>
+
+                      <div className="tag-actions">
+                        <button
+                          className="btn btn--sm"
+                          onClick={() => startEdit(tag)}
+                          disabled={isCreating || !!editingTag}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn--sm btn--danger"
+                          onClick={() => handleDeleteTag(tag)}
+                          disabled={isCreating || !!editingTag}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </DraggableItem>
                 ))}
               </div>
             )}

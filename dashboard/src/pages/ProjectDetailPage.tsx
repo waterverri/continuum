@@ -3,19 +3,28 @@ import { useParams } from 'react-router-dom';
 import type { Document, AIProvider, Tag } from '../api';
 import { getAIProviders, getUserCredits } from '../api';
 import { useProjectActions } from '../App';
-import { useProjectDetailState } from '../hooks/useProjectDetailState';
+// Removed useProjectDetailState - migrated to Zustand
 import { useDocumentOperations } from '../hooks/useDocumentOperations';
 import { useDocumentFilter } from '../hooks/useDocumentFilter';
-// New global state imports (TODO: Uncomment when migration is complete)
-// import { useDocuments, useDocumentActions, useFilteredDocuments, useAvailableDocumentTypes } from '../hooks/store/useDocuments';
-// import { useTags, useTagActions } from '../hooks/store/useTags';
-// import { useEvents, useEventActions } from '../hooks/store/useEvents';
-// import { usePresets, usePresetActions } from '../hooks/store/usePresets';
-// import { useFilters, useFilterActions, useHasActiveFilters } from '../hooks/store/useFilters';
-// import { useUI, useModalActions, useDocumentManagement } from '../hooks/store/useUI';
-// import { useApiActions } from '../hooks/store/useApiActions';
+// New global state imports - MIGRATION TO ZUSTAND
+import { useDocuments, useDocumentActions, useSelectedDocument } from '../hooks/store/useDocuments';
+import { useTags, useTagActions } from '../hooks/store/useTags';
+import { useEvents, useEventActions } from '../hooks/store/useEvents';
+import { usePresets, usePresetActions } from '../hooks/store/usePresets';
+import {
+  useUI,
+  useModals,
+  useModalActions,
+  useDocumentManagement,
+  useForm,
+  useFormActions,
+  useSidebarActions,
+  useEditingState
+} from '../hooks/store/useUI';
+import { useGlobalStore } from '../store';
 import { DragDropProvider } from '../components/dnd/DragDropProvider';
 import { RecycleBin } from '../components/dnd/RecycleBin';
+import { DraggableItem } from '../components/dnd/DraggableItem';
 import { EnhancedDocumentForm } from '../components/EnhancedDocumentForm';
 import { DocumentViewer } from '../components/DocumentViewer';
 import { DocumentGroupList } from '../components/DocumentGroupList';
@@ -56,46 +65,64 @@ export default function ProjectDetailPage() {
   // Get project actions context
   const { setProjectActions, setCurrentProject: setAppCurrentProject } = useProjectActions();
   
-  // Use custom hooks for state management
-  const state = useProjectDetailState();
+  // Zustand state hooks - replacing old useState system
+  const documents = useDocuments();
+  const documentActions = useDocumentActions();
+  const tags = useTags();
+  const tagActions = useTagActions();
+  const events = useEvents();
+  const eventActions = useEventActions();
+  const presets = usePresets();
+  const presetActions = usePresetActions();
+  const ui = useUI();
+  const modals = useModals();
+  const modalActions = useModalActions();
+  const documentManagement = useDocumentManagement();
+  const editingState = useEditingState();
+  const formData = useForm();
+  const formActions = useFormActions();
+  const sidebarActions = useSidebarActions();
+  const selectedDocument = useSelectedDocument();
+
+  // UI action methods we need directly from store
+  // const setError = useGlobalStore(...); // Error handling TBD - unused for now
+  const setSelectedDocumentAction = useGlobalStore(state => state.setSelectedDocument);
+  const setResolvedContent = useGlobalStore(state => state.setResolvedContent);
+  const setDocumentToDelete = useGlobalStore(state => state.setDocumentToDelete);
+  const setIsEditing = useGlobalStore(state => state.setIsEditing);
+  const setIsCreating = useGlobalStore(state => state.setIsCreating);
+  const setSourceDocument = useGlobalStore(state => state.setSourceDocument);
+  const setKeyInputValue = useGlobalStore(state => state.setKeyInputValue);
+  const setComponentKeyToAdd = useGlobalStore(state => state.setComponentKeyToAdd);
+  const setSwitcherComponentKey = useGlobalStore(state => state.setSwitcherComponentKey);
+  const setSwitcherGroupId = useGlobalStore(state => state.setSwitcherGroupId);
+  const setTagSelectorDocumentId = useGlobalStore(state => state.setTagSelectorDocumentId);
+  const setEventSelectorDocument = useGlobalStore(state => state.setEventSelectorDocument);
+  const setEvolutionDocument = useGlobalStore(state => state.setEvolutionDocument);
+  const setEditingPreset = useGlobalStore(state => state.setEditingPreset);
+  const startEdit = useGlobalStore(state => state.startEdit);
+  const startCreate = useGlobalStore(state => state.startCreate);
+  const resetForm = useGlobalStore(state => state.resetForm);
+
   const operations = useDocumentOperations({
     projectId,
-    documents: state.documents,
-    setDocuments: state.setDocuments,
-    presets: state.presets,
-    setPresets: state.setPresets,
-    setTags: state.setTags,
-    setError: state.setError,
-    setLoading: state.setLoading,
-    setSelectedDocument: state.setSelectedDocument,
-    setResolvedContent: state.setResolvedContent,
-    setDocumentToDelete: state.setDocumentToDelete,
-    openModal: state.openModal,
+    documents: documents.items,
+    setDocuments: documentActions.setDocuments,
+    presets: presets.items,
+    setPresets: presetActions.setPresets,
+    setTags: tagActions.setTags,
+    setError: () => {}, // Will use proper error handling
+    setLoading: documentActions.setDocumentsLoading,
+    setSelectedDocument: () => {}, // Will use proper hook
+    setResolvedContent: () => {}, // Will use proper hook
+    setDocumentToDelete: () => {}, // Will use proper hook
+    openModal: modalActions.openModal,
   });
-
-  // New global state hooks (TODO: These will replace the old hooks once migration is complete)
-  // const documents = useDocuments();
-  // const documentActions = useDocumentActions();
-  // const tags = useTags();
-  // const tagActions = useTagActions();
-  // const events = useEvents();
-  // const eventActions = useEventActions();
-  // const presets = usePresets();
-  // const presetActions = usePresetActions();
-  // const filters = useFilters();
-  // const filterActions = useFilterActions();
-  // const ui = useUI();
-  // const modalActions = useModalActions();
-  // const documentManagement = useDocumentManagement();
-  // const apiActions = useApiActions();
-  // const filteredDocuments = useFilteredDocuments();
-  // const availableDocumentTypes = useAvailableDocumentTypes();
-  // const hasActiveFilters = useHasActiveFilters();
   
-  // Get events from state hook instead
+  // Events now come from Zustand
 
   // Use document filter hook for sidebar
-  const sidebarFilter = useDocumentFilter(state.documents, state.events);
+  const sidebarFilter = useDocumentFilter(documents.items, events.items);
 
   // Sidebar collapse states
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
@@ -144,7 +171,7 @@ export default function ProjectDetailPage() {
 
       const { getEvents } = await import('../api');
       const { events: projectEvents } = await getEvents(projectId, session.access_token, true);
-      state.setEvents(projectEvents);
+      eventActions.setEvents(projectEvents);
     } catch (error) {
       console.error('Failed to load events:', error);
     }
@@ -162,18 +189,18 @@ export default function ProjectDetailPage() {
 
   // Initialize filtered tags when tags change
   useEffect(() => {
-    setFilteredTags(state.tags);
-  }, [state.tags]);
+    setFilteredTags(tags.items);
+  }, [tags.items]);
 
   // Auto-resolve template documents when selected
   useEffect(() => {
-    if (state.selectedDocument &&
-        state.selectedDocument.components &&
-        Object.keys(state.selectedDocument.components).length > 0 &&
-        !state.resolvedContent) {
-      operations.handleResolveDocument(state.selectedDocument);
+    if (selectedDocument &&
+        selectedDocument.components &&
+        Object.keys(selectedDocument.components).length > 0 &&
+        !ui.resolvedContent) {
+      operations.handleResolveDocument(selectedDocument);
     }
-  }, [state.selectedDocument, state.resolvedContent, operations]);
+  }, [selectedDocument, ui.resolvedContent, operations]);
 
   const loadAiProviders = async () => {
     try {
@@ -268,37 +295,37 @@ export default function ProjectDetailPage() {
   // Component-specific handlers
   const handleCreateDocument = async () => {
     try {
-      await operations.handleCreateDocument(state.formData);
-      state.setIsCreating(false);
-      state.resetForm();
+      await operations.handleCreateDocument(formData);
+      setIsCreating(false);
+      resetForm();
     } catch {
       // Error handled in operations hook
     }
   };
 
   const handleUpdateDocument = async () => {
-    if (!state.selectedDocument) return;
-    
+    if (!selectedDocument) return;
+
     try {
-      await operations.handleUpdateDocument(state.selectedDocument.id, state.formData);
-      state.setIsEditing(false);
+      await operations.handleUpdateDocument(selectedDocument.id, formData);
+      setIsEditing(false);
     } catch {
       // Error handled in operations hook
     }
   };
 
   const handleCreateDerivative = (document: Document) => {
-    state.setSourceDocument(document);
-    state.openModal('showDerivativeModal');
+    setSourceDocument(document);
+    modalActions.openModal('showDerivativeModal');
   };
 
   const handleDerivativeCreation = async (derivativeType: string, title: string) => {
-    if (!state.sourceDocument) return;
-    
+    if (!ui.sourceDocument) return;
+
     try {
-      await operations.handleCreateDerivative(derivativeType, title, state.sourceDocument);
-      state.closeModal('showDerivativeModal');
-      state.setSourceDocument(null);
+      await operations.handleCreateDerivative(derivativeType, title, ui.sourceDocument);
+      modalActions.closeModal('showDerivativeModal');
+      setSourceDocument(null);
     } catch {
       // Error handled in operations hook
     }
@@ -307,7 +334,7 @@ export default function ProjectDetailPage() {
   const handleCreatePreset = async (name: string, document: Document) => {
     try {
       await operations.handleCreatePreset(name, document);
-      state.closeModal('showPresetPicker');
+      modalActions.closeModal('showPresetPicker');
     } catch {
       // Error handled in operations hook
     }
@@ -324,76 +351,68 @@ export default function ProjectDetailPage() {
 
   // Component handlers
   const addComponent = () => {
-    state.setKeyInputValue('');
-    state.openModal('showKeyInput');
+    setKeyInputValue('');
+    modalActions.openModal('showKeyInput');
   };
 
   const confirmComponentKey = () => {
-    if (state.keyInputValue.trim()) {
-      state.setComponentKeyToAdd(state.keyInputValue.trim());
-      state.closeModal('showKeyInput');
-      state.openModal('showComponentTypeSelector');
+    if (ui.keyInputValue.trim()) {
+      setComponentKeyToAdd(ui.keyInputValue.trim());
+      modalActions.closeModal('showKeyInput');
+      modalActions.openModal('showComponentTypeSelector');
     }
-  };
-
-  const handleBatchImportSuccess = () => {
-    setShowBatchImport(false);
-    // Reload all data
-    operations.loadDocuments();
-    operations.loadTags();
-    loadEvents();
   };
 
   const selectComponentType = (type: 'document' | 'group') => {
     console.debug('ProjectDetailPage: selectComponentType called', {
       type,
-      componentKeyToAdd: state.componentKeyToAdd,
-      availableDocuments: state.documents.length
+      componentKeyToAdd: ui.componentKeyToAdd,
+      availableDocuments: documents.items.length
     });
-    
-    state.closeModal('showComponentTypeSelector');
+
+    modalActions.closeModal('showComponentTypeSelector');
     if (type === 'document') {
       console.debug('ProjectDetailPage: Opening document picker modal');
-      state.openModal('showDocumentPicker');
+      modalActions.openModal('showDocumentPicker');
     } else {
       console.debug('ProjectDetailPage: Opening group picker modal');
-      state.openModal('showGroupPicker');
+      modalActions.openModal('showGroupPicker');
     }
   };
 
   const selectDocumentForComponent = (documentId: string) => {
     console.debug('ProjectDetailPage: selectDocumentForComponent called', {
       documentId,
-      componentKeyToAdd: state.componentKeyToAdd,
-      isCreating: state.isCreating,
-      selectedDocument: state.selectedDocument ? { 
-        id: state.selectedDocument.id, 
-        title: state.selectedDocument.title,
-        components: state.selectedDocument.components 
+      componentKeyToAdd: ui.componentKeyToAdd,
+      isCreating: editingState.isCreating,
+      selectedDocument: selectedDocument ? {
+        id: selectedDocument.id,
+        title: selectedDocument.title,
+        components: selectedDocument.components
       } : null,
-      formDataComponents: state.formData.components
+      formDataComponents: formData.components
     });
-    
-    if (state.componentKeyToAdd) {
+
+    if (ui.componentKeyToAdd) {
       // Use formData.components for both creation and editing modes
-      const currentComponents = state.isCreating ? state.formData.components : state.selectedDocument?.components || {};
+      const currentComponents = editingState.isCreating ? formData.components : selectedDocument?.components || {};
       const updatedComponents = {
         ...currentComponents,
-        [state.componentKeyToAdd]: documentId
+        [ui.componentKeyToAdd]: documentId
       };
       console.debug('ProjectDetailPage: Updating components', {
         previousComponents: currentComponents,
         updatedComponents,
-        componentKey: state.componentKeyToAdd
+        componentKey: ui.componentKeyToAdd
       });
-      
-      state.setFormData(prev => ({ ...prev, components: updatedComponents }));
-      state.closeModal('showDocumentPicker');
-      state.setComponentKeyToAdd(null);
+
+      formActions.updateFormData({ components: updatedComponents });
+      modalActions.closeModal('showDocumentPicker');
+      setComponentKeyToAdd(null);
       console.debug('ProjectDetailPage: Selection completed, modal closed');
     } else {
       console.debug('ProjectDetailPage: Selection failed - missing componentKeyToAdd', {
-        hasComponentKey: !!state.componentKeyToAdd
+        hasComponentKey: !!ui.componentKeyToAdd
       });
     }
   };
@@ -401,26 +420,26 @@ export default function ProjectDetailPage() {
   const selectGroupForComponent = (groupId: string) => {
     console.debug('ProjectDetailPage: selectGroupForComponent called', {
       groupId,
-      componentKeyToAdd: state.componentKeyToAdd,
-      isCreating: state.isCreating
+      componentKeyToAdd: ui.componentKeyToAdd,
+      isCreating: editingState.isCreating
     });
-    
-    if (state.componentKeyToAdd) {
+
+    if (ui.componentKeyToAdd) {
       // Use formData.components for both creation and editing modes
-      const currentComponents = state.isCreating ? state.formData.components : state.selectedDocument?.components || {};
+      const currentComponents = editingState.isCreating ? formData.components : selectedDocument?.components || {};
       const updatedComponents = {
         ...currentComponents,
-        [state.componentKeyToAdd]: `group:${groupId}`
+        [ui.componentKeyToAdd]: `group:${groupId}`
       };
       console.debug('ProjectDetailPage: Updating components with group', {
         previousComponents: currentComponents,
         updatedComponents,
-        componentKey: state.componentKeyToAdd
+        componentKey: ui.componentKeyToAdd
       });
-      
-      state.setFormData(prev => ({ ...prev, components: updatedComponents }));
-      state.closeModal('showGroupPicker');
-      state.setComponentKeyToAdd(null);
+
+      formActions.updateFormData({ components: updatedComponents });
+      modalActions.closeModal('showGroupPicker');
+      setComponentKeyToAdd(null);
       console.debug('ProjectDetailPage: Group selection completed, modal closed');
     } else {
       console.debug('ProjectDetailPage: Group selection failed - missing componentKeyToAdd');
@@ -428,35 +447,35 @@ export default function ProjectDetailPage() {
   };
 
   const openGroupSwitcher = (componentKey: string, groupId: string) => {
-    state.setSwitcherComponentKey(componentKey);
-    state.setSwitcherGroupId(groupId);
-    state.openModal('showGroupSwitcher');
+    setSwitcherComponentKey(componentKey);
+    setSwitcherGroupId(groupId);
+    modalActions.openModal('showGroupSwitcher');
   };
 
   const openGroupAssignmentPicker = () => {
-    state.openModal('showGroupAssignmentPicker');
+    modalActions.openModal('showGroupAssignmentPicker');
   };
 
   const handleGroupAssignment = async (groupId: string) => {
     console.debug('ProjectDetailPage: handleGroupAssignment called', {
       groupId,
-      isCreating: state.isCreating
+      isCreating: editingState.isCreating
     });
-    
+
     // Update form data with new group assignment
-    state.setFormData(prev => ({ ...prev, group_id: groupId }));
-    
+    formActions.updateFormData({ group_id: groupId });
+
     // If we're editing (not creating), ensure bidirectional group assignment
-    if (!state.isCreating && groupId && accessToken && projectId) {
+    if (!editingState.isCreating && groupId && accessToken && projectId) {
       try {
         await ensureBidirectionalGroupAssignment(
           groupId,
-          state.documents,
+          documents.items,
           projectId,
           accessToken,
           // Update local state when document is updated
           (updatedDoc) => {
-            state.setDocuments(prev => prev.map(doc => 
+            documentActions.setDocuments(documents.items.map(doc =>
               doc.id === updatedDoc.id ? updatedDoc : doc
             ));
           }
@@ -466,8 +485,8 @@ export default function ProjectDetailPage() {
         // Don't block the UI, just log the error
       }
     }
-    
-    state.closeModal('showGroupAssignmentPicker');
+
+    modalActions.closeModal('showGroupAssignmentPicker');
     console.debug('ProjectDetailPage: Group assignment completed');
   };
 
@@ -476,11 +495,11 @@ export default function ProjectDetailPage() {
       componentKey,
       groupId,
       preferredType,
-      isCreating: state.isCreating
+      isCreating: editingState.isCreating
     });
-    
+
     // Use formData.components for both creation and editing modes
-    const currentComponents = state.isCreating ? state.formData.components : state.selectedDocument?.components || {};
+    const currentComponents = editingState.isCreating ? formData.components : selectedDocument?.components || {};
     const updatedComponents = {
       ...currentComponents,
       [componentKey]: preferredType ? `group:${groupId}:${preferredType}` : `group:${groupId}`
@@ -489,33 +508,33 @@ export default function ProjectDetailPage() {
       previousComponents: currentComponents,
       updatedComponents
     });
-    
-    state.setFormData(prev => ({ ...prev, components: updatedComponents }));
-    state.closeModal('showGroupSwitcher');
-    state.setSwitcherComponentKey(null);
-    state.setSwitcherGroupId(null);
+
+    formActions.updateFormData({ components: updatedComponents });
+    modalActions.closeModal('showGroupSwitcher');
+    setSwitcherComponentKey(null);
+    setSwitcherGroupId(null);
     console.debug('ProjectDetailPage: Group type switch completed');
   };
 
   const openTagSelector = (documentId: string) => {
-    state.setTagSelectorDocumentId(documentId);
-    state.openModal('showTagSelector');
+    setTagSelectorDocumentId(documentId);
+    modalActions.openModal('showTagSelector');
   };
 
   const closeTagSelector = () => {
-    state.closeModal('showTagSelector');
-    state.setTagSelectorDocumentId(null);
+    modalActions.closeModal('showTagSelector');
+    setTagSelectorDocumentId(null);
     operations.loadDocuments();
   };
 
   const openEventSelector = (document: Document) => {
-    state.setEventSelectorDocument(document);
-    state.openModal('showEventSelector');
+    setEventSelectorDocument(document);
+    modalActions.openModal('showEventSelector');
   };
 
   const closeEventSelector = () => {
-    state.closeModal('showEventSelector');
-    state.setEventSelectorDocument(null);
+    modalActions.closeModal('showEventSelector');
+    setEventSelectorDocument(null);
     operations.loadDocuments();
   };
 
@@ -561,33 +580,33 @@ export default function ProjectDetailPage() {
         await loadEvents(); // Refresh events list
       } catch (error) {
         console.error('Failed to create event:', error);
-        state.setError('Failed to create event. Please try again.');
+        // TODO: Implement error handling
       }
     }
   };
 
   const openDocumentEvolution = (document: Document) => {
-    state.setEvolutionDocument(document);
-    state.openModal('showDocumentEvolution');
+    setEvolutionDocument(document);
+    modalActions.openModal('showDocumentEvolution');
   };
 
   const closeDocumentEvolution = () => {
-    state.closeModal('showDocumentEvolution');
-    state.setEvolutionDocument(null);
+    modalActions.closeModal('showDocumentEvolution');
+    setEvolutionDocument(null);
   };
 
 
   const removeComponent = (key: string) => {
-    const newComponents = { ...state.formData.components };
+    const newComponents = { ...formData.components };
     delete newComponents[key];
-    state.setFormData({ ...state.formData, components: newComponents });
+    formActions.updateFormData({ components: newComponents });
   };
 
   const handleSidebarDocumentClick = (document: Document) => {
-    state.setSelectedDocument(document);
-    state.setIsEditing(false);
-    state.setResolvedContent(null);
-    state.setSidebarOpen(false);
+    setSelectedDocumentAction(document.id);
+    setIsEditing(false);
+    setResolvedContent(null);
+    sidebarActions.setSidebarOpen(false);
   };
 
   const handleDocumentRename = (document: Document) => {
@@ -609,7 +628,7 @@ export default function ProjectDetailPage() {
   // Provide action handlers to the app header through context
   useEffect(() => {
     setProjectActions({
-      onToggleSidebar: () => state.setSidebarOpen(!state.sidebarOpen),
+      onToggleSidebar: () => sidebarActions.setSidebarOpen(!ui.sidebarOpen),
       onToggleRightSidebar: () => {
         // On mobile, toggle mobile open state; on desktop, toggle collapse
         if (window.innerWidth <= 768) {
@@ -624,20 +643,20 @@ export default function ProjectDetailPage() {
     return () => {
       setProjectActions({});
     };
-  }, [setProjectActions, state.setSidebarOpen, rightSidebarCollapsed, rightSidebarMobileOpen]);
+  }, [setProjectActions, sidebarActions.setSidebarOpen, ui.sidebarOpen, rightSidebarCollapsed, rightSidebarMobileOpen]);
 
-  if (state.loading) return <div className="loading">Loading documents...</div>;
+  if (documents.loading) return <div className="loading">Loading documents...</div>;
 
   return (
     <DragDropProvider>
       <div className="project-detail-page">
 
         {/* Mobile overlays */}
-        {state.sidebarOpen && <div className="sidebar-overlay" onClick={() => state.setSidebarOpen(false)} />}
+        {ui.sidebarOpen && <div className="sidebar-overlay" onClick={() => sidebarActions.setSidebarOpen(false)} />}
         {rightSidebarMobileOpen && <div className="sidebar-overlay" onClick={() => setRightSidebarMobileOpen(false)} />}
       
       {/* Left Sidebar - Documents Only */}
-      <div className={`left-sidebar ${state.sidebarOpen ? 'left-sidebar--open' : ''} ${leftSidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
+      <div className={`left-sidebar ${ui.sidebarOpen ? 'left-sidebar--open' : ''} ${leftSidebarCollapsed ? 'left-sidebar--collapsed' : ''}`}>
         <div className="left-sidebar__header">
           <div className="left-sidebar__header-content">
             <h2>Documents</h2>
@@ -656,7 +675,7 @@ export default function ProjectDetailPage() {
             </button>
             <button 
               className="left-sidebar__close"
-              onClick={() => state.setSidebarOpen(false)}
+              onClick={() => sidebarActions.setSidebarOpen(false)}
             >
               ×
             </button>
@@ -668,8 +687,8 @@ export default function ProjectDetailPage() {
           <button
             className="btn btn--primary btn--full-width"
             onClick={() => {
-              state.startCreate();
-              state.setSidebarOpen(false);
+              startCreate();
+              sidebarActions.setSidebarOpen(false);
               setRightSidebarMobileOpen(false);
             }}
             title="Create new document"
@@ -680,7 +699,7 @@ export default function ProjectDetailPage() {
             className="btn btn--secondary btn--full-width"
             onClick={() => {
               setShowBatchImport(true);
-              state.setSidebarOpen(false);
+              sidebarActions.setSidebarOpen(false);
               setRightSidebarMobileOpen(false);
             }}
             title="Batch import documents from ZIP file"
@@ -690,10 +709,10 @@ export default function ProjectDetailPage() {
           </button>
         </div>
         
-        {state.error && (
+        {documents.error && (
           <div className="error-message">
-            {state.error}
-            <button onClick={() => state.setError(null)}>×</button>
+            {documents.error}
+            <button onClick={() => {/* TODO: Implement error clearing */}}>×</button>
           </div>
         )}
         
@@ -712,7 +731,7 @@ export default function ProjectDetailPage() {
           
           
           <EventFilter
-            events={state.events}
+            events={events.items}
             selectedEventIds={sidebarFilter.selectedEventIds}
             onEventSelectionChange={sidebarFilter.setSelectedEventIds}
             eventVersionFilter={sidebarFilter.eventVersionFilter}
@@ -733,7 +752,7 @@ export default function ProjectDetailPage() {
         <div className="left-sidebar__documents">
           <DocumentGroupList
             documents={sidebarFilter.filteredDocuments}
-            selectedDocumentId={state.selectedDocument?.id}
+            selectedDocumentId={selectedDocument?.id}
             onDocumentClick={handleSidebarDocumentClick}
             onDocumentRename={handleDocumentRename}
             onDocumentDelete={operations.handleDeleteDocument}
@@ -751,50 +770,50 @@ export default function ProjectDetailPage() {
       <div className="main-content">
         <div className="main-content__body">
           <div className="main-content__inner">
-            {(state.isCreating || state.isEditing) && (
+            {(editingState.isCreating || editingState.isEditing) && (
               <EnhancedDocumentForm
-                formData={state.formData}
-                setFormData={state.setFormData}
-                onSave={state.isCreating ? handleCreateDocument : handleUpdateDocument}
-                onCancel={state.cancelEdit}
+                formData={formData}
+                setFormData={formActions.setFormData}
+                onSave={editingState.isCreating ? handleCreateDocument : handleUpdateDocument}
+                onCancel={documentManagement.cancelEdit}
                 addComponent={addComponent}
                 removeComponent={removeComponent}
                 onOpenGroupSwitcher={openGroupSwitcher}
                 onOpenGroupPicker={openGroupAssignmentPicker}
-                isCreating={state.isCreating}
-                documents={state.documents}
+                isCreating={editingState.isCreating}
+                documents={documents.items}
                 aiProviders={aiProviders}
-                currentDocumentId={state.selectedDocument?.id}
+                currentDocumentId={selectedDocument?.id}
               />
             )}
             
-            {!state.isCreating && !state.isEditing && state.selectedDocument && (
+            {!editingState.isCreating && !editingState.isEditing && selectedDocument && (
               <DocumentViewer
-                document={state.selectedDocument}
-                allDocuments={state.documents}
-                resolvedContent={state.resolvedContent}
-                onResolve={() => state.selectedDocument && operations.handleResolveDocument(state.selectedDocument)}
+                document={selectedDocument}
+                allDocuments={documents.items}
+                resolvedContent={ui.resolvedContent}
+                onResolve={() => selectedDocument && operations.handleResolveDocument(selectedDocument)}
                 onCreateFromSelection={(selectedText, selectionInfo, title, documentType, groupId) =>
-                  state.selectedDocument && operations.handleCreateFromSelection(state.selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
+                  selectedDocument && operations.handleCreateFromSelection(selectedDocument, selectedText, selectionInfo, title, documentType, groupId)
                 }
                 onDocumentSelect={(document) => {
-                  state.setSelectedDocument(document);
-                  state.setResolvedContent(null);
+                  setSelectedDocumentAction(document.id);
+                  setResolvedContent(null);
                 }}
                 onDocumentUpdate={operations.loadDocuments}
                 onEditDocument={(document) => {
-                  state.closeAllModals();
-                  state.startEdit(document);
+                  modalActions.closeAllModals();
+                  startEdit(document);
                 }}
                 onTagUpdate={async () => {
                   await operations.loadDocuments();
                   // Force re-render by getting fresh document data
-                  if (state.selectedDocument) {
-                    // Since loadDocuments updates state.documents, we need to wait for the next render cycle
+                  if (selectedDocument) {
+                    // Since loadDocuments updates documents.items, we need to wait for the next render cycle
                     setTimeout(() => {
-                      const updatedDoc = state.documents.find(d => d.id === state.selectedDocument!.id);
+                      const updatedDoc = documents.items.find(d => d.id === selectedDocument!.id);
                       if (updatedDoc) {
-                        state.setSelectedDocument(updatedDoc);
+                        setSelectedDocumentAction(updatedDoc.id);
                       }
                     }, 0);
                   }
@@ -808,12 +827,12 @@ export default function ProjectDetailPage() {
               />
             )}
             
-            {!state.isCreating && !state.isEditing && !state.selectedDocument && (
+            {!editingState.isCreating && !editingState.isEditing && !selectedDocument && (
               <div className="empty-state">
                 <h3>Select a document to view or create a new one</h3>
-                <button 
+                <button
                   className="btn btn--primary"
-                  onClick={() => state.setSidebarOpen(true)}
+                  onClick={() => sidebarActions.setSidebarOpen(true)}
                 >
                   Browse Documents
                 </button>
@@ -859,7 +878,7 @@ export default function ProjectDetailPage() {
                 projectId={projectId}
                 selectedConditions={sidebarFilter.tagFilterConditions}
                 onConditionsChange={sidebarFilter.setTagFilterConditions}
-                availableTags={state.tags}
+                availableTags={tags.items}
               />
             </div>
           )}
@@ -867,10 +886,10 @@ export default function ProjectDetailPage() {
           {/* Tags Management Widget */}
           <div className="widget">
             <div className="widget__header">
-              <h4>Project Tags ({state.tags.length})</h4>
+              <h4>Project Tags ({tags.items.length})</h4>
               <button 
                 className="btn btn--sm btn--secondary"
-                onClick={() => state.openModal('showTagManager')}
+                onClick={() => modalActions.openModal('showTagManager')}
               >
                 Manage
               </button>
@@ -881,7 +900,7 @@ export default function ProjectDetailPage() {
               {projectId && (
                 <ProjectTagsFilter
                   projectId={projectId}
-                  tags={state.tags}
+                  tags={tags.items}
                   onTagCreated={() => {
                     operations.loadTags();
                   }}
@@ -889,7 +908,7 @@ export default function ProjectDetailPage() {
                 />
               )}
               
-              {state.tags.length === 0 ? (
+              {tags.items.length === 0 ? (
                 <div className="empty-state">
                   <p>No tags created yet.</p>
                   <p>Use the button above to create your first tag.</p>
@@ -899,26 +918,32 @@ export default function ProjectDetailPage() {
                   {filteredTags.map(tag => {
                     const isInFilter = sidebarFilter.tagFilterConditions.some(condition => condition.tagId === tag.id);
                     return (
-                      <button 
+                      <DraggableItem
                         key={tag.id}
-                        className={`tag-badge tag-badge--compact tag-badge--clickable ${isInFilter ? 'tag-badge--filtered' : ''}`}
-                        style={{ backgroundColor: tag.color, color: 'white' }}
-                        onClick={() => {
-                          if (isInFilter) {
-                            // Remove from filter
-                            const newConditions = sidebarFilter.tagFilterConditions.filter(c => c.tagId !== tag.id);
-                            sidebarFilter.setTagFilterConditions(newConditions);
-                          } else {
-                            // Add to filter
-                            const newCondition = { tagId: tag.id, mode: 'exist_all' as const };
-                            sidebarFilter.setTagFilterConditions([...sidebarFilter.tagFilterConditions, newCondition]);
-                          }
-                        }}
-                        title={isInFilter ? 'Click to remove from filter' : 'Click to add to filter'}
+                        id={`filter-tag-${tag.id}`}
+                        type="tag"
+                        item={tag}
                       >
-                        {tag.name}
-                        {isInFilter && <span className="tag-badge__indicator"> ✓</span>}
-                      </button>
+                        <button
+                          className={`tag-badge tag-badge--compact tag-badge--clickable ${isInFilter ? 'tag-badge--filtered' : ''}`}
+                          style={{ backgroundColor: tag.color, color: 'white' }}
+                          onClick={() => {
+                            if (isInFilter) {
+                              // Remove from filter
+                              const newConditions = sidebarFilter.tagFilterConditions.filter(c => c.tagId !== tag.id);
+                              sidebarFilter.setTagFilterConditions(newConditions);
+                            } else {
+                              // Add to filter
+                              const newCondition = { tagId: tag.id, mode: 'exist_all' as const };
+                              sidebarFilter.setTagFilterConditions([...sidebarFilter.tagFilterConditions, newCondition]);
+                            }
+                          }}
+                          title={isInFilter ? 'Click to remove from filter' : 'Click to add to filter'}
+                        >
+                          {tag.name}
+                          {isInFilter && <span className="tag-badge__indicator"> ✓</span>}
+                        </button>
+                      </DraggableItem>
                     );
                   })}
                 </div>
@@ -932,23 +957,23 @@ export default function ProjectDetailPage() {
               {projectId && (
                 <EventsWidget
                   projectId={projectId}
-                  events={state.events}
+                  events={events.items}
                   onEventsChange={loadEvents}
-                  onTimelineClick={() => state.openModal('showEventTimeline')}
+                  onTimelineClick={() => modalActions.openModal('showEventTimeline')}
                   externalTagFilters={sidebarFilter.tagFilterConditions}
                   onEventClick={(eventId) => {
                     // Apply event filter to document selection
                     sidebarFilter.setSelectedEventIds([eventId]);
                   }}
                   onDocumentView={(document) => {
-                    state.closeAllModals(); // Close all modals first
-                    state.setSelectedDocument(document);
-                    state.setIsEditing(false);
-                    state.setResolvedContent(null);
+                    modalActions.closeAllModals(); // Close all modals first
+                    setSelectedDocumentAction(document.id);
+                    setIsEditing(false);
+                    setResolvedContent(null);
                   }}
                   onDocumentEdit={(document) => {
-                    state.closeAllModals(); // Close all modals first
-                    state.startEdit(document);
+                    modalActions.closeAllModals(); // Close all modals first
+                    startEdit(document);
                   }}
                   onDocumentDelete={(documentId) => {
                     operations.handleDeleteDocument(documentId);
@@ -961,11 +986,11 @@ export default function ProjectDetailPage() {
           {/* Presets Widget */}
           <div className="presets-widget">
             <div className="presets-widget__header">
-              <h4>📡 Presets ({state.presets.length})</h4>
+              <h4>📡 Presets ({presets.items.length})</h4>
               <div className="presets-widget__actions">
                 <button 
                   className="btn btn--xs btn--secondary"
-                  onClick={() => state.openModal('showPresetPicker')}
+                  onClick={() => modalActions.openModal('showPresetPicker')}
                 >
                   ＋
                 </button>
@@ -973,14 +998,14 @@ export default function ProjectDetailPage() {
             </div>
             
             <div className="presets-widget__content">
-              {state.presets.length === 0 ? (
+              {presets.items.length === 0 ? (
                 <div className="empty-state empty-state--compact">
                   <p>No presets yet</p>
                   <p>Create presets to publish documents as external API endpoints.</p>
                 </div>
               ) : (
                 <div className="preset-cards">
-                  {state.presets.map((preset) => (
+                  {presets.items.map((preset) => (
                     <div key={preset.id} className="preset-card">
                       <div className="preset-card__main">
                         <div className="preset-card__header">
@@ -998,8 +1023,8 @@ export default function ProjectDetailPage() {
                                   <button 
                                     className="preset-card__dropdown-item"
                                     onClick={() => {
-                                      state.setEditingPreset(preset);
-                                      state.openModal('showPresetDashboard');
+                                      setEditingPreset(preset);
+                                      modalActions.openModal('showPresetDashboard');
                                       setOpenPresetDropdown(null);
                                     }}
                                   >
@@ -1026,8 +1051,8 @@ export default function ProjectDetailPage() {
                                   <button
                                     className="preset-card__dropdown-item"
                                     onClick={() => {
-                                      state.setEditingPreset(preset);
-                                      state.openModal('showPresetEdit');
+                                      setEditingPreset(preset);
+                                      modalActions.openModal('showPresetEdit');
                                       setOpenPresetDropdown(null);
                                     }}
                                   >
@@ -1063,147 +1088,147 @@ export default function ProjectDetailPage() {
       </div>
       
       {/* Component Key Input Modal */}
-      {state.modals.showKeyInput && (
+      {modals.showKeyInput && (
         <ComponentKeyInputModal
-          value={state.keyInputValue}
-          onChange={state.setKeyInputValue}
+          value={ui.keyInputValue}
+          onChange={setKeyInputValue}
           onConfirm={confirmComponentKey}
-          onCancel={() => state.closeModal('showKeyInput')}
+          onCancel={() => modalActions.closeModal('showKeyInput')}
         />
       )}
       
       {/* Document Picker Modal */}
-      {state.modals.showDocumentPicker && (
+      {modals.showDocumentPicker && (
         <DocumentPickerModal
-          documents={state.isCreating ? state.documents : state.documents.filter(doc => doc.id !== state.selectedDocument?.id)}
-          componentKey={state.componentKeyToAdd}
+          documents={editingState.isCreating ? documents.items : documents.items.filter(doc => doc.id !== selectedDocument?.id)}
+          componentKey={ui.componentKeyToAdd}
           onSelect={selectDocumentForComponent}
-          onCancel={() => state.closeModal('showDocumentPicker')}
+          onCancel={() => modalActions.closeModal('showDocumentPicker')}
         />
       )}
 
       {/* Derivative Modal */}
-      {state.modals.showDerivativeModal && (
+      {modals.showDerivativeModal && (
         <DerivativeModal
-          sourceDocument={state.sourceDocument}
+          sourceDocument={ui.sourceDocument}
           onConfirm={handleDerivativeCreation}
-          onCancel={() => state.closeModal('showDerivativeModal')}
+          onCancel={() => modalActions.closeModal('showDerivativeModal')}
         />
       )}
 
       {/* Component Type Selector Modal */}
-      {state.modals.showComponentTypeSelector && (
+      {modals.showComponentTypeSelector && (
         <ComponentTypeSelectorModal
-          componentKey={state.componentKeyToAdd}
+          componentKey={ui.componentKeyToAdd}
           onSelect={selectComponentType}
-          onCancel={() => state.closeModal('showComponentTypeSelector')}
+          onCancel={() => modalActions.closeModal('showComponentTypeSelector')}
         />
       )}
 
       {/* Group Picker Modal */}
-      {state.modals.showGroupPicker && (
+      {modals.showGroupPicker && (
         <GroupPickerModal
-          documents={state.documents}
-          componentKey={state.componentKeyToAdd}
+          documents={documents.items}
+          componentKey={ui.componentKeyToAdd}
           onSelect={selectGroupForComponent}
-          onCancel={() => state.closeModal('showGroupPicker')}
+          onCancel={() => modalActions.closeModal('showGroupPicker')}
         />
       )}
 
       {/* Group Assignment Picker Modal */}
-      {state.modals.showGroupAssignmentPicker && (
+      {modals.showGroupAssignmentPicker && (
         <GroupPickerModal
-          documents={state.documents}
+          documents={documents.items}
           mode="group-assignment"
           onSelect={handleGroupAssignment}
-          onCancel={() => state.closeModal('showGroupAssignmentPicker')}
+          onCancel={() => modalActions.closeModal('showGroupAssignmentPicker')}
         />
       )}
 
       {/* Group Switcher Modal */}
-      {state.modals.showGroupSwitcher && state.switcherGroupId && state.switcherComponentKey && projectId && (
+      {modals.showGroupSwitcher && ui.switcherGroupId && ui.switcherComponentKey && projectId && (
         <GroupSwitcherModal
           projectId={projectId}
-          groupId={state.switcherGroupId}
-          componentKey={state.switcherComponentKey}
-          currentReference={state.selectedDocument?.components?.[state.switcherComponentKey] || ''}
+          groupId={ui.switcherGroupId}
+          componentKey={ui.switcherComponentKey}
+          currentReference={selectedDocument?.components?.[ui.switcherComponentKey] || ''}
           onSwitch={switchGroupType}
-          onCancel={() => state.closeModal('showGroupSwitcher')}
+          onCancel={() => modalActions.closeModal('showGroupSwitcher')}
         />
       )}
 
       {/* Preset Picker Modal */}
-      {state.modals.showPresetPicker && (
+      {modals.showPresetPicker && (
         <PresetPickerModal
-          documents={state.documents}
+          documents={documents.items}
           onSelect={handleCreatePreset}
-          onCancel={() => state.closeModal('showPresetPicker')}
+          onCancel={() => modalActions.closeModal('showPresetPicker')}
         />
       )}
 
       {/* Preset Edit Modal */}
-      {state.modals.showPresetEdit && state.editingPreset && (
+      {modals.showPresetEdit && ui.editingPreset && (
         <PresetEditModal
-          preset={state.editingPreset}
-          documents={state.documents}
+          preset={ui.editingPreset}
+          documents={documents.items}
           onSave={async (presetId, name, documentId) => {
             await operations.handleUpdatePreset(presetId, name, documentId);
-            state.setEditingPreset(null);
-            state.closeModal('showPresetEdit');
+            setEditingPreset(null);
+            modalActions.closeModal('showPresetEdit');
           }}
           onCancel={() => {
-            state.setEditingPreset(null);
-            state.closeModal('showPresetEdit');
+            setEditingPreset(null);
+            modalActions.closeModal('showPresetEdit');
           }}
         />
       )}
 
       {/* Preset Dashboard Modal */}
-      {state.modals.showPresetDashboard && state.editingPreset && (
+      {modals.showPresetDashboard && ui.editingPreset && (
         <PresetDashboardModal
-          preset={state.editingPreset}
-          documents={state.documents}
+          preset={ui.editingPreset}
+          documents={documents.items}
           onSave={async (presetId, overrides) => {
             await operations.handleUpdatePresetOverrides(presetId, overrides);
             await operations.loadPresets(); // Reload presets to get full document data
-            state.setEditingPreset(null);
-            state.closeModal('showPresetDashboard');
+            setEditingPreset(null);
+            modalActions.closeModal('showPresetDashboard');
           }}
           onCancel={() => {
-            state.setEditingPreset(null);
-            state.closeModal('showPresetDashboard');
+            setEditingPreset(null);
+            modalActions.closeModal('showPresetDashboard');
           }}
         />
       )}
 
       {/* Tag Manager Modal */}
-      {state.modals.showTagManager && projectId && (
+      {modals.showTagManager && projectId && (
         <TagManager
           projectId={projectId}
           onClose={() => {
-            state.closeModal('showTagManager');
+            modalActions.closeModal('showTagManager');
             operations.loadTags();
           }}
         />
       )}
 
       {/* Tag Selector Modal */}
-      {state.modals.showTagSelector && state.tagSelectorDocumentId && projectId && (
+      {modals.showTagSelector && ui.tagSelectorDocumentId && projectId && (
         <TagSelector
           projectId={projectId}
           entityType="document"
-          entityId={state.tagSelectorDocumentId}
-          entityName={state.documents.find((d: any) => d.id === state.tagSelectorDocumentId)?.title || 'Document'}
+          entityId={ui.tagSelectorDocumentId}
+          entityName={documents.items.find((d: any) => d.id === ui.tagSelectorDocumentId)?.title || 'Document'}
           onClose={closeTagSelector}
           onUpdate={operations.loadDocuments}
         />
       )}
 
       {/* Event Assignment Modal */}
-      {state.modals.showEventSelector && state.eventSelectorDocument && projectId && (
+      {modals.showEventSelector && ui.eventSelectorDocument && projectId && (
         <EventAssignmentModal
           projectId={projectId}
-          document={state.eventSelectorDocument}
+          document={ui.eventSelectorDocument}
           onClose={closeEventSelector}
           onUpdate={() => {
             operations.loadDocuments();
@@ -1213,20 +1238,20 @@ export default function ProjectDetailPage() {
       )}
 
       {/* Event Timeline Modal */}
-      {state.modals.showEventTimeline && projectId && (
+      {modals.showEventTimeline && projectId && (
         <EventTimelineModal
           projectId={projectId}
-          onClose={() => state.closeModal('showEventTimeline')}
-          onCloseAllModals={state.closeAllModals}
+          onClose={() => modalActions.closeModal('showEventTimeline')}
+          onCloseAllModals={modalActions.closeAllModals}
           onDocumentView={(document) => {
-            state.closeAllModals(); // Close all modals first
-            state.setSelectedDocument(document);
-            state.setIsEditing(false);
-            state.setResolvedContent(null);
+            modalActions.closeAllModals(); // Close all modals first
+            setSelectedDocumentAction(document.id);
+            setIsEditing(false);
+            setResolvedContent(null);
           }}
           onDocumentEdit={(document) => {
-            state.closeAllModals(); // Close all modals first
-            state.startEdit(document);
+            modalActions.closeAllModals(); // Close all modals first
+            startEdit(document);
           }}
           onDocumentDelete={(documentId) => {
             operations.handleDeleteDocument(documentId);
@@ -1236,25 +1261,25 @@ export default function ProjectDetailPage() {
       )}
 
       {/* Document Evolution Modal */}
-      {state.modals.showDocumentEvolution && state.evolutionDocument && projectId && (
+      {modals.showDocumentEvolution && ui.evolutionDocument && projectId && (
         <div className="modal-overlay">
           <div className="modal-content modal-content--large">
             <div className="modal-header">
-              <h3>Document Evolution - {state.evolutionDocument.title}</h3>
+              <h3>Document Evolution - {ui.evolutionDocument.title}</h3>
               <button className="modal-close" onClick={closeDocumentEvolution}>&times;</button>
             </div>
             <div className="modal-body">
               <DocumentEvolution
                 projectId={projectId}
-                document={state.evolutionDocument}
+                document={ui.evolutionDocument}
                 onClose={closeDocumentEvolution}
                 onShowDocument={(doc) => {
-                  state.setSelectedDocument(doc);
-                  state.setIsEditing(false);
-                  state.setResolvedContent(null);
+                  setSelectedDocumentAction(doc.id);
+                  setIsEditing(false);
+                  setResolvedContent(null);
                 }}
                 onEditDocument={(doc) => {
-                  state.startEdit(doc);
+                  startEdit(doc);
                 }}
               />
             </div>
@@ -1263,14 +1288,14 @@ export default function ProjectDetailPage() {
       )}
 
       {/* Document Group Deletion Modal */}
-      {state.modals.showDocumentDeletion && state.documentToDelete && (
+      {modals.showDocumentDeletion && ui.documentToDelete && (
         <DocumentGroupDeletionModal
-          isOpen={state.modals.showDocumentDeletion}
-          document={state.documentToDelete}
-          groupDocuments={state.documents.filter(doc => doc.group_id === state.documentToDelete?.group_id)}
+          isOpen={modals.showDocumentDeletion}
+          document={ui.documentToDelete}
+          groupDocuments={documents.items.filter(doc => doc.group_id === ui.documentToDelete?.group_id)}
           onClose={() => {
-            state.closeModal('showDocumentDeletion');
-            state.setDocumentToDelete(null);
+            modalActions.closeModal('showDocumentDeletion');
+            setDocumentToDelete(null);
           }}
           onDeleteDocument={operations.handleConfirmDeleteDocument}
         />

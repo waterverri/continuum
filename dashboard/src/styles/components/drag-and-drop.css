@@ -67,8 +67,9 @@
 /* Recycle bin */
 .recycle-bin {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 50;
   transition: all 0.3s ease;
   animation: fadeIn 0.3s ease;
@@ -77,15 +78,15 @@
 .recycle-bin-content {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 12px;
+  padding: 24px 32px;
   background: var(--color-error-500);
   color: white;
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   font-weight: 600;
-  font-size: 14px;
-  min-width: 140px;
+  font-size: 18px;
+  min-width: 180px;
   justify-content: center;
 }
 
@@ -97,7 +98,7 @@
 }
 
 .recycle-bin-icon {
-  font-size: 20px;
+  font-size: 32px;
 }
 
 /* Drop zone highlights for specific types */
@@ -151,18 +152,19 @@
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .recycle-bin {
-    bottom: 16px;
-    right: 16px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
   .recycle-bin-content {
-    padding: 12px 16px;
-    font-size: 12px;
-    min-width: 120px;
+    padding: 16px 20px;
+    font-size: 16px;
+    min-width: 150px;
   }
 
   .recycle-bin-icon {
-    font-size: 16px;
+    font-size: 24px;
   }
 }
 

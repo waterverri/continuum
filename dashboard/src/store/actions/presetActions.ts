@@ -1,19 +1,19 @@
 import type { Preset } from '../../api';
 import type { GlobalState, GlobalStateActions } from '../types';
 
-type SetFunction = (partial: any) => void;
+type SetFunction = (partial: GlobalState | Partial<GlobalState> | ((state: GlobalState) => GlobalState | Partial<GlobalState>)) => void;
 type GetFunction = () => GlobalState & GlobalStateActions;
 
 export function createPresetActions(set: SetFunction, _get: GetFunction) {
   return {
     // Basic CRUD operations
     setPresets: (presets: Preset[]) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: { ...state.presets, items: presets },
       })),
 
     addPreset: (preset: Preset) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: {
           ...state.presets,
           items: [...state.presets.items, preset],
@@ -21,7 +21,7 @@ export function createPresetActions(set: SetFunction, _get: GetFunction) {
       })),
 
     updatePreset: (id: string, updates: Partial<Preset>) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: {
           ...state.presets,
           items: state.presets.items.map((preset: Preset) =>
@@ -31,7 +31,7 @@ export function createPresetActions(set: SetFunction, _get: GetFunction) {
       })),
 
     removePreset: (id: string) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: {
           ...state.presets,
           items: state.presets.items.filter((preset: Preset) => preset.id !== id),
@@ -39,12 +39,12 @@ export function createPresetActions(set: SetFunction, _get: GetFunction) {
       })),
 
     setPresetsLoading: (loading: boolean) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: { ...state.presets, loading },
       })),
 
     setPresetsError: (error: string | null) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: { ...state.presets, error },
       })),
   };

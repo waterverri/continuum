@@ -1,39 +1,40 @@
 import { useMemo } from 'react';
 import { useGlobalStore } from '../../store';
 import type { Document } from '../../api';
+import type { GlobalState, GlobalStateActions } from '../../store/types';
 
 export function useDocuments() {
-  return useGlobalStore((state) => state.documents);
+  return useGlobalStore((state: GlobalState & GlobalStateActions) => state.documents);
 }
 
 export function useDocumentList() {
-  return useGlobalStore((state) => state.documents.items);
+  return useGlobalStore((state: GlobalState & GlobalStateActions) => state.documents.items);
 }
 
 export function useDocument(documentId: string | null) {
-  return useGlobalStore((state) =>
+  return useGlobalStore((state: GlobalState & GlobalStateActions) =>
     documentId ? state.documents.items.find(doc => doc.id === documentId) : null
   );
 }
 
 export function useSelectedDocument() {
-  const selectedDocumentId = useGlobalStore((state) => state.selections.selectedDocumentId);
-  return useGlobalStore((state) =>
+  const selectedDocumentId = useGlobalStore((state: GlobalState & GlobalStateActions) => state.selections.selectedDocumentId);
+  return useGlobalStore((state: GlobalState & GlobalStateActions) =>
     selectedDocumentId ? state.documents.items.find(doc => doc.id === selectedDocumentId) : null
   );
 }
 
 export function useDocumentActions() {
-  const setDocuments = useGlobalStore((state) => state.setDocuments);
-  const addDocument = useGlobalStore((state) => state.addDocument);
-  const updateDocument = useGlobalStore((state) => state.updateDocument);
-  const removeDocument = useGlobalStore((state) => state.removeDocument);
-  const setDocumentsLoading = useGlobalStore((state) => state.setDocumentsLoading);
-  const setDocumentsError = useGlobalStore((state) => state.setDocumentsError);
-  const assignTagToDocument = useGlobalStore((state) => state.assignTagToDocument);
-  const removeTagFromDocument = useGlobalStore((state) => state.removeTagFromDocument);
-  const moveDocumentToGroup = useGlobalStore((state) => state.moveDocumentToGroup);
-  const deleteDocument = useGlobalStore((state) => state.deleteDocument);
+  const setDocuments = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setDocuments);
+  const addDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.addDocument);
+  const updateDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.updateDocument);
+  const removeDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.removeDocument);
+  const setDocumentsLoading = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setDocumentsLoading);
+  const setDocumentsError = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setDocumentsError);
+  const assignTagToDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.assignTagToDocument);
+  const removeTagFromDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.removeTagFromDocument);
+  const moveDocumentToGroup = useGlobalStore((state: GlobalState & GlobalStateActions) => state.moveDocumentToGroup);
+  const deleteDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.deleteDocument);
 
   return {
     setDocuments,
@@ -51,8 +52,8 @@ export function useDocumentActions() {
 
 export function useFilteredDocuments() {
   const documents = useDocumentList();
-  const filters = useGlobalStore((state) => state.filters);
-  const tags = useGlobalStore((state) => state.tags.items);
+  const filters = useGlobalStore((state: GlobalState & GlobalStateActions) => state.filters);
+  const tags = useGlobalStore((state: GlobalState & GlobalStateActions) => state.tags.items);
 
   return useMemo(() => {
     // Helper function to check if a document group matches tag filter conditions

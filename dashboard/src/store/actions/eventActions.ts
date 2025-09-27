@@ -1,19 +1,19 @@
 import type { Event, Document } from '../../api';
 import type { GlobalState, GlobalStateActions } from '../types';
 
-type SetFunction = (partial: any) => void;
+type SetFunction = (partial: GlobalState | Partial<GlobalState> | ((state: GlobalState) => GlobalState | Partial<GlobalState>)) => void;
 type GetFunction = () => GlobalState & GlobalStateActions;
 
 export function createEventActions(set: SetFunction, get: GetFunction) {
   return {
     // Basic CRUD operations
     setEvents: (events: Event[]) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         events: { ...state.events, items: events },
       })),
 
     addEvent: (event: Event) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         events: {
           ...state.events,
           items: [...state.events.items, event],
@@ -21,7 +21,7 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
       })),
 
     updateEvent: (id: string, updates: Partial<Event>) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         events: {
           ...state.events,
           items: state.events.items.map((event: Event) =>
@@ -31,7 +31,7 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
       })),
 
     removeEvent: (id: string) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         events: {
           ...state.events,
           items: state.events.items.filter((event: Event) => event.id !== id),
@@ -39,12 +39,12 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
       })),
 
     setEventsLoading: (loading: boolean) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         events: { ...state.events, loading },
       })),
 
     setEventsError: (error: string | null) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         events: { ...state.events, error },
       })),
 
@@ -67,7 +67,7 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
         created_at: new Date().toISOString(),
       };
 
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.map((doc: Document) =>
@@ -82,11 +82,30 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
       }));
 
       try {
-        // TODO: Make API call to create event-document relationship
-        console.log(`Assigning event ${eventId} to document ${documentId}`);
+        console.log('🔄 Making API call to assign event to document...');
+
+        // Import supabase client
+        const { supabase } = await import('../../supabaseClient');
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Insert event-document relationship
+        const { error } = await supabase
+          .from('event_documents')
+          .insert([{ event_id: eventId, document_id: documentId }]);
+
+        if (error) {
+          throw new Error(`Event to document assignment failed: ${error.message}`);
+        }
+
+        console.log('✅ Event assigned to document in database');
       } catch (error) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: {
             ...state.documents,
             items: state.documents.items.map((doc: Document) =>
@@ -110,7 +129,7 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
       const updatedEventDocuments = originalEventDocuments.filter(ed => ed.event_id !== eventId);
 
       // Optimistic update
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.map((doc: Document) =>
@@ -122,11 +141,28 @@ export function createEventActions(set: SetFunction, get: GetFunction) {
       }));
 
       try {
-        // TODO: Make API call to remove event-document relationship
-        console.log(`Removing event ${eventId} from document ${documentId}`);
+        // Import supabase client
+        const { supabase } = await import('../../supabaseClient');
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Remove event-document relationship
+        const { error } = await supabase
+          .from('event_documents')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('document_id', documentId);
+
+        if (error) {
+          throw new Error(`Event removal failed: ${error.message}`);
+        }
       } catch (error) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: {
             ...state.documents,
             items: state.documents.items.map((doc: Document) =>

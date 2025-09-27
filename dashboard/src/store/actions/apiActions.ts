@@ -1,4 +1,4 @@
-import type { Document, Preset, Tag } from '../../api';
+import type { Document, Preset } from '../../api';
 import type { GlobalState, GlobalStateActions, DocumentFormData } from '../types';
 import {
   getDocuments,
@@ -7,13 +7,12 @@ import {
   deleteDocument,
   getPresets,
   createPreset,
-  updatePreset,
   getTags,
   getDocumentTags,
 } from '../../api';
 import { supabase } from '../../supabaseClient';
 
-type SetFunction = (partial: any) => void;
+type SetFunction = (partial: GlobalState | Partial<GlobalState> | ((state: GlobalState) => GlobalState | Partial<GlobalState>)) => void;
 type GetFunction = () => GlobalState & GlobalStateActions;
 
 export function createApiActions(set: SetFunction, get: GetFunction) {
@@ -99,7 +98,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         }));
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load project data';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: { ...state.documents, loading: false, error: errorMessage },
           presets: { ...state.presets, loading: false, error: errorMessage },
           tags: { ...state.tags, loading: false, error: errorMessage },
@@ -117,7 +116,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         const newDoc = await createDocument(projectId, formData, token);
 
         // Optimistic update
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: {
             ...state.documents,
             items: [newDoc, ...state.documents.items],
@@ -127,7 +126,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         return newDoc;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to create document';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: { ...state.documents, error: errorMessage },
         }));
         throw err;
@@ -145,7 +144,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         const updatedDoc = await updateDocument(projectId, documentId, formData, token);
 
         // Optimistic update
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: {
             ...state.documents,
             items: state.documents.items.map((doc: Document) =>
@@ -157,7 +156,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         return updatedDoc;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to update document';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: { ...state.documents, error: errorMessage },
         }));
         throw err;
@@ -171,7 +170,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
       const originalDocuments = state.documents.items;
 
       // Optimistic update
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.filter((doc: Document) => doc.id !== documentId),
@@ -189,12 +188,12 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         await deleteDocument(projectId, documentId, token);
       } catch (err) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: { ...state.documents, items: originalDocuments },
         }));
 
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete document';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: { ...state.documents, error: errorMessage },
         }));
         throw err;
@@ -206,18 +205,29 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
       if (!projectId) return;
 
       try {
-        // const token = await getAccessToken();
-        // TODO: Implement createTag API call
-        const newTag: Tag = {
-          id: `temp-${Date.now()}`,
-          project_id: projectId,
-          name: tagData.name,
-          color: tagData.color,
-          created_at: new Date().toISOString(),
-        };
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
 
-        // Optimistic update
-        set((state: any) => ({
+        // Create tag in database
+        const { data: newTag, error } = await supabase
+          .from('tags')
+          .insert([{
+            project_id: projectId,
+            name: tagData.name,
+            color: tagData.color,
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error(`Tag creation failed: ${error.message}`);
+        }
+
+        // Update store with real tag from database
+        set((state: GlobalState) => ({
           tags: {
             ...state.tags,
             items: [...state.tags.items, newTag],
@@ -227,7 +237,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         return newTag;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to create tag';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           tags: { ...state.tags, error: errorMessage },
         }));
         throw err;
@@ -243,7 +253,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         const newPreset = await createPreset(projectId, presetData.name, presetData.document_id, token);
 
         // Optimistic update
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           presets: {
             ...state.presets,
             items: [...state.presets.items, newPreset],
@@ -253,35 +263,66 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
         return newPreset;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to create preset';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           presets: { ...state.presets, error: errorMessage },
         }));
         throw err;
       }
     },
 
-    updatePresetApi: async (projectId: string, presetId: string, _presetData: Partial<Preset>) => {
+    updatePresetApi: async (projectId: string, presetId: string, presetData: Partial<Preset>) => {
       if (!projectId) return;
 
-      try {
-        const token = await getAccessToken();
-        // TODO: Fix API signature - might need different parameters
-        const updatedPreset = await updatePreset(projectId, presetId, token);
+      const state = get();
+      const originalPresets = state.presets.items;
 
-        // Optimistic update
-        set((state: any) => ({
+      // Optimistic update
+      set((state: GlobalState) => ({
+        presets: {
+          ...state.presets,
+          items: state.presets.items.map((preset: Preset) =>
+            preset.id === presetId ? { ...preset, ...presetData } : preset
+          ),
+        },
+      }));
+
+      try {
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Update preset in database
+        const { data: updatedPreset, error } = await supabase
+          .from('presets')
+          .update(presetData)
+          .eq('id', presetId)
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error(`Preset update failed: ${error.message}`);
+        }
+
+        // Update store with actual data from database
+        set((state: GlobalState) => ({
           presets: {
             ...state.presets,
             items: state.presets.items.map((preset: Preset) =>
-              preset.id === presetId ? { ...preset, ...updatedPreset } : preset
+              preset.id === presetId ? updatedPreset : preset
             ),
           },
         }));
 
         return updatedPreset;
       } catch (err) {
+        // Rollback on error
+        set((state: GlobalState) => ({
+          presets: { ...state.presets, items: originalPresets },
+        }));
         const errorMessage = err instanceof Error ? err.message : 'Failed to update preset';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           presets: { ...state.presets, error: errorMessage },
         }));
         throw err;
@@ -295,7 +336,7 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
       const originalPresets = state.presets.items;
 
       // Optimistic update
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         presets: {
           ...state.presets,
           items: state.presets.items.filter((preset: Preset) => preset.id !== presetId),
@@ -303,17 +344,29 @@ export function createApiActions(set: SetFunction, get: GetFunction) {
       }));
 
       try {
-        // const token = await getAccessToken();
-        // TODO: Implement deletePreset API call
-        console.log(`Deleting preset ${presetId} from project ${projectId}`);
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Delete preset from database
+        const { error } = await supabase
+          .from('presets')
+          .delete()
+          .eq('id', presetId);
+
+        if (error) {
+          throw new Error(`Preset deletion failed: ${error.message}`);
+        }
       } catch (err) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           presets: { ...state.presets, items: originalPresets },
         }));
 
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete preset';
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           presets: { ...state.presets, error: errorMessage },
         }));
         throw err;

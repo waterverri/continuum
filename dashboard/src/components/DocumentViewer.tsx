@@ -56,7 +56,7 @@ export function DocumentViewer({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showTransformModal, setShowTransformModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>(document.document_type || '');
+  const [activeDocumentId, setActiveDocumentId] = useState<string>(document.id);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const hasComponents = document.components && Object.keys(document.components).length > 0;
@@ -76,13 +76,26 @@ export function DocumentViewer({
   // Get available document types in this group
   const availableTypes = [...new Set(groupDocuments.map(doc => doc.document_type || 'document').filter((type): type is string => Boolean(type)))];
   
-  // Get current document based on active tab
-  const currentDocument = groupDocuments.find(doc => doc.document_type === activeTab) || document;
+  // Get current document based on active document ID
+  const currentDocument = groupDocuments.find(doc => doc.id === activeDocumentId) || document;
+
+  console.log('📊 CURRENT DOCUMENT CALCULATION:', {
+    activeDocumentId,
+    groupDocuments: groupDocuments.map(d => ({ id: d.id, type: d.document_type, title: d.title })),
+    foundDoc: groupDocuments.find(doc => doc.id === activeDocumentId),
+    currentDocument: { id: currentDocument.id, type: currentDocument.document_type, title: currentDocument.title }
+  });
 
   
-  // Update active tab when document changes
+  // Update active document ID when document changes
   useEffect(() => {
-    setActiveTab(document.document_type || '');
+    console.log('🔄 DOCUMENT CHANGED EFFECT:', {
+      documentId: document.id,
+      documentType: document.document_type,
+      oldActiveDocumentId: activeDocumentId,
+      newActiveDocumentId: document.id
+    });
+    setActiveDocumentId(document.id);
     // Reset visibility states when document changes
     const hasComponents = document.components && Object.keys(document.components).length > 0;
     setRawContentVisible(!hasComponents);
@@ -93,21 +106,21 @@ export function DocumentViewer({
   const handleRollback = useCallback(async (historyId: string) => {
     if (!onRollback) return;
     try {
-      await onRollback(document.id, historyId);
+      await onRollback(currentDocument.id, historyId);
       setShowHistoryModal(false);
     } catch (err) {
       console.error('Failed to rollback document:', err);
       // Error handling is done in the hook, so we just need to not close the modal
     }
-  }, [document.id, onRollback]);
+  }, [currentDocument.id, onRollback]);
 
   // Check if this is a chat document
-  const isChatDocument = document.interaction_mode === 'chat';
+  const isChatDocument = currentDocument.interaction_mode === 'chat';
   let chatData = null;
-  
-  if (isChatDocument && document.content) {
+
+  if (isChatDocument && currentDocument.content) {
     try {
-      chatData = JSON.parse(document.content);
+      chatData = JSON.parse(currentDocument.content);
     } catch (error) {
       console.warn('Failed to parse chat data:', error);
     }
@@ -118,7 +131,7 @@ export function DocumentViewer({
       {headerVisible && (
         <div className="document-viewer__header">
         <h3 className="document-viewer__title">
-          {document.title}
+          {currentDocument.title}
           {isChatDocument && <span className="chat-indicator"> 💬</span>}
         </h3>
 
@@ -132,8 +145,8 @@ export function DocumentViewer({
         <div className="document-viewer__tags">
           <InlineTagManager
             projectId={projectId}
-            documentId={document.id}
-            currentTags={document.tags || []}
+            documentId={currentDocument.id}
+            currentTags={currentDocument.tags || []}
             onTagUpdate={onTagUpdate}
           />
         </div>
@@ -142,25 +155,45 @@ export function DocumentViewer({
         {groupDocuments.length > 1 && (
           <div className="document-viewer__type-selector">
             <div className="dropdown">
-              <button 
+              <button
                 className="dropdown-button"
                 onClick={() => setShowTypeDropdown(!showTypeDropdown)}
                 onBlur={() => setTimeout(() => setShowTypeDropdown(false), 200)}
               >
-                {activeTab || 'Select Type'} ▼
+                {currentDocument.document_type || 'Select Type'} ▼
               </button>
               {showTypeDropdown && (
                 <div className="dropdown-menu">
                   {groupDocuments.map(doc => (
                     <button
                       key={doc.id}
-                      className={`dropdown-item ${document.id === doc.id ? 'dropdown-item--active' : ''}`}
+                      className={`dropdown-item ${currentDocument.id === doc.id ? 'dropdown-item--active' : ''}`}
                       data-doc-id={doc.id}
                       onClick={() => {
-                        setActiveTab(doc.document_type || 'document');
+                        console.log('🔥 DROPDOWN CLICKED:', {
+                          clickedDoc: { id: doc.id, title: doc.title, type: doc.document_type },
+                          originalDoc: { id: document.id, title: document.title, type: document.document_type },
+                          currentDoc: { id: currentDocument.id, title: currentDocument.title, type: currentDocument.document_type },
+                          activeDocumentId: activeDocumentId,
+                          newActiveDocumentId: doc.id
+                        });
+
+                        setActiveDocumentId(doc.id);
+                        console.log('🎯 ACTIVE DOCUMENT ID SET TO:', doc.id);
+
                         setShowTypeDropdown(false);
-                        if (onDocumentSelect && doc.id !== document.id) {
-                          onDocumentSelect(doc);
+                        console.log('📋 DROPDOWN CLOSED');
+
+                        if (onDocumentSelect) {
+                          console.log('✅ onDocumentSelect EXISTS');
+                          if (doc.id !== document.id) {
+                            console.log('🚀 CALLING onDocumentSelect with doc:', doc);
+                            onDocumentSelect(doc);
+                          } else {
+                            console.log('❌ NOT CALLING onDocumentSelect - same document ID');
+                          }
+                        } else {
+                          console.log('❌ onDocumentSelect is NULL/UNDEFINED');
                         }
                       }}
                     >
@@ -263,7 +296,7 @@ export function DocumentViewer({
                   if (confirm('Are you sure you want to clear all messages from this chat? This cannot be undone.')) {
                     try {
                       if (accessToken) {
-                        await clearChatMessages(document.id, accessToken);
+                        await clearChatMessages(currentDocument.id, accessToken);
                         // Refresh the page or update the document to reflect the cleared chat
                         window.location.reload();
                       }
@@ -281,7 +314,7 @@ export function DocumentViewer({
           </div>
           
           <div className="chat-messages-readonly">
-            {chatData.messages?.map((message: any, index: number) => (
+            {chatData.messages?.map((message: { role: string; content: string; timestamp?: string; tokens?: number; cost?: number }, index: number) => (
               <div key={index} className={`chat-message chat-message--${message.role}`}>
                 <div className="chat-message__header">
                   <strong>{message.role === 'user' ? 'You' : 'AI'}</strong>
@@ -403,7 +436,7 @@ export function DocumentViewer({
         <DocumentHistoryModal
           isOpen={showHistoryModal}
           onClose={() => setShowHistoryModal(false)}
-          document={document}
+          document={currentDocument}
           projectId={projectId}
           loadDocumentHistory={loadDocumentHistory}
           loadHistoryEntry={loadHistoryEntry}
@@ -416,7 +449,7 @@ export function DocumentViewer({
         <AIChatModal
           isOpen={showAIModal}
           onClose={() => setShowAIModal(false)}
-          document={document}
+          document={currentDocument}
           allDocuments={allDocuments}
           aiProviders={aiProviders}
           accessToken={accessToken}
@@ -430,7 +463,7 @@ export function DocumentViewer({
         <TransformModal
           isOpen={showTransformModal}
           onClose={() => setShowTransformModal(false)}
-          document={document}
+          document={currentDocument}
           documents={allDocuments}
           aiProviders={aiProviders}
           accessToken={accessToken}

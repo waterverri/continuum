@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Tag } from '../api';
 import { getTags, addTagsToDocument, removeTagFromDocument } from '../api';
 import { supabase } from '../supabaseClient';
+import { DraggableItem } from './dnd/DraggableItem';
 
 interface InlineTagManagerProps {
   projectId: string;
@@ -197,21 +198,27 @@ export function InlineTagManager({
     <div className="inline-tag-manager">
       <div className="inline-tag-manager__tags">
         {!createOnly && currentTags.map(tag => (
-          <div 
-            key={tag.id} 
-            className="inline-tag-badge"
-            style={{ backgroundColor: tag.color, color: 'white' }}
+          <DraggableItem
+            key={tag.id}
+            id={`tag-${tag.id}`}
+            type="tag"
+            item={tag}
           >
-            <span>{tag.name}</span>
-            <button 
-              className="inline-tag-badge__remove"
-              onClick={() => handleRemoveTag(tag.id)}
-              disabled={loading}
-              title="Remove tag"
+            <div
+              className="inline-tag-badge"
+              style={{ backgroundColor: tag.color, color: 'white' }}
             >
-              ×
-            </button>
-          </div>
+              <span>{tag.name}</span>
+              <button
+                className="inline-tag-badge__remove"
+                onClick={() => handleRemoveTag(tag.id)}
+                disabled={loading}
+                title="Remove tag"
+              >
+                ×
+              </button>
+            </div>
+          </DraggableItem>
         ))}
         
         {isEditing ? (

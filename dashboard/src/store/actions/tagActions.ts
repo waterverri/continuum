@@ -1,19 +1,19 @@
 import type { Tag } from '../../api';
 import type { GlobalState, GlobalStateActions } from '../types';
 
-type SetFunction = (partial: any) => void;
+type SetFunction = (partial: GlobalState | Partial<GlobalState> | ((state: GlobalState) => GlobalState | Partial<GlobalState>)) => void;
 type GetFunction = () => GlobalState & GlobalStateActions;
 
 export function createTagActions(set: SetFunction, get: GetFunction) {
   return {
     // Basic CRUD operations
     setTags: (tags: Tag[]) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         tags: { ...state.tags, items: tags },
       })),
 
     addTag: (tag: Tag) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         tags: {
           ...state.tags,
           items: [...state.tags.items, tag],
@@ -21,7 +21,7 @@ export function createTagActions(set: SetFunction, get: GetFunction) {
       })),
 
     updateTag: (id: string, updates: Partial<Tag>) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         tags: {
           ...state.tags,
           items: state.tags.items.map((tag: Tag) =>
@@ -31,7 +31,7 @@ export function createTagActions(set: SetFunction, get: GetFunction) {
       })),
 
     removeTag: (id: string) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         tags: {
           ...state.tags,
           items: state.tags.items.filter((tag: Tag) => tag.id !== id),
@@ -39,12 +39,12 @@ export function createTagActions(set: SetFunction, get: GetFunction) {
       })),
 
     setTagsLoading: (loading: boolean) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         tags: { ...state.tags, loading },
       })),
 
     setTagsError: (error: string | null) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         tags: { ...state.tags, error },
       })),
 
@@ -61,9 +61,27 @@ export function createTagActions(set: SetFunction, get: GetFunction) {
       // This is a placeholder for the API call
 
       try {
-        // TODO: Make API call to assign tag to event
-        // This might require updating the Event interface to include tags
-        console.log(`Assigning tag ${tagId} to event ${eventId}`);
+        console.log('🔄 Making API call to assign tag to event...');
+
+        // Import supabase client
+        const { supabase } = await import('../../supabaseClient');
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Insert tag-event relationship
+        const { error } = await supabase
+          .from('event_tags')
+          .insert([{ event_id: eventId, tag_id: tagId }]);
+
+        if (error) {
+          throw new Error(`Tag to event assignment failed: ${error.message}`);
+        }
+
+        console.log('✅ Tag assigned to event in database');
       } catch (error) {
         throw error;
       }
@@ -76,8 +94,25 @@ export function createTagActions(set: SetFunction, get: GetFunction) {
       if (!event) return;
 
       try {
-        // TODO: Make API call to remove tag from event
-        console.log(`Removing tag ${tagId} from event ${eventId}`);
+        // Import supabase client
+        const { supabase } = await import('../../supabaseClient');
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Remove tag-event relationship
+        const { error } = await supabase
+          .from('event_tags')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('tag_id', tagId);
+
+        if (error) {
+          throw new Error(`Tag removal from event failed: ${error.message}`);
+        }
       } catch (error) {
         throw error;
       }

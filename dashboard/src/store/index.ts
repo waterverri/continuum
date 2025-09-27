@@ -332,7 +332,7 @@ export const useGlobalStore = create<GlobalState & GlobalStateActions>()(
           drag: {
             isDragging: true,
             dragType: type,
-            dragItem: item,
+            dragItem: { type, item },
             dropTarget: null,
           },
         })),

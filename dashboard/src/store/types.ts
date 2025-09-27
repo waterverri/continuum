@@ -98,11 +98,23 @@ export interface FormState {
   formData: DocumentFormData;
 }
 
+export interface DragItem {
+  type: 'tag' | 'event' | 'document';
+  item: Tag | Event | Document;
+}
+
+export interface DropTarget {
+  type: 'document' | 'event' | 'trash';
+  item?: Document | Event;
+  action?: string;
+  acceptsTypes?: ('tag' | 'event' | 'document')[];
+}
+
 export interface DragState {
   isDragging: boolean;
   dragType: 'tag' | 'event' | 'document' | null;
-  dragItem: any;
-  dropTarget: any;
+  dragItem: DragItem | null;
+  dropTarget: DropTarget | null;
 }
 
 export interface GlobalState extends DataState {
@@ -194,9 +206,9 @@ export type GlobalStateActions = {
   cancelEdit: () => void;
 
   // Drag actions
-  startDrag: (type: 'tag' | 'event' | 'document', item: any) => void;
+  startDrag: (type: 'tag' | 'event' | 'document', item: Tag | Event | Document) => void;
   endDrag: () => void;
-  setDropTarget: (target: any) => void;
+  setDropTarget: (target: DropTarget | null) => void;
 
   // Optimistic update actions
   assignTagToDocument: (documentId: string, tagId: string) => Promise<void>;

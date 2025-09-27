@@ -1,30 +1,31 @@
 import { useGlobalStore } from '../../store';
+import type { GlobalState, GlobalStateActions } from '../../store/types';
 
 export function useTags() {
-  return useGlobalStore((state) => state.tags);
+  return useGlobalStore((state: GlobalState & GlobalStateActions) => state.tags);
 }
 
 export function useTagList() {
-  return useGlobalStore((state) => state.tags.items);
+  return useGlobalStore((state: GlobalState & GlobalStateActions) => state.tags.items);
 }
 
 export function useTag(tagId: string | null) {
-  return useGlobalStore((state) =>
+  return useGlobalStore((state: GlobalState & GlobalStateActions) =>
     tagId ? state.tags.items.find(tag => tag.id === tagId) : null
   );
 }
 
 export function useTagActions() {
-  const setTags = useGlobalStore((state) => state.setTags);
-  const addTag = useGlobalStore((state) => state.addTag);
-  const updateTag = useGlobalStore((state) => state.updateTag);
-  const removeTag = useGlobalStore((state) => state.removeTag);
-  const setTagsLoading = useGlobalStore((state) => state.setTagsLoading);
-  const setTagsError = useGlobalStore((state) => state.setTagsError);
-  const assignTagToDocument = useGlobalStore((state) => state.assignTagToDocument);
-  const removeTagFromDocument = useGlobalStore((state) => state.removeTagFromDocument);
-  const assignTagToEvent = useGlobalStore((state) => state.assignTagToEvent);
-  const removeTagFromEvent = useGlobalStore((state) => state.removeTagFromEvent);
+  const setTags = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setTags);
+  const addTag = useGlobalStore((state: GlobalState & GlobalStateActions) => state.addTag);
+  const updateTag = useGlobalStore((state: GlobalState & GlobalStateActions) => state.updateTag);
+  const removeTag = useGlobalStore((state: GlobalState & GlobalStateActions) => state.removeTag);
+  const setTagsLoading = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setTagsLoading);
+  const setTagsError = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setTagsError);
+  const assignTagToDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.assignTagToDocument);
+  const removeTagFromDocument = useGlobalStore((state: GlobalState & GlobalStateActions) => state.removeTagFromDocument);
+  const assignTagToEvent = useGlobalStore((state: GlobalState & GlobalStateActions) => state.assignTagToEvent);
+  const removeTagFromEvent = useGlobalStore((state: GlobalState & GlobalStateActions) => state.removeTagFromEvent);
 
   return {
     setTags,

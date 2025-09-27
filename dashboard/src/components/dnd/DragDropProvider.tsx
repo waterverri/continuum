@@ -17,6 +17,8 @@ import { useDragState, useDragActions } from '../../hooks/store/useUI';
 import { useDocumentActions } from '../../hooks/store/useDocuments';
 import { useTagActions } from '../../hooks/store/useTags';
 import { useEventActions } from '../../hooks/store/useEvents';
+import type { DragItem, DropTarget } from '../../store/types';
+import type { Document, Tag, Event } from '../../api';
 
 interface DragDropProviderProps {
   children: React.ReactNode;
@@ -28,6 +30,7 @@ export function DragDropProvider({ children }: DragDropProviderProps) {
   const { assignTagToDocument, moveDocumentToGroup, deleteDocument } = useDocumentActions();
   const { assignTagToEvent } = useTagActions();
   const { assignEventToDocument } = useEventActions();
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -51,7 +54,19 @@ export function DragDropProvider({ children }: DragDropProviderProps) {
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
-    setDropTarget(over?.data?.current || null);
+    const dropData = over?.data?.current;
+
+    if (dropData && dropData.type && (dropData.type === 'document' || dropData.type === 'event' || dropData.type === 'trash')) {
+      const dropTarget: DropTarget = {
+        type: dropData.type,
+        item: dropData.item,
+        action: dropData.action,
+        acceptsTypes: dropData.acceptsTypes
+      };
+      setDropTarget(dropTarget);
+    } else {
+      setDropTarget(null);
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -70,12 +85,11 @@ export function DragDropProvider({ children }: DragDropProviderProps) {
       return;
     }
 
+
     try {
-      // Handle different drag operations
       await handleDragOperation(dragData, dropData);
     } catch (error) {
-      console.error('Drag operation failed:', error);
-      // TODO: Show error toast
+      console.error('❌ DROP FAILED:', error);
     }
 
     endDrag();
@@ -88,13 +102,11 @@ export function DragDropProvider({ children }: DragDropProviderProps) {
     // Tag → Document
     if (dragType === 'tag' && dropType === 'document') {
       await assignTagToDocument(dropItem.id, dragItem.id);
-      // TODO: Show confirmation dialog for tag inheritance if document has events
     }
 
     // Tag → Event
     else if (dragType === 'tag' && dropType === 'event') {
       await assignTagToEvent(dropItem.id, dragItem.id);
-      // TODO: Show confirmation dialog for tag inheritance to linked documents
     }
 
     // Event → Document
@@ -106,18 +118,22 @@ export function DragDropProvider({ children }: DragDropProviderProps) {
     else if (dragType === 'document' && dropType === 'document') {
       if (dragItem.id !== dropItem.id) {
         await moveDocumentToGroup(dragItem.id, dropItem.id);
+      } else {
       }
     }
 
     // Document → Recycle Bin
     else if (dragType === 'document' && dropType === 'trash') {
-      // TODO: Show confirmation dialog
-      await deleteDocument(dragItem.id);
+
+      try {
+        await deleteDocument(dragItem.id);
+      } catch (error) {
+        throw error;
+      }
     }
 
     // Handle other operations as needed
     else {
-      console.log('Unhandled drag operation:', { dragType, dropType });
     }
   };
 
@@ -140,27 +156,27 @@ export function DragDropProvider({ children }: DragDropProviderProps) {
 
 interface DragPreviewProps {
   type: 'tag' | 'event' | 'document' | null;
-  item: any;
+  item: DragItem;
 }
 
 function DragPreview({ type, item }: DragPreviewProps) {
   switch (type) {
     case 'tag':
       return (
-        <div className="drag-preview tag-preview" style={{ backgroundColor: item.color }}>
-          {item.name}
+        <div className="drag-preview tag-preview" style={{ backgroundColor: (item.item as Tag).color }}>
+          {(item.item as Tag).name}
         </div>
       );
     case 'event':
       return (
         <div className="drag-preview event-preview">
-          {item.name}
+          {(item.item as Event).name}
         </div>
       );
     case 'document':
       return (
         <div className="drag-preview document-preview">
-          {item.title}
+          {(item.item as Document).title}
         </div>
       );
     default:

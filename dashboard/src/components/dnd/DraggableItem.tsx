@@ -1,10 +1,11 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import type { Document, Tag, Event } from '../../api';
 
 interface DraggableItemProps {
   id: string;
   type: 'tag' | 'event' | 'document';
-  item: any;
+  item: Tag | Event | Document;
   children: React.ReactNode;
   disabled?: boolean;
   className?: string;

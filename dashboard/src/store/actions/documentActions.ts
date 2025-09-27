@@ -3,19 +3,19 @@ import type { GlobalState, GlobalStateActions } from '../types';
 // import { addTagsToDocument } from '../../api';
 import { supabase } from '../../supabaseClient';
 
-type SetFunction = (partial: any) => void;
+type SetFunction = (partial: GlobalState | Partial<GlobalState> | ((state: GlobalState) => GlobalState | Partial<GlobalState>)) => void;
 type GetFunction = () => GlobalState & GlobalStateActions;
 
 export function createDocumentActions(set: SetFunction, get: GetFunction) {
   return {
     // Basic CRUD operations
     setDocuments: (documents: Document[]) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: { ...state.documents, items: documents },
       })),
 
     addDocument: (document: Document) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: [...state.documents.items, document],
@@ -23,7 +23,7 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
       })),
 
     updateDocument: (id: string, updates: Partial<Document>) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.map((doc: Document) =>
@@ -33,7 +33,7 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
       })),
 
     removeDocument: (id: string) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.filter((doc: Document) => doc.id !== id),
@@ -41,12 +41,12 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
       })),
 
     setDocumentsLoading: (loading: boolean) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: { ...state.documents, loading },
       })),
 
     setDocumentsError: (error: string | null) =>
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: { ...state.documents, error },
       })),
 
@@ -64,7 +64,7 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
 
       // Optimistic update
       const updatedTags = [...(document.tags || []), tag];
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.map((doc: Document) =>
@@ -74,12 +74,25 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
       }));
 
       try {
-        // TODO: Make API call - need to check function signature
-        // await addTagsToDocument(projectId, documentId, [tagId], token);
-        console.log(`Assigning tag ${tagId} to document ${documentId}`);
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Insert tag-document relationship
+        const { error } = await supabase
+          .from('document_tags')
+          .insert([{ document_id: documentId, tag_id: tagId }]);
+
+        if (error) {
+          throw new Error(`Tag assignment failed: ${error.message}`);
+        }
+
       } catch (error) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: {
             ...state.documents,
             items: state.documents.items.map((doc: Document) =>
@@ -101,7 +114,7 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
       const updatedTags = originalTags.filter(t => t.id !== tagId);
 
       // Optimistic update
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: {
           ...state.documents,
           items: state.documents.items.map((doc: Document) =>
@@ -119,7 +132,7 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
           .eq('tag_id', tagId);
       } catch (error) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: {
             ...state.documents,
             items: state.documents.items.map((doc: Document) =>
@@ -169,17 +182,30 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
         return doc;
       });
 
-      set((state: any) => ({
+      set((state: GlobalState) => ({
         documents: { ...state.documents, items: updatedDocuments },
       }));
 
       try {
-        // TODO: Make API call to update group assignments
-        // This would require a backend endpoint to handle group moves
-        console.log('Group move operation completed optimistically');
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Update group_id for all documents that need to be moved
+        const docIdsToUpdate = docsToMove.map(d => d.id);
+        const { error } = await supabase
+          .from('documents')
+          .update({ group_id: newGroupId })
+          .in('id', docIdsToUpdate);
+
+        if (error) {
+          throw new Error(`Group assignment failed: ${error.message}`);
+        }
       } catch (error) {
         // Rollback on error
-        set((state: any) => ({
+        set((state: GlobalState) => ({
           documents: { ...state.documents, items: state.documents.items },
         }));
         throw error;
@@ -188,37 +214,39 @@ export function createDocumentActions(set: SetFunction, get: GetFunction) {
 
     // Document deletion
     deleteDocument: async (documentId: string) => {
-      const state = get();
-      const document = state.documents.items.find(d => d.id === documentId);
-
-      if (!document) return;
-
-      const originalDocuments = state.documents.items;
-
-      // Optimistic update - remove document
-      set((state: any) => ({
-        documents: {
-          ...state.documents,
-          items: state.documents.items.filter((doc: Document) => doc.id !== documentId),
-        },
-        // Also clear selection if this document was selected
-        selections: {
-          ...state.selections,
-          selectedDocumentId: state.selections.selectedDocumentId === documentId
-            ? null
-            : state.selections.selectedDocumentId,
-        },
-      }));
-
       try {
-        // TODO: Make API call to delete document
-        // This would require a backend endpoint or direct Supabase call
-        console.log('Document deletion completed optimistically');
-      } catch (error) {
-        // Rollback on error
-        set((state: any) => ({
-          documents: { ...state.documents, items: originalDocuments },
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No authentication session');
+        }
+
+        // Delete from Supabase
+        const { error } = await supabase
+          .from('documents')
+          .delete()
+          .eq('id', documentId);
+
+        if (error) {
+          throw new Error(`Database deletion failed: ${error.message}`);
+        }
+
+        // Update Zustand store
+        set((state: GlobalState) => ({
+          documents: {
+            ...state.documents,
+            items: state.documents.items.filter((doc: Document) => doc.id !== documentId),
+          },
+          selections: {
+            ...state.selections,
+            selectedDocumentId: state.selections.selectedDocumentId === documentId
+              ? null
+              : state.selections.selectedDocumentId,
+          },
         }));
+
+        // UI now uses Zustand store, so no refresh needed
+      } catch (error) {
         throw error;
       }
     },

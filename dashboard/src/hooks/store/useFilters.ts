@@ -1,18 +1,19 @@
 import { useGlobalStore } from '../../store';
+import type { GlobalState, GlobalStateActions } from '../../store/types';
 
 export function useFilters() {
-  return useGlobalStore((state) => state.filters);
+  return useGlobalStore((state: GlobalState & GlobalStateActions) => state.filters);
 }
 
 export function useFilterActions() {
-  const setSearchTerm = useGlobalStore((state) => state.setSearchTerm);
-  const setTypeFilter = useGlobalStore((state) => state.setTypeFilter);
-  const setFormatFilter = useGlobalStore((state) => state.setFormatFilter);
-  const setSelectedTagIds = useGlobalStore((state) => state.setSelectedTagIds);
-  const setSelectedEventIds = useGlobalStore((state) => state.setSelectedEventIds);
-  const setEventVersionFilter = useGlobalStore((state) => state.setEventVersionFilter);
-  const setTagFilterConditions = useGlobalStore((state) => state.setTagFilterConditions);
-  const resetFilters = useGlobalStore((state) => state.resetFilters);
+  const setSearchTerm = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setSearchTerm);
+  const setTypeFilter = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setTypeFilter);
+  const setFormatFilter = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setFormatFilter);
+  const setSelectedTagIds = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setSelectedTagIds);
+  const setSelectedEventIds = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setSelectedEventIds);
+  const setEventVersionFilter = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setEventVersionFilter);
+  const setTagFilterConditions = useGlobalStore((state: GlobalState & GlobalStateActions) => state.setTagFilterConditions);
+  const resetFilters = useGlobalStore((state: GlobalState & GlobalStateActions) => state.resetFilters);
 
   return {
     setSearchTerm,
@@ -27,7 +28,7 @@ export function useFilterActions() {
 }
 
 export function useHasActiveFilters() {
-  return useGlobalStore((state) => {
+  return useGlobalStore((state: GlobalState & GlobalStateActions) => {
     const { filters } = state;
     return !!(
       filters.searchTerm ||

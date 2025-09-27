@@ -1,10 +1,11 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import type { Document, Event } from '../../api';
 
 interface DroppableZoneProps {
   id: string;
   type: 'document' | 'event' | 'trash';
-  item?: any;
+  item?: Document | Event;
   action?: string;
   children: React.ReactNode;
   acceptsTypes?: ('tag' | 'event' | 'document')[];

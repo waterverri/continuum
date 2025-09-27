@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Document } from '../api';
+import { DraggableItem } from './dnd/DraggableItem';
+import { DroppableZone } from './dnd/DroppableZone';
 
 interface DocumentGroup {
   groupId: string | null;
@@ -73,6 +75,8 @@ function DocumentGroupItem({
   }, [showDropdown]);
 
   const handleGroupClick = () => {
+    // BY DESIGN: Only the group head (mainDocument) is selectable from the sidebar list.
+    // Individual documents within a group are selected via dropdown in the document viewer header.
     if (onDocumentClick && mainDocument) {
       onDocumentClick(mainDocument);
     }
@@ -116,14 +120,20 @@ function DocumentGroupItem({
         {mainDocument.tags && mainDocument.tags.length > 0 && (
           <div className="document-group-item__tags">
             {mainDocument.tags.slice(0, 3).map(tag => (
-              <span 
+              <DraggableItem
                 key={tag.id}
-                className="tag-badge tag-badge--xs"
-                style={{ backgroundColor: tag.color, color: 'white' }}
-                title={tag.name}
+                id={`doc-tag-${tag.id}`}
+                type="tag"
+                item={tag}
               >
-                {tag.name}
-              </span>
+                <span
+                  className="tag-badge tag-badge--xs"
+                  style={{ backgroundColor: tag.color, color: 'white' }}
+                  title={tag.name}
+                >
+                  {tag.name}
+                </span>
+              </DraggableItem>
             ))}
             {mainDocument.tags.length > 3 && (
               <span className="tag-badge tag-badge--xs tag-badge--more">
@@ -275,21 +285,40 @@ export function DocumentGroupList({
 
   return (
     <div className="document-group-list">
-      {documentGroups.map((group, index) => (
-        <DocumentGroupItem
-          key={group.groupId || `singleton-${index}`}
-          group={group}
-          selectedDocumentId={selectedDocumentId}
-          onDocumentClick={onDocumentClick}
-          onDocumentRename={onDocumentRename}
-          onDocumentDelete={onDocumentDelete}
-          onCreateDerivative={onCreateDerivative}
-          onManageTags={onManageTags}
-          onManageEvents={onManageEvents}
-          onCreateEvent={onCreateEvent}
-          onDocumentEvolution={onDocumentEvolution}
-        />
-      ))}
+      {documentGroups.map((group, index) => {
+        // Use the representative document for dragging
+        const representativeDoc = group.documents.find(d => d.id === group.groupId) || group.documents[0];
+
+        return (
+          <DraggableItem
+            key={group.groupId || `singleton-${index}`}
+            id={`document-${representativeDoc.id}`}
+            type="document"
+            item={representativeDoc}
+          >
+            <DroppableZone
+              id={`drop-document-${representativeDoc.id}`}
+              type="document"
+              item={representativeDoc}
+              acceptsTypes={['tag', 'event', 'document']}
+              className="document-drop-zone"
+            >
+              <DocumentGroupItem
+                group={group}
+                selectedDocumentId={selectedDocumentId}
+                onDocumentClick={onDocumentClick}
+                onDocumentRename={onDocumentRename}
+                onDocumentDelete={onDocumentDelete}
+                onCreateDerivative={onCreateDerivative}
+                onManageTags={onManageTags}
+                onManageEvents={onManageEvents}
+                onCreateEvent={onCreateEvent}
+                onDocumentEvolution={onDocumentEvolution}
+              />
+            </DroppableZone>
+          </DraggableItem>
+        );
+      })}
     </div>
   );
 }

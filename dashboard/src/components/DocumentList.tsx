@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Document } from '../api';
+import { DraggableItem } from './dnd/DraggableItem';
 
 interface DocumentListItemProps {
   document: Document;
@@ -129,14 +130,20 @@ function DocumentListItem({
       {document.tags && document.tags.length > 0 && (
         <div className={variant === 'sidebar' ? 'document-item__tags' : 'document-picker-tags'}>
           {document.tags.slice(0, 3).map(tag => (
-            <span 
+            <DraggableItem
               key={tag.id}
-              className="tag-badge tag-badge--xs"
-              style={{ backgroundColor: tag.color, color: 'white' }}
-              title={tag.name}
+              id={`list-tag-${tag.id}`}
+              type="tag"
+              item={tag}
             >
-              {tag.name}
-            </span>
+              <span
+                className="tag-badge tag-badge--xs"
+                style={{ backgroundColor: tag.color, color: 'white' }}
+                title={tag.name}
+              >
+                {tag.name}
+              </span>
+            </DraggableItem>
           ))}
           {document.tags.length > 3 && (
             <span className="tag-badge tag-badge--xs tag-badge--more">

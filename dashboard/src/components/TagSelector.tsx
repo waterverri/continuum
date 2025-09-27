@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { getTags, getDocumentTags, addTagsToDocument, removeTagFromDocument, getEventTags, addTagsToEvent, removeTagFromEvent } from '../api';
 import type { Tag } from '../api';
+import { DraggableItem } from './dnd/DraggableItem';
 
 interface TagSelectorProps {
   projectId: string;
@@ -116,21 +117,28 @@ export function TagSelector({ projectId, entityType, entityId, entityName, onClo
               <h4>Applied Tags ({entityTags.length})</h4>
               <div className="tags-grid">
                 {entityTags.map(tag => (
-                  <div key={tag.id} className="tag-item selectable selected">
-                    <span 
-                      className="tag-badge"
-                      style={{ backgroundColor: tag.color, color: 'white' }}
-                    >
-                      {tag.name}
-                    </span>
-                    <button 
-                      className="tag-remove"
-                      onClick={() => handleTagToggle(tag)}
-                      title={`Remove ${tag.name} tag`}
-                    >
-                      ×
-                    </button>
-                  </div>
+                  <DraggableItem
+                    key={tag.id}
+                    id={`tag-${tag.id}`}
+                    type="tag"
+                    item={tag}
+                  >
+                    <div className="tag-item selectable selected">
+                      <span
+                        className="tag-badge"
+                        style={{ backgroundColor: tag.color, color: 'white' }}
+                      >
+                        {tag.name}
+                      </span>
+                      <button
+                        className="tag-remove"
+                        onClick={() => handleTagToggle(tag)}
+                        title={`Remove ${tag.name} tag`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </DraggableItem>
                 ))}
               </div>
             </div>
@@ -142,15 +150,22 @@ export function TagSelector({ projectId, entityType, entityId, entityName, onClo
               <h4>Available Tags ({availableTags.length})</h4>
               <div className="tags-grid">
                 {availableTags.map(tag => (
-                  <div key={tag.id} className="tag-item selectable" onClick={() => handleTagToggle(tag)}>
-                    <span 
-                      className="tag-badge"
-                      style={{ backgroundColor: tag.color, color: 'white' }}
-                    >
-                      {tag.name}
-                    </span>
-                    <span className="tag-add">+</span>
-                  </div>
+                  <DraggableItem
+                    key={tag.id}
+                    id={`tag-${tag.id}`}
+                    type="tag"
+                    item={tag}
+                  >
+                    <div className="tag-item selectable" onClick={() => handleTagToggle(tag)}>
+                      <span
+                        className="tag-badge"
+                        style={{ backgroundColor: tag.color, color: 'white' }}
+                      >
+                        {tag.name}
+                      </span>
+                      <span className="tag-add">+</span>
+                    </div>
+                  </DraggableItem>
                 ))}
               </div>
             </div>
