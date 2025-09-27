@@ -70,6 +70,73 @@ export class BatchImportService {
     return foundPath ? zip.files[foundPath] : null;
   }
 
+  async validateZipFile(zipBuffer: Buffer): Promise<BatchImportResult> {
+    const errors: ValidationError[] = [];
+    const warnings: string[] = [];
+
+    try {
+      // Parse zip file
+      const zip = await JSZip.loadAsync(zipBuffer);
+
+      // List all files in the ZIP
+      const allFiles = Object.keys(zip.files);
+
+      // Show details of each file
+      allFiles.forEach(filename => {
+        const file = zip.files[filename];
+      });
+
+      // Find manifest.csv (case insensitive search, including nested directories)
+      const manifestFile = this.findFileInZip(zip, 'manifest.csv');
+      if (manifestFile) {
+      }
+
+
+      if (!manifestFile) {
+        return {
+          success: false,
+          errors: [{
+            type: 'validation',
+            message: `manifest.csv not found in zip file. Found files: ${allFiles.join(', ')}`
+          }],
+          warnings: []
+        };
+      }
+
+      // Parse manifest CSV
+      const manifestContent = await manifestFile.async('string');
+      const manifestRows = await this.parseManifest(manifestContent);
+
+      if (manifestRows.length === 0) {
+        return {
+          success: false,
+          errors: [{ type: 'validation', message: 'manifest.csv is empty or invalid' }],
+          warnings: []
+        };
+      }
+
+      // Validate manifest structure and referenced files (VALIDATION ONLY)
+      const validationResult = await this.validateManifest(manifestRows, zip);
+
+      return {
+        success: validationResult.errors.length === 0,
+        errors: validationResult.errors,
+        warnings: [...warnings, ...validationResult.warnings]
+      };
+
+    } catch (error) {
+      console.error('Error validating zip file:', error);
+      return {
+        success: false,
+        errors: [{
+          type: 'validation',
+          message: `Failed to validate zip file: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        warnings: []
+      };
+    }
+  }
+
   async processZipFile(zipBuffer: Buffer): Promise<BatchImportResult> {
     const errors: ValidationError[] = [];
     const warnings: string[] = [];
