@@ -45,7 +45,7 @@ router.get('/:projectId', async (req: RequestWithUser, res) => {
       if (documentId) {
         const { data: document } = await supabase
           .from('documents')
-          .select('id, title, is_composite, content, components, document_type')
+          .select('id, title, content, components, document_type')
           .eq('id', documentId)
           .single();
         
@@ -70,25 +70,81 @@ router.post('/:projectId', async (req: RequestWithUser, res) => {
     const { projectId } = req.params;
     const { name, documentId } = req.body;
 
+    console.log('=== CREATE PRESET REQUEST ===');
+    console.log('Request params:', { projectId });
+    console.log('Request body:', { name, documentId });
+    console.log('User ID from token:', req.user?.id);
+    console.log('Token present:', !!req.token);
+
     if (!name || !documentId) {
+      console.log('ERROR: Missing name or documentId');
       return res.status(400).json({ error: 'Name and documentId are required' });
     }
 
     const supabase = getSupabaseClient(req.token!);
+    console.log('Supabase client created');
 
-    // Verify the document exists and belongs to this project
+    // First, let's check if the document exists at all (without project filter)
+    console.log('Step 1: Checking if document exists at all...');
+    const { data: docCheck, error: docCheckError } = await supabase
+      .from('documents')
+      .select('id, project_id, title')
+      .eq('id', documentId);
+
+    console.log('Document check result:', {
+      found: !!docCheck && docCheck.length > 0,
+      count: docCheck?.length,
+      data: docCheck,
+      error: docCheckError
+    });
+
+    // Now check with project filter
+    console.log('Step 2: Checking if document exists in THIS project...');
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('id, title, is_composite, content, components, document_type')
+      .select('id, title, content, components, document_type, project_id')
       .eq('id', documentId)
       .eq('project_id', projectId)
       .single();
 
+    console.log('Document lookup with project filter:', {
+      documentFound: !!document,
+      error: docError,
+      errorMessage: docError?.message,
+      errorCode: docError?.code,
+      errorDetails: docError?.details,
+      errorHint: docError?.hint,
+      documentData: document
+    });
+
     if (docError || !document) {
-      return res.status(404).json({ error: 'Document not found in this project' });
+      console.error('FINAL ERROR: Document lookup failed');
+      return res.status(404).json({
+        error: 'Document not found in this project',
+        debug: {
+          documentId,
+          projectId,
+          userId: req.user?.id,
+          supabaseError: docError?.message,
+          supabaseCode: docError?.code,
+          supabaseDetails: docError?.details,
+          supabaseHint: docError?.hint,
+          documentExists: !!docCheck && docCheck.length > 0,
+          documentProjectId: docCheck?.[0]?.project_id
+        }
+      });
     }
 
+    console.log('SUCCESS: Document found and validated');
+
     // Create the preset with document_id in rules
+    console.log('Step 3: Creating preset...');
+    console.log('Preset data to insert:', {
+      project_id: projectId,
+      name,
+      rules: { document_id: documentId }
+    });
+
     const { data: preset, error } = await supabase
       .from('presets')
       .insert({
@@ -99,21 +155,56 @@ router.post('/:projectId', async (req: RequestWithUser, res) => {
       .select('id, name, rules, created_at')
       .single();
 
+    console.log('Preset creation result:', {
+      success: !!preset,
+      preset,
+      error,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorDetails: error?.details,
+      errorHint: error?.hint
+    });
+
     if (error) {
       if (error.code === '23505') {
+        console.log('ERROR: Duplicate preset name');
         return res.status(400).json({ error: 'A preset with this name already exists in this project' });
       }
-      console.error('Error creating preset:', error);
-      return res.status(500).json({ error: 'Failed to create preset' });
+      console.error('ERROR: Failed to create preset:', error);
+      return res.status(500).json({
+        error: 'Failed to create preset',
+        debug: {
+          supabaseError: error?.message,
+          supabaseCode: error?.code,
+          supabaseDetails: error?.details
+        }
+      });
     }
+
+    console.log('SUCCESS: Preset created successfully');
+    console.log('Final response:', {
+      preset,
+      document: {
+        id: document.id,
+        title: document.title
+      }
+    });
 
     res.status(201).json({
       ...preset,
       document
     });
   } catch (error) {
-    console.error('Error in POST /presets/:projectId:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('=== FATAL ERROR in POST /presets/:projectId ===');
+    console.error('Error object:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({
+      error: 'Internal server error',
+      debug: {
+        message: error instanceof Error ? error.message : String(error),
+        type: error instanceof Error ? error.constructor.name : typeof error
+      }
+    });
   }
 });
 
@@ -146,7 +237,7 @@ router.put('/:presetId', async (req: RequestWithUser, res) => {
     if (documentId) {
       const { data: document, error: docError } = await supabase
         .from('documents')
-        .select('id, title, is_composite, content, components, document_type')
+        .select('id, title, content, components, document_type')
         .eq('id', documentId)
         .eq('project_id', existingPreset.project_id)
         .single();
@@ -180,7 +271,7 @@ router.put('/:presetId', async (req: RequestWithUser, res) => {
     if (documentId_final) {
       const { data: docData } = await supabase
         .from('documents')
-        .select('id, title, is_composite, content, components, document_type')
+        .select('id, title, content, components, document_type')
         .eq('id', documentId_final)
         .single();
       document = docData;
@@ -306,7 +397,7 @@ router.get('/:presetId/context', async (req: RequestWithUser, res) => {
     // Get the base document
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('id, title, content, is_composite, components')
+      .select('id, title, content, components')
       .eq('id', documentId)
       .eq('project_id', preset.project_id)
       .single();
@@ -318,8 +409,8 @@ router.get('/:presetId/context', async (req: RequestWithUser, res) => {
     // Apply overrides and resolve the document using centralized function
     const overrides = preset.rules.component_overrides || {};
     let resolvedContent = document.content || '';
-    
-    if (document.is_composite && document.components) {
+
+    if (document.components) {
       resolvedContent = await resolveDocumentWithOverrides(
         supabase,
         preset.project_id,
@@ -372,7 +463,7 @@ router.get('/:projectId/:presetId/pdf', async (req: RequestWithUser, res) => {
     // Get the base document
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('id, title, content, is_composite, components')
+      .select('id, title, content, components')
       .eq('id', documentId)
       .eq('project_id', preset.project_id)
       .single();
@@ -385,8 +476,8 @@ router.get('/:projectId/:presetId/pdf', async (req: RequestWithUser, res) => {
     // Apply overrides and resolve the document using centralized function
     const overrides = preset.rules.component_overrides || {};
     let resolvedContent = document.content || '';
-    
-    if (document.is_composite && document.components) {
+
+    if (document.components) {
       resolvedContent = await resolveDocumentWithOverrides(
         supabase,
         preset.project_id,
