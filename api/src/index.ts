@@ -208,9 +208,9 @@ app.get('/preset/:projectId/:presetName', async (req: Request, res: Response) =>
 
     // Resolve the document content with preset overrides using centralized service
     let finalContent: string;
-    if (document.is_composite) {
+    if (document.components && Object.keys(document.components).length > 0) {
       const overrides = preset.rules.component_overrides || {};
-      
+
       finalContent = await resolveDocumentWithOverrides(
         supabase,
         preset.project_id,
