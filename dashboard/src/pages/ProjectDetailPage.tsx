@@ -113,9 +113,9 @@ export default function ProjectDetailPage() {
     setTags: tagActions.setTags,
     setError: () => {}, // Will use proper error handling
     setLoading: documentActions.setDocumentsLoading,
-    setSelectedDocument: () => {}, // Will use proper hook
-    setResolvedContent: () => {}, // Will use proper hook
-    setDocumentToDelete: () => {}, // Will use proper hook
+    setSelectedDocument: (doc: Document | null) => setSelectedDocumentAction(doc?.id || null),
+    setResolvedContent: setResolvedContent,
+    setDocumentToDelete: setDocumentToDelete,
     openModal: modalActions.openModal,
   });
   
